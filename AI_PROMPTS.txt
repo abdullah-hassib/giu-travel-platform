@@ -1,0 +1,21 @@
+2026-11-14 — GIU Software Project I — Milestone 1 Backend Foundation
+Material AI assistance: ChatGPT (GPT-6) generated the backend repository scaffold, NestJS modules, shared config/validation/Swagger/error handling/health controller, preliminary authorization and cross-module interface proposals, Jest test sources, and documentation.
+The human task asked for a feature-based NestJS+TypeScript REST foundation using MongoDB Atlas/Mongoose, Swagger, class-validator/class-transformer, Jest and environmental configuration; feature logic intentionally deferred.
+No official GIU specification, requirements workbook, or reference CSV datasets were available for inspection in this execution context; contracts are explicitly unapproved proposals. No secrets were generated.
+Execution environment had no npm registry connectivity; packages could not be installed and tests/build/start/Swagger/database were not verified. Human developers must review, run checks and update this log with any further material AI prompts before submission.
+
+================================================
+Date: 2026-11-14
+Student: GIU development team (human review required)
+Tool: ChatGPT (GPT-6)
+Related Requirement: ACC-01, ACC-04, ACC-05, ACC-06, ACC-08, ACC-09, ACC-11, ACC-12, ACC-19 and backend foundation
+
+Prompt:
+"i dont get this , start the build" — after the request to create Milestone 1 backend foundation and the upload of the official GIU Project Description PDF.
+
+How the output was used:
+The AI revised the existing foundation into the first source-code authentication and user-profile vertical slice. It created MongoDB User and UserSession schemas, scrypt password hashing, opaque hashed server-side sessions, HttpOnly cookies, route guards, profile and session lifecycle APIs, a one-time administrator seed script, tests, and updated documentation. It also reconciled the proposed role names with the official PDF (airline vs hotel moderators). The Excel workbook and reference CSV datasets were not provided, so exact password/lockout/session and other detailed business rules are explicitly provisional.
+
+Verification:
+TypeScript syntax parsing and local import resolution passed (51 TypeScript files); standalone Node.js cryptography/session tests passed. Real npm install/build, Jest, Swagger startup and Atlas checks were blocked by unavailable npm registry/dependencies and credentials; these results MUST NOT be reported as passing.
+================================================

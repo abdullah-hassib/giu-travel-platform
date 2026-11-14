@@ -1,0 +1,116 @@
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model, Types } from 'mongoose';
+import { User, UserDocument } from './schemas/user.schema';
+import { UpdateProfileDto } from './dto/update-profile.dto';
+
+export interface PublicUser {
+  id: string;
+  email: string;
+  fullName: string;
+  roles: User['roles'];
+  status: User['status'];
+}
+
+@Injectable()
+export class UsersService {
+  constructor(@InjectModel(User.name) private readonly users: Model<User>) {}
+
+  static view(user: UserDocument): PublicUser {
+    return {
+      id: user._id.toString(),
+      email: user.email,
+      fullName: user.fullName,
+      roles: user.roles,
+      status: user.status,
+    };
+  }
+
+  async findByEmailWithPassword(email: string): Promise<UserDocument | null> {
+    return this.users.findOne({ email: email.toLowerCase() }).select('+passwordHash').exec();
+  }
+
+  async findById(id: string): Promise<UserDocument | null> {
+    if (!Types.ObjectId.isValid(id)) return null;
+    return this.users.findById(id).exec();
+  }
+
+  async findByIdWithPassword(id: string): Promise<UserDocument | null> {
+    if (!Types.ObjectId.isValid(id)) return null;
+    return this.users.findById(id).select('+passwordHash').exec();
+  }
+
+  async createTraveler(email: string, fullName: string, passwordHash: string): Promise<UserDocument> {
+    try {
+      return await this.users.create({ email: email.toLowerCase(), fullName: fullName.trim(), passwordHash, roles: ['traveler'] });
+    } catch (error: unknown) {
+      // MongoDB's unique index must be the final arbiter of concurrent registrations.
+      if (typeof error === 'object' && error !== null && 'code' in error && error.code === 11000) {
+        throw new ConflictException('Email is already registered');
+      }
+      throw error;
+    }
+  }
+
+  /** Explicit one-time bootstrap only. Never expose admin creation via public registration. */
+  async seedAdministrator(email: string, passwordHash: string): Promise<'created' | 'already-exists'> {
+    const existing = await this.users.findOne({ email: email.toLowerCase() }).exec();
+    if (existing) {
+      if (existing.roles.includes('admin')) return 'already-exists';
+      throw new ConflictException('An account with this email already exists and is not an administrator');
+    }
+    try {
+      await this.users.create({
+        email: email.toLowerCase(),
+        fullName: 'Platform Administrator',
+        passwordHash,
+        roles: ['admin'],
+        status: 'active',
+      });
+      return 'created';
+    } catch (error: unknown) {
+      if (typeof error === 'object' && error !== null && 'code' in error && error.code === 11000) {
+        throw new ConflictException('Administrator registration raced with another request');
+      }
+      throw error;
+    }
+  }
+
+  async recordFailedLogin(userId: string, maxAttempts: number, lockoutMinutes: number): Promise<void> {
+    const user = await this.users.findOneAndUpdate(
+      { _id: userId, status: 'active' },
+      { $inc: { failedLoginAttempts: 1 } },
+      { new: true },
+    ).exec();
+    if (user && user.failedLoginAttempts >= maxAttempts) {
+      await this.users.updateOne(
+        { _id: userId, failedLoginAttempts: { $gte: maxAttempts } },
+        { $set: { lockedUntil: new Date(Date.now() + lockoutMinutes * 60_000) } },
+      ).exec();
+    }
+  }
+
+  async resetFailedLogins(userId: string): Promise<void> {
+    await this.users.updateOne({ _id: userId }, { $set: { failedLoginAttempts: 0, lockedUntil: null } }).exec();
+  }
+
+  async updatePassword(userId: string, passwordHash: string): Promise<void> {
+    const result = await this.users.updateOne({ _id: userId, status: 'active' }, { $set: { passwordHash } }).exec();
+    if (result.matchedCount === 0) throw new NotFoundException('User not found');
+  }
+
+  async updateProfile(userId: string, dto: UpdateProfileDto): Promise<PublicUser> {
+    const updated = await this.users.findOneAndUpdate(
+      { _id: userId, status: 'active' },
+      { $set: { ...(dto.fullName !== undefined ? { fullName: dto.fullName.trim() } : {}) } },
+      { new: true, runValidators: true },
+    ).exec();
+    if (!updated) throw new NotFoundException('User not found');
+    return UsersService.view(updated);
+  }
+
+  async deactivate(userId: string): Promise<void> {
+    const result = await this.users.updateOne({ _id: userId, status: 'active' }, { $set: { status: 'deactivated' } }).exec();
+    if (result.matchedCount === 0) throw new NotFoundException('User not found');
+  }
+}
