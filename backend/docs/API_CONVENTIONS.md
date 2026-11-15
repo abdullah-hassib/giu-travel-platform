@@ -1,5 +1,7 @@
 # Proposed API conventions (review before feature work)
 
+The implemented itinerary-specific contract, including fixed ten-row pagination, is documented in [ITINERARIES.md](ITINERARIES.md). The older generic pagination proposal below remains unchanged for existing consumers.
+
 - Base path: `/api`; REST JSON with resource-based paths. Swagger UI: `/api/docs`; OpenAPI JSON: `/api/docs-json`.
 - Requests: DTOs validated globally with `whitelist`, `forbidNonWhitelisted`, `transform`. Use explicit DTO decorators for every accepted field.
 - Error shape: `{ statusCode, error, message, path, timestamp }`; validation `message` may be a list. Unhandled failures return generic 500 text, no stack traces or secrets.

@@ -50,4 +50,6 @@ Never put credentials into Git, AI chats, or the project ZIP. Run only once afte
 
 ## Important
 
+The itinerary core now supports private CRUD, ordered days/activities, public discovery and private cloning. See [itinerary API contract and demo](docs/ITINERARIES.md) for requests, reference provenance, ownership, concurrency and remaining budgeting/media integration work.
+
 The official workbook is readable through its linked Drive file. Authentication has been checked with compilation, lint, unit tests, HTTP tests and an isolated real MongoDB process. Production cookie flags are tested; local HTTP development uses non-Secure cookies. Live Atlas and HTTPS browser verification remain pending. Other required features remain incomplete, and reference data/integration contracts still need coordination. See the dated implementation status for requirement coverage and remaining work.

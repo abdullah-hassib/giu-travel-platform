@@ -1,5 +1,13 @@
 # November 14, 2026 — Implementation status
 
+## November 15 itinerary-core slice
+
+- Implemented owner-managed private itinerary CRUD, ordered days (60 maximum), activity CRUD with optional time/cost, derived calendar dates and consecutive city groups, public visibility/search/read, and independent private cloning of current content with attribution.
+- Fifteen REST operations use DTO validation, owner/role guards, no-store responses and documented Swagger schemas. Public author lookup hides deactivated authors and preserves suspended-author content.
+- Itinerary-only read-only country/city/currency validation uses exact records from the official workbook. Reference database seeding/APIs remain Kuwaity's work and are not claimed implemented here. See ITINERARIES.md for source provenance and boundaries.
+- Optimistic concurrency, complete day permutations and safe-integer totals prevent silent overwrites, cap races and monetary precision loss. Dates and activity subtotals are derived after every edit.
+- ITN-01/03/05/10/20 core behaviors are implemented; ITN-07/08/09 and ITN-21 still need full budget/media coverage in subsequent slices. Budget CRUD/transport/FX, media, and flight/hotel integrations remain pending. The administration status feature remains deferred in draft PR #9.
+
 ## November 15 admin-assisted password-reset slice (ACC-07a, ACC-08)
 
 - Added POST /api/admin/users/:id/reset-password with admin role checks, validated ObjectIds/passwords, forbidden administrator targets and no secret response body. Inactive target status is preserved.
