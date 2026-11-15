@@ -12,6 +12,9 @@ export class UserSession {
   @Prop({ type: String, required: true, unique: true })
   tokenHash!: string;
 
+  @Prop({ type: Number, default: 0, min: 0 })
+  sessionVersion!: number;
+
   @Prop({ type: Date, required: true })
   expiresAt!: Date;
 }

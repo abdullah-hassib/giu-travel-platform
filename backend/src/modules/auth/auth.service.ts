@@ -56,6 +56,7 @@ export class AuthService {
     await this.sessions.create({
       userId: user._id,
       tokenHash: hashSessionToken(token),
+      sessionVersion: user.sessionVersion ?? 0,
       expiresAt: new Date(Date.now() + this.sessionTtlMilliseconds),
     });
     return { token, user: UsersService.view(user) };
@@ -69,6 +70,10 @@ export class AuthService {
     if (!session) throw new UnauthorizedException('Authentication required');
     const user = await this.users.findById(session.userId.toString());
     if (!user || user.status !== 'active') throw new UnauthorizedException('Authentication required');
+    // Missing versions on pre-existing records represent the original session generation.
+    if ((session.sessionVersion ?? 0) !== (user.sessionVersion ?? 0)) {
+      throw new UnauthorizedException('Authentication required');
+    }
     return UsersService.view(user);
   }
 
@@ -86,7 +91,7 @@ export class AuthService {
       throw new UnauthorizedException('Current password is incorrect');
     }
     const passwordHash = await hashPassword(newPassword);
-    await this.users.updatePassword(userId, passwordHash);
+    await this.users.updatePassword(userId, passwordHash, user.passwordHash);
     // Invalidate every existing session; client must sign in with the new password.
     await this.revokeAllSessions(userId);
   }

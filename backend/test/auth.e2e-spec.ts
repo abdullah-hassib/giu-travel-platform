@@ -1,10 +1,12 @@
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { ExecutionContext, INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import request from 'supertest';
 import { AuthController } from '../src/modules/auth/auth.controller';
 import { AuthService } from '../src/modules/auth/auth.service';
 import { SessionGuard } from '../src/modules/auth/security/session.guard';
+import { UsersController } from '../src/modules/auth/users.controller';
+import { UsersService } from '../src/modules/users/users.service';
 
 const user = { id: '507f1f77bcf86cd799439011', email: 'test@example.com', fullName: 'Tester', roles: ['traveler'], status: 'active' };
 
@@ -17,17 +19,24 @@ describe('Auth HTTP (isolated, no MongoDB)', () => {
     changePassword: jest.fn(),
     sessionTtlMilliseconds: 86_400_000,
   };
+  const users = { updateProfile: jest.fn().mockResolvedValue(user) };
   beforeAll(async () => {
     auth.register.mockResolvedValue(user);
     auth.login.mockResolvedValue({ user, token: 'a'.repeat(43) });
     auth.logout.mockResolvedValue(undefined);
     const module = await Test.createTestingModule({
-      controllers: [AuthController],
+      controllers: [AuthController, UsersController],
       providers: [
         { provide: AuthService, useValue: auth },
         { provide: ConfigService, useValue: { get: () => 'test' } },
+        { provide: UsersService, useValue: users },
         { provide: SessionGuard, useValue: { canActivate: () => true } },
       ],
+    }).overrideGuard(SessionGuard).useValue({
+      canActivate: (context: ExecutionContext) => {
+        context.switchToHttp().getRequest<{ authUser: typeof user }>().authUser = user;
+        return true;
+      },
     }).compile();
     app = module.createNestApplication();
     app.setGlobalPrefix('api');
@@ -51,5 +60,26 @@ describe('Auth HTTP (isolated, no MongoDB)', () => {
     expect(value).toContain('HttpOnly');
     expect(value).toContain('SameSite=Strict');
     expect(value).toContain('giu_session=');
+  });
+
+  it.each(['   ', ' A ', 'A'.repeat(101), 42])('rejects invalid registration name %p before calling the service', async (fullName) => {
+    auth.register.mockClear();
+    await request(app.getHttpServer()).post('/api/auth/register')
+      .send({ email: user.email, password: 'long-enough-password', fullName }).expect(400);
+    expect(auth.register).not.toHaveBeenCalled();
+  });
+
+  it.each(['   ', ' A ', 'A'.repeat(101), 42])('rejects invalid profile name %p before calling the service', async (fullName) => {
+    users.updateProfile.mockClear();
+    await request(app.getHttpServer()).patch('/api/users/me').send({ fullName }).expect(400);
+    expect(users.updateProfile).not.toHaveBeenCalled();
+  });
+
+  it('passes trimmed registration and profile names to their services', async () => {
+    await request(app.getHttpServer()).post('/api/auth/register')
+      .send({ email: user.email, password: 'long-enough-password', fullName: '  A Tester  ' }).expect(201);
+    expect(auth.register).toHaveBeenLastCalledWith(expect.objectContaining({ fullName: 'A Tester' }));
+    await request(app.getHttpServer()).patch('/api/users/me').send({ fullName: '  A Tester  ' }).expect(200);
+    expect(users.updateProfile).toHaveBeenLastCalledWith(user.id, expect.objectContaining({ fullName: 'A Tester' }));
   });
 });

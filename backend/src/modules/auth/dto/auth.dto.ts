@@ -12,6 +12,7 @@ export class RegisterDto {
   email!: string;
 
   @ApiProperty({ minLength: 2, maxLength: 100 })
+  @Transform(({ value }: { value: unknown }) => typeof value === 'string' ? value.trim() : value)
   @IsString()
   @Length(2, 100)
   fullName!: string;

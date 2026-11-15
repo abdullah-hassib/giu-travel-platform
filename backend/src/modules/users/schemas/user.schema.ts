@@ -16,6 +16,9 @@ export class User {
   @Prop({ type: String, required: true, select: false })
   passwordHash!: string;
 
+  @Prop({ type: Number, default: 0, min: 0 })
+  sessionVersion!: number;
+
   @Prop({ type: String, required: true, trim: true })
   fullName!: string;
 

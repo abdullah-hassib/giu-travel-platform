@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { User, UserDocument } from './schemas/user.schema';
@@ -94,9 +94,15 @@ export class UsersService {
     await this.users.updateOne({ _id: userId }, { $set: { failedLoginAttempts: 0, lockedUntil: null } }).exec();
   }
 
-  async updatePassword(userId: string, passwordHash: string): Promise<void> {
-    const result = await this.users.updateOne({ _id: userId, status: 'active' }, { $set: { passwordHash } }).exec();
-    if (result.matchedCount === 0) throw new NotFoundException('User not found');
+  async updatePassword(userId: string, passwordHash: string, expectedPasswordHash?: string): Promise<void> {
+    const result = await this.users.updateOne(
+      { _id: userId, status: 'active', ...(expectedPasswordHash !== undefined ? { passwordHash: expectedPasswordHash } : {}) },
+      { $set: { passwordHash }, $inc: { sessionVersion: 1 } },
+    ).exec();
+    if (result.matchedCount === 0) {
+      if (expectedPasswordHash === undefined) throw new NotFoundException('User not found');
+      throw new UnauthorizedException('Account or password has changed; sign in again');
+    }
   }
 
   async updateProfile(userId: string, dto: UpdateProfileDto): Promise<PublicUser> {
@@ -110,7 +116,10 @@ export class UsersService {
   }
 
   async deactivate(userId: string): Promise<void> {
-    const result = await this.users.updateOne({ _id: userId, status: 'active' }, { $set: { status: 'deactivated' } }).exec();
+    const result = await this.users.updateOne(
+      { _id: userId, status: 'active' },
+      { $set: { status: 'deactivated' }, $inc: { sessionVersion: 1 } },
+    ).exec();
     if (result.matchedCount === 0) throw new NotFoundException('User not found');
   }
 }
