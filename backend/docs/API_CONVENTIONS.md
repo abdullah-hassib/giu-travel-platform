@@ -11,6 +11,16 @@
 - Auth: a MongoDB-backed opaque session token is stored only as a SHA-256 hash, with an `HttpOnly` `SameSite=Strict` browser cookie (`Secure` under production HTTPS). Swagger defines cookie authentication, not bearer authentication. `/api/auth/me` and `/api/users/me` require SessionGuard. RolesGuard exists for future administrative/provider routes, which must also enforce ownership.
 - Health: `GET /api/health/live` and `GET /api/health/ready` (`503` until database connection is healthy).
 
+## Administrator account listing (ACC-14, GEN-05)
+
+`GET /api/admin/accounts` requires an active administrator session. Guests receive 401; authenticated travelers and either moderator role receive 403. Responses use `Cache-Control: no-store`.
+
+Supported query fields are `page` (positive integer, default 1), `search` (trimmed case-insensitive literal substring of name or email), `role` (one of the existing role codes) and `status` (`active`, `suspended`, `deactivated`). Filters combine with AND; name/email search matches either field. Regex characters are treated literally. Unsupported fields, including arbitrary sorting and limit overrides, return 400.
+
+The response uses `{ data, meta: { page, limit, total, totalPages } }`, with fixed page size 10 as mandated by GEN-05. Results sort by registration timestamp descending, then ObjectId descending for stable ties. Each row contains only `id`, `fullName`, `email`, `roles`, `status` and `createdAt`. Unknown legacy registration timestamps are null. Empty matches have totalPages 0; pages beyond the end return an empty data array with the actual totals.
+
+This endpoint uses its own pagination validation. The shared PageQueryDto/default-20 convention above remains an older proposal awaiting cross-team reconciliation; this slice does not alter teammate consumers.
+
 ## Approved authentication contract (ACC-06, ACC-19)
 
 The user approved the access/refresh design on November 15. It applies to all protected feature routes using SessionGuard.
