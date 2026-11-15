@@ -11,6 +11,16 @@
 - Auth: a MongoDB-backed opaque session token is stored only as a SHA-256 hash, with an `HttpOnly` `SameSite=Strict` browser cookie (`Secure` under production HTTPS). Swagger defines cookie authentication, not bearer authentication. `/api/auth/me` and `/api/users/me` require SessionGuard. RolesGuard exists for future administrative/provider routes, which must also enforce ownership.
 - Health: `GET /api/health/live` and `GET /api/health/ready` (`503` until database connection is healthy).
 
+## Administrator-assisted reset (ACC-07a, ACC-08)
+
+`POST /api/admin/users/:id/reset-password` requires an active administrator and a MongoDB replica set supporting transactions. The body is `{ password }`, with the registration password rules (8–128 characters, a letter and a digit). The target must exist and be a traveler or moderator. Administrator targets are forbidden. The response is 204 with no secret in the body.
+
+The transaction changes the salted password hash, sets `mustChangePassword=true`, increments sessionVersion, clears lockout counters, deletes all target sessions and writes a pending `account.password_reset` event to `admin_outbox`. Account active/suspended/deactivated status is preserved. If any write fails, every change rolls back, including session deletion.
+
+Login and identity responses expose the additive `mustChangePassword` workflow flag (false for legacy accounts). A temporary-password session can access identity, refresh, logout and password change. SessionGuard denies all other protected routes with 403, including own-profile reads/edits. The user must choose a compliant password different from the temporary password. A successful change clears the flag, revokes all sessions and requires another login.
+
+The outbox producer is implemented and transaction-tested. Omar's consumer/delivery integration remains pending; events stay pending until that integration processes them. Reset does not claim delivery of an audit entry or notification.
+
 ## Administrator account listing (ACC-14, GEN-05)
 
 `GET /api/admin/accounts` requires an active administrator session. Guests receive 401; authenticated travelers and either moderator role receive 403. Responses use `Cache-Control: no-store`.

@@ -1,9 +1,11 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { Equals, IsBoolean, IsEmail, IsString, Length, Matches, MaxLength, MinLength } from 'class-validator';
 import { USER_ROLES, USER_STATUSES, UserRole, UserStatus } from '../../users/schemas/user.schema';
 
 export class AuthUserDto {
+  @ApiPropertyOptional({ default: false, description: 'Restricted session: identity, refresh, logout and password change only' })
+  mustChangePassword?: boolean;
   @ApiProperty({ example: '507f1f77bcf86cd799439011' })
   id!: string;
 

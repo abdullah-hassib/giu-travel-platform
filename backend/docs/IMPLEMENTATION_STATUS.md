@@ -1,5 +1,12 @@
 # November 14, 2026 — Implementation status
 
+## November 15 admin-assisted password-reset slice (ACC-07a, ACC-08)
+
+- Added POST /api/admin/users/:id/reset-password with admin role checks, validated ObjectIds/passwords, forbidden administrator targets and no secret response body. Inactive target status is preserved.
+- Password replacement, session invalidation/deletion, lockout reset and a sanitized administrative outbox event commit in one transaction. The producer is complete; Omar's audit/notification consumer remains an integration dependency and pending events are not claimed delivered.
+- Temporary-password login exposes mustChangePassword. SessionGuard permits only identity and password-change routes during the restricted workflow; refresh and logout remain usable. Changing to the same temporary password is rejected. Successful change clears the flag, invalidates sessions and requires re-login.
+- Admin HTTP tests now use an isolated replica set to verify transactions and rollback on outbox failure. No shared Atlas data or credentials are accessed. Live Atlas/HTTPS checks remain pending.
+
 ## November 15 administrator account-list slice (ACC-14, GEN-05)
 
 - Added GET /api/admin/accounts through AdministrationModule using the existing User model, SessionGuard and RolesGuard. The endpoint supports literal case-insensitive name/email search and combined role/status filters, ten-row pages, stable newest-first ordering, sanitized rows and no-store responses.

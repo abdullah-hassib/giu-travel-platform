@@ -4,7 +4,7 @@ import { ApiCookieAuth, ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiTags
 import { CookieOptions, Request, Response } from 'express';
 import { AuthService, LoginResult } from './auth.service';
 import { AuthResponseDto, AuthUserDto, ChangePasswordDto, LoginDto, RegisterDto } from './dto/auth.dto';
-import { AuthenticatedRequest, SessionGuard } from './security/session.guard';
+import { AllowPasswordChange, AuthenticatedRequest, SessionGuard } from './security/session.guard';
 import { clearAuthenticationCookies, readRefreshCookie, readSessionCookie, REFRESH_COOKIE_NAME, SESSION_COOKIE_NAME } from './security/session-cookie';
 
 @ApiTags('Authentication')
@@ -72,6 +72,7 @@ export class AuthController {
   }
 
   @Get('me')
+  @AllowPasswordChange()
   @Header('Cache-Control', 'no-store')
   @ApiOkResponse({ type: AuthUserDto })
   @UseGuards(SessionGuard)
@@ -82,6 +83,7 @@ export class AuthController {
   }
 
   @Patch('change-password')
+  @AllowPasswordChange()
   @UseGuards(SessionGuard)
   @ApiCookieAuth(SESSION_COOKIE_NAME)
   @HttpCode(HttpStatus.NO_CONTENT)

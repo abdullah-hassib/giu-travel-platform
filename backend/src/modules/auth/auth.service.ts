@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus, Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, HttpException, HttpStatus, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { FilterQuery, Model } from 'mongoose';
@@ -171,6 +171,9 @@ export class AuthService {
       throw new UnauthorizedException('Current password is incorrect');
     }
     const passwordHash = await hashPassword(newPassword);
+    if (user.mustChangePassword && await verifyPassword(newPassword, user.passwordHash)) {
+      throw new BadRequestException('Choose a password different from the temporary password');
+    }
     await this.users.updatePassword(userId, passwordHash, user.passwordHash);
     // Invalidate every existing session; client must sign in with the new password.
     await this.revokeAllSessions(userId);
