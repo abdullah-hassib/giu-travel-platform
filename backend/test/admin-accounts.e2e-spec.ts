@@ -4,12 +4,14 @@ import { Test } from '@nestjs/testing';
 import { getModelToken, MongooseModule } from '@nestjs/mongoose';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { Model } from 'mongoose';
-import { MongoMemoryServer } from 'mongodb-memory-server-core';
+import { MongoMemoryReplSet } from 'mongodb-memory-server-core';
 import request from 'supertest';
 import { AdministrationModule } from '../src/modules/administration/administration.module';
 import { User } from '../src/modules/users/schemas/user.schema';
 import { UserSession } from '../src/modules/auth/schemas/user-session.schema';
 import { hashPassword } from '../src/modules/auth/security/password';
+import { AdminOutboxEvent } from '../src/modules/administration/schemas/admin-outbox.schema';
+import { HttpErrorFilter } from '../src/common/filters/http-error.filter';
 
 // Production feature modules, real guards and a disposable database; no AppModule/.env.
 @Global()
@@ -21,14 +23,15 @@ class TestConfigurationModule {}
 
 describe('Administration account list (real HTTP and MongoDB)', () => {
   jest.setTimeout(180_000);
-  let server: MongoMemoryServer;
+  let server: MongoMemoryReplSet;
   let app: INestApplication;
   let users: Model<User>;
   let sessions: Model<UserSession>;
   let passwordHash: string;
+  let outbox: Model<AdminOutboxEvent>;
 
   beforeAll(async () => {
-    server = await MongoMemoryServer.create();
+    server = await MongoMemoryReplSet.create({ replSet: { count: 1, storageEngine: 'wiredTiger' } });
     const module = await Test.createTestingModule({
       imports: [
         TestConfigurationModule,
@@ -39,16 +42,18 @@ describe('Administration account list (real HTTP and MongoDB)', () => {
     app = module.createNestApplication();
     app.setGlobalPrefix('api');
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
+    app.useGlobalFilters(new HttpErrorFilter());
     SwaggerModule.setup('api/docs', app, SwaggerModule.createDocument(app, new DocumentBuilder().setTitle('Test API').build()));
     await app.init();
     users = app.get(getModelToken(User.name));
     sessions = app.get(getModelToken(UserSession.name));
-    await Promise.all([users.init(), sessions.init()]);
+    outbox = app.get(getModelToken(AdminOutboxEvent.name));
+    await Promise.all([users.init(), sessions.init(), outbox.init()]);
     passwordHash = await hashPassword('test-password1');
   });
 
   beforeEach(async () => {
-    await Promise.all([users.deleteMany({}), sessions.deleteMany({})]);
+    await Promise.all([users.deleteMany({}), sessions.deleteMany({}), outbox.deleteMany({})]);
     await users.create({ email: 'admin@example.com', fullName: 'Platform Admin', roles: ['admin'], passwordHash });
   });
 
@@ -56,6 +61,7 @@ describe('Administration account list (real HTTP and MongoDB)', () => {
     await app?.close();
     await server?.stop();
   });
+  afterEach(() => jest.restoreAllMocks());
 
   async function signIn(email = 'admin@example.com') {
     const agent = request.agent(app.getHttpServer());
@@ -155,5 +161,86 @@ describe('Administration account list (real HTTP and MongoDB)', () => {
     expect(operation.security).toEqual([{ giu_session: [] }]);
     expect(operation.parameters.map((parameter: { name: string }) => parameter.name).sort()).toEqual(['page', 'role', 'search', 'status']);
     expect(operation.responses['200'].content['application/json'].schema.$ref).toContain('AccountsPageDto');
+  });
+
+  it.each(['traveler', 'airline_moderator', 'hotel_moderator'])('resets a %s password and enforces the change before other routes', async (role) => {
+    const target = await users.create({ email: 'member@example.com', fullName: 'Member', roles: [role], passwordHash });
+    const member = await signIn('member@example.com');
+    const admin = await signIn();
+    const reset = await admin.post(`/api/admin/users/${target._id}/reset-password`).send({ password: 'Temporary123' }).expect(204);
+    expect(reset.text).toBe('');
+    expect(await sessions.countDocuments({ userId: target._id })).toBe(0);
+    await member.get('/api/auth/me').expect(401);
+    await member.post('/api/auth/refresh').expect(401);
+    await member.post('/api/auth/login').send({ email: target.email, password: 'test-password1' }).expect(401);
+    const login = await member.post('/api/auth/login').send({ email: target.email, password: 'Temporary123' }).expect(200);
+    expect(login.body.user.mustChangePassword).toBe(true);
+    await member.get('/api/auth/me').expect(200);
+    await member.get('/api/users/me').expect(403);
+    await member.patch('/api/users/me').send({ fullName: 'Changed Name' }).expect(403);
+    const refreshed = await member.post('/api/auth/refresh').expect(200);
+    expect(refreshed.body.user.mustChangePassword).toBe(true);
+    await member.get('/api/users/me').expect(403);
+    await member.patch('/api/auth/change-password').send({ currentPassword: 'Temporary123', newPassword: 'Temporary123' }).expect(400);
+    await member.patch('/api/auth/change-password').send({ currentPassword: 'Temporary123', newPassword: 'Permanent123' }).expect(204);
+    await member.get('/api/auth/me').expect(401);
+    await member.post('/api/auth/login').send({ email: target.email, password: 'Temporary123' }).expect(401);
+    const permanent = await member.post('/api/auth/login').send({ email: target.email, password: 'Permanent123' }).expect(200);
+    expect(permanent.body.user.mustChangePassword).toBe(false);
+    await member.get('/api/users/me').expect(200);
+    const events = await outbox.find().lean();
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({ type: 'account.password_reset', version: 1, status: 'pending', payload: { targetUserId: target._id.toString() } });
+    expect(JSON.stringify(events)).not.toContain('Temporary123');
+    expect(JSON.stringify(events)).not.toContain('Permanent123');
+    expect(Object.keys(events[0].payload)).toEqual(['targetUserId']);
+  });
+
+  it.each(['traveler', 'airline_moderator', 'hotel_moderator'])('prevents a %s from resetting another account', async (role) => {
+    await users.create({ email: 'member@example.com', fullName: 'Member', roles: [role], passwordHash });
+    const target = await users.create({ email: 'target@example.com', fullName: 'Target', passwordHash });
+    const member = await signIn('member@example.com');
+    await member.post(`/api/admin/users/${target._id}/reset-password`).send({ password: 'Temporary123' }).expect(403);
+    expect(await outbox.countDocuments()).toBe(0);
+  });
+
+  it('rejects unauthenticated resets, administrator targets and nonexistent targets', async () => {
+    const adminUser = await users.findOne({ email: 'admin@example.com' }).orFail();
+    await request(app.getHttpServer()).post(`/api/admin/users/${adminUser._id}/reset-password`).send({ password: 'Temporary123' }).expect(401);
+    const admin = await signIn();
+    await admin.post(`/api/admin/users/${adminUser._id}/reset-password`).send({ password: 'Temporary123' }).expect(403);
+    await admin.post('/api/admin/users/000000000000000000000000/reset-password').send({ password: 'Temporary123' }).expect(404);
+    await admin.post('/api/admin/users/not-an-id/reset-password').send({ password: 'Temporary123' }).expect(400);
+    expect(await outbox.countDocuments()).toBe(0);
+  });
+
+  it.each(['abcdefgh', '12345678', 'short1'])('rejects a noncompliant temporary password %s', async (password) => {
+    const target = await users.create({ email: 'member@example.com', fullName: 'Member', passwordHash });
+    const admin = await signIn();
+    await admin.post(`/api/admin/users/${target._id}/reset-password`).send({ password }).expect(400);
+    expect(await outbox.countDocuments()).toBe(0);
+  });
+
+  it.each(['suspended', 'deactivated'])('preserves %s status during a reset', async (status) => {
+    const target = await users.create({ email: 'member@example.com', fullName: 'Member', passwordHash, status });
+    const admin = await signIn();
+    await admin.post(`/api/admin/users/${target._id}/reset-password`).send({ password: 'Temporary123' }).expect(204);
+    expect((await users.findById(target._id).orFail()).status).toBe(status);
+    await request(app.getHttpServer()).post('/api/auth/login').send({ email: target.email, password: 'Temporary123' }).expect(401);
+  });
+
+  it('rolls back the password and session changes if the outbox write fails', async () => {
+    const target = await users.create({ email: 'member@example.com', fullName: 'Member', passwordHash });
+    const member = await signIn('member@example.com');
+    const admin = await signIn();
+    jest.spyOn(outbox, 'create').mockRejectedValueOnce(new Error('outbox unavailable'));
+    const response = await admin.post(`/api/admin/users/${target._id}/reset-password`).send({ password: 'Temporary123' }).expect(500);
+    expect(response.body.message).toBe('Internal server error');
+    const unchanged = await users.findById(target._id).select('+passwordHash').orFail();
+    expect(unchanged.passwordHash).toBe(passwordHash);
+    expect(unchanged.mustChangePassword).toBe(false);
+    expect(unchanged.sessionVersion).toBe(0);
+    await member.get('/api/users/me').expect(200);
+    expect(await outbox.countDocuments()).toBe(0);
   });
 });

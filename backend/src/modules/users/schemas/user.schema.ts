@@ -19,6 +19,9 @@ export class User {
   @Prop({ type: Number, default: 0, min: 0 })
   sessionVersion!: number;
 
+  @Prop({ type: Boolean, default: false })
+  mustChangePassword!: boolean;
+
   @Prop({ type: String, required: true, trim: true })
   fullName!: string;
 

@@ -28,6 +28,8 @@ These definitions are *discussion artifacts*. The uploaded official GIU PDF has 
 
 ### Next administration write slice — proposed for Hassib/Omar review
 
+Current producer implementation: ACC-07a writes `account.password_reset` into the `admin_outbox` collection in the same transaction as the reset/session deletion. It uses UUID id/correlationId, type, version 1, ISO occurredAt, actorId, payload.targetUserId and status pending. The consumer handoff is still awaiting Omar integration; no worker or delivery is claimed. Pending events have no expiry. The envelope contains no credentials or personal profile fields. This implementation does not approve the remaining suspension/provider event names or consumer behavior on behalf of other developers.
+
 Before implementing account suspension/reactivation (ACC-15/ACC-16), agree on durable event delivery for GEN-01/GEN-07. The current EventPublisher is an unimplemented proposal. Password-reset and moderator-creation audit events can use the same agreed mechanism.
 
 Proposed mechanism: write the account mutation and an outbox event in one MongoDB transaction. Omar's consumer records the audit entry and required in-app notification idempotently using the event ID, with retry for temporary failures. The HTTP operation succeeds after the account mutation and outbox record commit. Delivery failures remain observable and retryable. Atlas transaction availability and a replica-set test harness must be verified for that slice.

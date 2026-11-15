@@ -10,7 +10,7 @@ describe('UsersService password changes', () => {
     await users.updatePassword('user-id', 'new-hash', 'verified-old-hash');
     expect(updateOne).toHaveBeenCalledWith(
       { _id: 'user-id', status: 'active', passwordHash: 'verified-old-hash' },
-      { $set: { passwordHash: 'new-hash' }, $inc: { sessionVersion: 1 } },
+      { $set: { passwordHash: 'new-hash', mustChangePassword: false }, $inc: { sessionVersion: 1 } },
     );
   });
 

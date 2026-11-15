@@ -10,6 +10,7 @@ export interface PublicUser {
   fullName: string;
   roles: User['roles'];
   status: User['status'];
+  mustChangePassword?: boolean;
 }
 
 @Injectable()
@@ -23,6 +24,7 @@ export class UsersService {
       fullName: user.fullName,
       roles: user.roles,
       status: user.status,
+      mustChangePassword: user.mustChangePassword ?? false,
     };
   }
 
@@ -114,7 +116,7 @@ export class UsersService {
   async updatePassword(userId: string, passwordHash: string, expectedPasswordHash?: string): Promise<void> {
     const result = await this.users.updateOne(
       { _id: userId, status: 'active', ...(expectedPasswordHash !== undefined ? { passwordHash: expectedPasswordHash } : {}) },
-      { $set: { passwordHash }, $inc: { sessionVersion: 1 } },
+      { $set: { passwordHash, mustChangePassword: false }, $inc: { sessionVersion: 1 } },
     ).exec();
     if (result.matchedCount === 0) {
       if (expectedPasswordHash === undefined) throw new NotFoundException('User not found');

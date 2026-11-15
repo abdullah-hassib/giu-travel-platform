@@ -1,6 +1,10 @@
-import { Injectable } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { FilterQuery, Model } from 'mongoose';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { InjectConnection, InjectModel } from '@nestjs/mongoose';
+import { Connection, FilterQuery, Model } from 'mongoose';
+import { randomUUID } from 'node:crypto';
+import { hashPassword } from '../auth/security/password';
+import { UserSession } from '../auth/schemas/user-session.schema';
+import { AdminOutboxEvent } from './schemas/admin-outbox.schema';
 import { User } from '../users/schemas/user.schema';
 import { AccountsPageDto, AccountsQueryDto, AdminAccountDto } from './dto/accounts-query.dto';
 
@@ -8,7 +12,31 @@ const ACCOUNT_PAGE_SIZE = 10;
 
 @Injectable()
 export class AdministrationService {
-  constructor(@InjectModel(User.name) private readonly users: Model<User>) {}
+  constructor(
+    @InjectModel(User.name) private readonly users: Model<User>,
+    @InjectModel(UserSession.name) private readonly sessions: Model<UserSession>,
+    @InjectModel(AdminOutboxEvent.name) private readonly outbox: Model<AdminOutboxEvent>,
+    @InjectConnection() private readonly connection: Connection,
+  ) {}
+
+  async resetPassword(actorId: string, targetId: string, temporaryPassword: string): Promise<void> {
+    const passwordHash = await hashPassword(temporaryPassword);
+    const id = randomUUID();
+    await this.connection.transaction(async (session) => {
+      const target = await this.users.findById(targetId).session(session).exec();
+      if (!target) throw new NotFoundException('Account not found');
+      if (target.roles.includes('admin')) throw new ForbiddenException('Only traveler and moderator passwords can be reset');
+      await this.users.updateOne({ _id: target._id }, {
+        $set: { passwordHash, mustChangePassword: true, failedLoginAttempts: 0, lockedUntil: null },
+        $inc: { sessionVersion: 1 },
+      }, { session }).exec();
+      await this.sessions.deleteMany({ userId: target._id }).session(session).exec();
+      await this.outbox.create([{
+        id, type: 'account.password_reset', version: 1, occurredAt: new Date().toISOString(),
+        correlationId: id, actorId, payload: { targetUserId: target._id.toString() }, status: 'pending',
+      }], { session });
+    });
+  }
 
   async listAccounts(query: AccountsQueryDto): Promise<AccountsPageDto> {
     const filter: FilterQuery<User> = {};
