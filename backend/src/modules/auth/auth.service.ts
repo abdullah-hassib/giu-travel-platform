@@ -27,31 +27,31 @@ export class AuthService {
 
   async register(dto: RegisterDto): Promise<PublicUser> {
     const passwordHash = await hashPassword(dto.password);
-    const created = await this.users.createTraveler(dto.email, dto.fullName, passwordHash);
+    const created = await this.users.createTraveler(dto.email, dto.fullName, passwordHash, new Date());
     return UsersService.view(created);
   }
 
   async login(dto: LoginDto): Promise<LoginResult> {
     const user = await this.users.findByEmailWithPassword(dto.email);
-    if (!user || user.status !== 'active') throw new UnauthorizedException('Invalid credentials or inactive account');
+    if (!user || user.status === 'deactivated') throw new UnauthorizedException('Invalid email or password');
+    if (user.status === 'suspended') throw new UnauthorizedException('Account suspended');
     if (user.lockedUntil && user.lockedUntil.getTime() > Date.now()) {
       throw new HttpException('Account temporarily locked', HttpStatus.TOO_MANY_REQUESTS);
     }
-    // Begin a fresh attempt window after a previous lockout has elapsed.
-    if (user.lockedUntil && user.lockedUntil.getTime() <= Date.now()) {
-      await this.users.resetFailedLogins(user._id.toString());
-    }
-
     if (!(await verifyPassword(dto.password, user.passwordHash))) {
-      await this.users.recordFailedLogin(
+      const locked = await this.users.recordFailedLogin(
         user._id.toString(),
         Number(this.config.get<number>('AUTH_MAX_FAILED_ATTEMPTS', 5)),
         Number(this.config.get<number>('AUTH_LOCKOUT_MINUTES', 15)),
+        user.passwordHash,
       );
-      throw new UnauthorizedException('Invalid credentials or inactive account');
+      if (locked) throw new HttpException('Account temporarily locked', HttpStatus.TOO_MANY_REQUESTS);
+      throw new UnauthorizedException('Invalid email or password');
     }
 
-    await this.users.resetFailedLogins(user._id.toString());
+    if (!(await this.users.resetFailedLogins(user._id.toString(), user.passwordHash))) {
+      throw new UnauthorizedException('Account or login state has changed; sign in again');
+    }
     const token = newSessionToken();
     await this.sessions.create({
       userId: user._id,

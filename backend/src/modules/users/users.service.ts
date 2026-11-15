@@ -40,9 +40,9 @@ export class UsersService {
     return this.users.findById(id).select('+passwordHash').exec();
   }
 
-  async createTraveler(email: string, fullName: string, passwordHash: string): Promise<UserDocument> {
+  async createTraveler(email: string, fullName: string, passwordHash: string, termsAcceptedAt?: Date): Promise<UserDocument> {
     try {
-      return await this.users.create({ email: email.toLowerCase(), fullName: fullName.trim(), passwordHash, roles: ['traveler'] });
+      return await this.users.create({ email: email.toLowerCase(), fullName: fullName.trim(), passwordHash, roles: ['traveler'], termsAcceptedAt });
     } catch (error: unknown) {
       // MongoDB's unique index must be the final arbiter of concurrent registrations.
       if (typeof error === 'object' && error !== null && 'code' in error && error.code === 11000) {
@@ -76,22 +76,39 @@ export class UsersService {
     }
   }
 
-  async recordFailedLogin(userId: string, maxAttempts: number, lockoutMinutes: number): Promise<void> {
+  async recordFailedLogin(userId: string, maxAttempts: number, lockoutMinutes: number, expectedPasswordHash: string): Promise<boolean> {
+    const now = new Date();
+    // The filter and pipeline execute as one atomic document update. Expired locks
+    // start a fresh attempt window; requests arriving during a lock cannot extend it.
     const user = await this.users.findOneAndUpdate(
-      { _id: userId, status: 'active' },
-      { $inc: { failedLoginAttempts: 1 } },
+      { _id: userId, status: 'active', passwordHash: expectedPasswordHash, lockedUntil: { $not: { $gt: now } } },
+      [
+        { $set: { failedLoginAttempts: {
+          $cond: [
+            { $and: [{ $ne: [{ $ifNull: ['$lockedUntil', null] }, null] }, { $lte: ['$lockedUntil', now] }] },
+            1,
+            { $add: [{ $ifNull: ['$failedLoginAttempts', 0] }, 1] },
+          ],
+        } } },
+        { $set: { lockedUntil: {
+          $cond: [
+            { $gte: ['$failedLoginAttempts', maxAttempts] },
+            new Date(now.getTime() + lockoutMinutes * 60_000),
+            null,
+          ],
+        } } },
+      ],
       { new: true },
     ).exec();
-    if (user && user.failedLoginAttempts >= maxAttempts) {
-      await this.users.updateOne(
-        { _id: userId, failedLoginAttempts: { $gte: maxAttempts } },
-        { $set: { lockedUntil: new Date(Date.now() + lockoutMinutes * 60_000) } },
-      ).exec();
-    }
+    return Boolean(user?.lockedUntil && user.lockedUntil.getTime() > now.getTime());
   }
 
-  async resetFailedLogins(userId: string): Promise<void> {
-    await this.users.updateOne({ _id: userId }, { $set: { failedLoginAttempts: 0, lockedUntil: null } }).exec();
+  async resetFailedLogins(userId: string, expectedPasswordHash: string): Promise<boolean> {
+    const result = await this.users.updateOne(
+      { _id: userId, status: 'active', passwordHash: expectedPasswordHash, lockedUntil: { $not: { $gt: new Date() } } },
+      { $set: { failedLoginAttempts: 0, lockedUntil: null } },
+    ).exec();
+    return result.matchedCount === 1;
   }
 
   async updatePassword(userId: string, passwordHash: string, expectedPasswordHash?: string): Promise<void> {

@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsEmail, IsString, Length, MaxLength, MinLength } from 'class-validator';
+import { Equals, IsBoolean, IsEmail, IsString, Length, Matches, MaxLength, MinLength } from 'class-validator';
 
 const normalizeEmail = ({ value }: { value: unknown }): unknown =>
   typeof value === 'string' ? value.trim().toLowerCase() : value;
@@ -17,12 +17,17 @@ export class RegisterDto {
   @Length(2, 100)
   fullName!: string;
 
-  // Provisional pending official Excel password acceptance criteria.
-  @ApiProperty({ minLength: 8, maxLength: 128, writeOnly: true })
+  @ApiProperty({ minLength: 8, maxLength: 128, writeOnly: true, description: 'At least one letter and one digit (ACC-01)' })
   @IsString()
   @MinLength(8)
   @MaxLength(128)
+  @Matches(/^(?=.*\p{L})(?=.*\d)[\s\S]*$/u, { message: 'password must contain at least one letter and one digit' })
   password!: string;
+
+  @ApiProperty({ example: true, description: 'Accept both terms and privacy policy (ACC-01)' })
+  @IsBoolean()
+  @Equals(true, { message: 'Terms and privacy policy must be accepted' })
+  termsAccepted!: boolean;
 }
 
 export class LoginDto {
@@ -41,9 +46,10 @@ export class ChangePasswordDto {
   @IsString()
   currentPassword!: string;
 
-  @ApiProperty({ minLength: 8, maxLength: 128, writeOnly: true })
+  @ApiProperty({ minLength: 8, maxLength: 128, writeOnly: true, description: 'At least one letter and one digit (ACC-08)' })
   @IsString()
   @MinLength(8)
   @MaxLength(128)
+  @Matches(/^(?=.*\p{L})(?=.*\d)[\s\S]*$/u, { message: 'newPassword must contain at least one letter and one digit' })
   newPassword!: string;
 }
