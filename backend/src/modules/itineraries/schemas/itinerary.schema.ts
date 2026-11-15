@@ -1,6 +1,10 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Schema as MongoSchema, Types } from 'mongoose';
 import { CITY_IDS, COUNTRY_CODES, CURRENCIES } from '../reference-data';
+import {
+  BUDGET_CATEGORIES,
+  BudgetCategory,
+} from '../../budgeting/budgeting.constants';
 
 @Schema({ _id: false })
 export class ActivityCost {
@@ -9,6 +13,28 @@ export class ActivityCost {
 
   @Prop({ type: String, enum: CURRENCIES, required: true })
   currency!: string;
+}
+
+@Schema()
+export class BudgetEntry extends ActivityCost {
+  declare _id: Types.ObjectId;
+
+  @Prop({ type: String, enum: BUDGET_CATEGORIES, required: true })
+  category!: BudgetCategory;
+}
+
+@Schema()
+export class TransportEntry extends ActivityCost {
+  declare _id: Types.ObjectId;
+
+  @Prop({ type: String, enum: CITY_IDS, required: true })
+  fromCityId!: string;
+
+  @Prop({ type: String, enum: CITY_IDS, required: true })
+  toCityId!: string;
+
+  @Prop({ type: String, required: true, trim: true })
+  mode!: string;
 }
 
 @Schema()
@@ -43,6 +69,12 @@ export class ItineraryDay {
     default: [],
   })
   activities!: ItineraryActivity[];
+
+  @Prop({ type: [SchemaFactory.createForClass(BudgetEntry)], default: [] })
+  budgets!: BudgetEntry[];
+
+  @Prop({ type: [SchemaFactory.createForClass(TransportEntry)], default: [] })
+  transportCosts!: TransportEntry[];
 }
 
 @Schema({ _id: false })

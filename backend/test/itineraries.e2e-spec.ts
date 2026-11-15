@@ -16,6 +16,7 @@ import { User } from '../src/modules/users/schemas/user.schema';
 import { UserSession } from '../src/modules/auth/schemas/user-session.schema';
 import { hashPassword } from '../src/modules/auth/security/password';
 import { ItinerariesModule } from '../src/modules/itineraries/itineraries.module';
+import { BudgetingModule } from '../src/modules/budgeting/budgeting.module';
 import { ItinerariesService } from '../src/modules/itineraries/itineraries.service';
 import { Itinerary } from '../src/modules/itineraries/schemas/itinerary.schema';
 
@@ -56,6 +57,7 @@ describe('Itinerary core (real feature modules, HTTP and MongoDB)', () => {
           dbName: 'giu_itinerary_tests',
         }),
         ItinerariesModule,
+        BudgetingModule,
       ],
     }).compile();
     app = module.createNestApplication();
@@ -808,5 +810,541 @@ describe('Itinerary core (real feature modules, HTTP and MongoDB)', () => {
         .expect(200)
     ).body;
     expect(country.meta.total).toBe(11);
+  });
+
+  async function prepareBudgetTrip() {
+    const owner = await signIn();
+    const trip = await create(owner);
+    await owner
+      .post(`/api/itineraries/${trip.id}/days`)
+      .send({ cityId: 'cairo' })
+      .expect(201);
+    const added = (
+      await owner
+        .post(`/api/itineraries/${trip.id}/days`)
+        .send({ cityId: 'paris' })
+        .expect(201)
+    ).body;
+    return { owner, trip: added, first: added.days[0], second: added.days[1] };
+  }
+
+  it('calculates all native-currency categories and recalculates after moves, reorder and deletion', async () => {
+    const { owner, trip, first, second } = await prepareBudgetTrip();
+    await owner
+      .post(`/api/itineraries/${trip.id}/days/${first.id}/activities`)
+      .send({ name: 'Museum', cost: { amountMinor: 100, currency: 'USD' } })
+      .expect(201);
+    await owner
+      .post(`/api/itineraries/${trip.id}/days/${second.id}/activities`)
+      .send({ name: 'Gallery', cost: { amountMinor: 100, currency: 'EUR' } })
+      .expect(201);
+    let foodId = '';
+    for (const [category, amountMinor] of [
+      ['food', 200],
+      ['accommodation', 300],
+      ['in_city_transport', 50],
+      ['activities', 20],
+    ] as const) {
+      const added = (
+        await owner
+          .post(`/api/itineraries/${trip.id}/days/${first.id}/budgets`)
+          .send({ category, amountMinor, currency: 'USD' })
+          .expect(201)
+      ).body;
+      if (category === 'food') foodId = added.days[0].budgets[0].id;
+    }
+    await owner
+      .post(`/api/itineraries/${trip.id}/days/${second.id}/budgets`)
+      .send({ category: 'food', amountMinor: 400, currency: 'EUR' })
+      .expect(201);
+    const transport = (
+      await owner
+        .post(`/api/itineraries/${trip.id}/transport-costs`)
+        .send({
+          dayId: first.id,
+          mode: 'flight',
+          fromCityId: 'cairo',
+          toCityId: 'paris',
+          amountMinor: 500,
+          currency: 'USD',
+        })
+        .expect(201)
+    ).body.days[0].transportCosts[0];
+    await owner
+      .post(`/api/itineraries/${trip.id}/transport-costs`)
+      .send({
+        dayId: second.id,
+        mode: 'train',
+        fromCityId: 'paris',
+        toCityId: 'london',
+        amountMinor: 600,
+        currency: 'EUR',
+      })
+      .expect(201);
+    const summary = (
+      await owner.get(`/api/itineraries/${trip.id}/budget-summary`).expect(200)
+    ).body;
+    expect(summary.totalByCurrency).toEqual({ USD: 1170, EUR: 1100 });
+    expect(summary.byCategory.activities).toEqual({ USD: 120, EUR: 100 });
+    expect(summary.byCategory.intercity_transport).toEqual({
+      USD: 500,
+      EUR: 600,
+    });
+    expect(summary.byDay.map((day: { date: string }) => day.date)).toEqual([
+      '2028-02-28',
+      '2028-02-29',
+    ]);
+    const view = (await owner.get(`/api/itineraries/${trip.id}`).expect(200))
+      .body;
+    expect(view.cityGroups[0].budgetTotals).toEqual({ USD: 1170 });
+    expect(view.cityGroups[0].activityTotals).toEqual({ USD: 100 });
+    await owner
+      .patch(`/api/budgets/${foodId}`)
+      .send({ amountMinor: 250, currency: 'EGP' })
+      .expect(200);
+    const moved = (
+      await owner
+        .patch(`/api/transport-costs/${transport.id}`)
+        .send({
+          dayId: second.id,
+          mode: ' coach ',
+          amountMinor: 700,
+          currency: 'GBP',
+        })
+        .expect(200)
+    ).body;
+    expect(moved.days[0].transportCosts).toEqual([]);
+    expect(
+      moved.days[1].transportCosts.find(
+        (entry: { id: string }) => entry.id === transport.id,
+      ),
+    ).toMatchObject({ id: transport.id, dayId: second.id, mode: 'coach' });
+    const reordered = (
+      await owner
+        .patch(`/api/itineraries/${trip.id}/days/reorder`)
+        .send({ dayIds: [second.id, first.id] })
+        .expect(200)
+    ).body;
+    expect(reordered.budgetSummary.byDay[0]).toMatchObject({
+      dayId: second.id,
+      dayNumber: 1,
+      date: '2028-02-28',
+      totalByCurrency: { EUR: 1100, GBP: 700 },
+    });
+    await owner.delete(`/api/budgets/${foodId.toUpperCase()}`).expect(200);
+    const deleted = (
+      await owner
+        .delete(`/api/itineraries/${trip.id}/days/${second.id}`)
+        .expect(200)
+    ).body;
+    expect(deleted.budgetSummary.totalByCurrency).toEqual({ USD: 470 });
+    expect(deleted.cityGroups[0].budgetTotals).toEqual({ USD: 470 });
+    expect(deleted.budgetSummary.byDay).toHaveLength(1);
+  });
+
+  it('supports zero costs, currency/category edits and entry deletion', async () => {
+    const { owner, trip, first, second } = await prepareBudgetTrip();
+    const budget = (
+      await owner
+        .post(`/api/itineraries/${trip.id}/days/${first.id}/budgets`)
+        .send({ category: 'food', amountMinor: 0, currency: 'USD' })
+        .expect(201)
+    ).body.days[0].budgets[0];
+    const transport = (
+      await owner
+        .post(`/api/itineraries/${trip.id}/transport-costs`)
+        .send({
+          dayId: first.id,
+          mode: 'bus',
+          fromCityId: 'cairo',
+          toCityId: 'dubai',
+          amountMinor: 0,
+          currency: 'GBP',
+        })
+        .expect(201)
+    ).body.days[0].transportCosts[0];
+    await owner
+      .patch(`/api/budgets/${budget.id.toUpperCase()}`)
+      .send({ category: 'accommodation', amountMinor: 99, currency: 'EUR' })
+      .expect(200);
+    await owner
+      .patch(`/api/transport-costs/${transport.id.toUpperCase()}`)
+      .send({
+        dayId: second.id.toUpperCase(),
+        amountMinor: 100,
+        currency: 'AED',
+      })
+      .expect(200);
+    const summary = (
+      await owner.get(`/api/itineraries/${trip.id}/budget-summary`).expect(200)
+    ).body;
+    expect(summary.totalByCurrency).toEqual({ EUR: 99, AED: 100 });
+    expect(summary.byCategory.accommodation).toEqual({ EUR: 99 });
+    await owner.delete(`/api/budgets/${budget.id}`).expect(200);
+    const removed = (
+      await owner.delete(`/api/transport-costs/${transport.id}`).expect(200)
+    ).body;
+    expect(removed.budgetSummary.totalByCurrency).toEqual({});
+  });
+
+  it('clones budgets and transport with new identifiers and correct day references', async () => {
+    const { owner, trip, first } = await prepareBudgetTrip();
+    const budget = (
+      await owner
+        .post(`/api/itineraries/${trip.id}/days/${first.id}/budgets`)
+        .send({ category: 'food', amountMinor: 100, currency: 'EGP' })
+        .expect(201)
+    ).body.days[0].budgets[0];
+    const transport = (
+      await owner
+        .post(`/api/itineraries/${trip.id}/transport-costs`)
+        .send({
+          dayId: first.id,
+          mode: 'bus',
+          fromCityId: 'cairo',
+          toCityId: 'dubai',
+          amountMinor: 200,
+          currency: 'EGP',
+        })
+        .expect(201)
+    ).body.days[0].transportCosts[0];
+    await owner
+      .patch(`/api/itineraries/${trip.id}`)
+      .send({ visibility: 'public' })
+      .expect(200);
+    const visible = (
+      await request(app.getHttpServer())
+        .get(`/api/itineraries/public/${trip.id}`)
+        .expect(200)
+    ).body;
+    expect(visible.budgetSummary.totalByCurrency).toEqual({ EGP: 300 });
+    const other = await signIn('other@example.com');
+    const clone = (
+      await other.post(`/api/itineraries/${trip.id}/clone`).expect(201)
+    ).body;
+    expect(clone.days[0].budgets[0].id).not.toBe(budget.id);
+    expect(clone.days[0].transportCosts[0].id).not.toBe(transport.id);
+    expect(clone.days[0].transportCosts[0].dayId).toBe(clone.days[0].id);
+    expect(clone.budgetSummary.totalByCurrency).toEqual({ EGP: 300 });
+    await other
+      .patch(`/api/budgets/${clone.days[0].budgets[0].id}`)
+      .send({ amountMinor: 500 })
+      .expect(200);
+    expect(
+      (
+        await owner
+          .get(`/api/itineraries/${trip.id}/budget-summary`)
+          .expect(200)
+      ).body.totalByCurrency,
+    ).toEqual({ EGP: 300 });
+    await owner.delete(`/api/itineraries/${trip.id}`).expect(204);
+    expect(
+      (
+        await other
+          .get(`/api/itineraries/${clone.id}/budget-summary`)
+          .expect(200)
+      ).body.totalByCurrency,
+    ).toEqual({ EGP: 700 });
+  });
+
+  it('enforces owner boundaries for all budget and transport operations', async () => {
+    const { owner, trip, first } = await prepareBudgetTrip();
+    const budget = (
+      await owner
+        .post(`/api/itineraries/${trip.id}/days/${first.id}/budgets`)
+        .send({ category: 'food', amountMinor: 100, currency: 'EGP' })
+        .expect(201)
+    ).body.days[0].budgets[0];
+    const transportBody = {
+      dayId: first.id,
+      mode: 'bus',
+      fromCityId: 'cairo',
+      toCityId: 'dubai',
+      amountMinor: 200,
+      currency: 'EGP',
+    };
+    const transport = (
+      await owner
+        .post(`/api/itineraries/${trip.id}/transport-costs`)
+        .send(transportBody)
+        .expect(201)
+    ).body.days[0].transportCosts[0];
+    const other = await signIn('other@example.com');
+    await other.get(`/api/itineraries/${trip.id}/budget-summary`).expect(404);
+    await other
+      .post(`/api/itineraries/${trip.id}/days/${first.id}/budgets`)
+      .send({ category: 'food', amountMinor: 1, currency: 'EGP' })
+      .expect(404);
+    await other
+      .post(`/api/itineraries/${trip.id}/transport-costs`)
+      .send(transportBody)
+      .expect(404);
+    await other
+      .patch(`/api/budgets/${budget.id}`)
+      .send({ amountMinor: 1 })
+      .expect(404);
+    await other.delete(`/api/budgets/${budget.id}`).expect(404);
+    await other
+      .patch(`/api/transport-costs/${transport.id}`)
+      .send({ amountMinor: 1 })
+      .expect(404);
+    await other.delete(`/api/transport-costs/${transport.id}`).expect(404);
+    await request(app.getHttpServer())
+      .get(`/api/itineraries/${trip.id}/budget-summary`)
+      .expect(401);
+  });
+
+  it.each(['admin', 'airline_moderator', 'hotel_moderator'])(
+    'denies a %s-only budget client',
+    async (role) => {
+      const { trip, first } = await prepareBudgetTrip();
+      await users.create({
+        email: 'staff@example.com',
+        fullName: 'Staff',
+        passwordHash,
+        roles: [role],
+      });
+      const staff = await signIn('staff@example.com');
+      await staff.get(`/api/itineraries/${trip.id}/budget-summary`).expect(403);
+      await staff
+        .post(`/api/itineraries/${trip.id}/days/${first.id}/budgets`)
+        .send({ category: 'food', amountMinor: 1, currency: 'EGP' })
+        .expect(403);
+    },
+  );
+
+  it.each([
+    { category: 'unknown' },
+    { amountMinor: -1 },
+    { amountMinor: 1.5 },
+    { amountMinor: null },
+    { amountMinor: Number.MAX_SAFE_INTEGER + 1 },
+    { currency: 'ZZZ' },
+    { category: null },
+    { category: undefined },
+    { ownerId: 'injected' },
+  ])('validates budget entries %p', async (fields) => {
+    const { owner, trip, first } = await prepareBudgetTrip();
+    await owner
+      .post(`/api/itineraries/${trip.id}/days/${first.id}/budgets`)
+      .send({ category: 'food', amountMinor: 100, currency: 'EGP', ...fields })
+      .expect(400);
+  });
+
+  it.each([
+    { mode: '  ' },
+    { fromCityId: 'unknown' },
+    { toCityId: 'unknown' },
+    { dayId: 'invalid' },
+    { amountMinor: -1 },
+    { mode: null },
+  ])('validates transport entries %p', async (fields) => {
+    const { owner, trip, first } = await prepareBudgetTrip();
+    await owner
+      .post(`/api/itineraries/${trip.id}/transport-costs`)
+      .send({
+        dayId: first.id,
+        mode: 'train',
+        fromCityId: 'cairo',
+        toCityId: 'paris',
+        amountMinor: 100,
+        currency: 'EGP',
+        ...fields,
+      })
+      .expect(400);
+  });
+
+  it('rejects null patches, foreign day moves and unsupported conversion queries', async () => {
+    const { owner, trip, first } = await prepareBudgetTrip();
+    const budget = (
+      await owner
+        .post(`/api/itineraries/${trip.id}/days/${first.id}/budgets`)
+        .send({ category: 'food', amountMinor: 100, currency: 'EGP' })
+        .expect(201)
+    ).body.days[0].budgets[0];
+    const transport = (
+      await owner
+        .post(`/api/itineraries/${trip.id}/transport-costs`)
+        .send({
+          dayId: first.id,
+          mode: 'bus',
+          fromCityId: 'cairo',
+          toCityId: 'paris',
+          amountMinor: 200,
+          currency: 'EGP',
+        })
+        .expect(201)
+    ).body.days[0].transportCosts[0];
+    await owner
+      .patch(`/api/budgets/${budget.id}`)
+      .send({ currency: null })
+      .expect(400);
+    await owner
+      .patch(`/api/transport-costs/${transport.id}`)
+      .send({ amountMinor: null })
+      .expect(400);
+    const foreignTrip = await create(owner);
+    const foreignDay = (
+      await owner
+        .post(`/api/itineraries/${foreignTrip.id}/days`)
+        .send({ cityId: 'cairo' })
+        .expect(201)
+    ).body.days[0];
+    await owner
+      .patch(`/api/transport-costs/${transport.id}`)
+      .send({ dayId: foreignDay.id, mode: 'bad change' })
+      .expect(404);
+    expect(
+      (await owner.get(`/api/itineraries/${trip.id}`).expect(200)).body.days[0]
+        .transportCosts[0].mode,
+    ).toBe('bus');
+    await owner
+      .get(`/api/itineraries/${trip.id}/budget-summary?currency=USD`)
+      .expect(400);
+  });
+
+  it('rejects overflow across all cost sources atomically', async () => {
+    const { owner, trip, first } = await prepareBudgetTrip();
+    await owner
+      .post(`/api/itineraries/${trip.id}/days/${first.id}/budgets`)
+      .send({
+        category: 'food',
+        amountMinor: Number.MAX_SAFE_INTEGER,
+        currency: 'EGP',
+      })
+      .expect(201);
+    await owner
+      .post(`/api/itineraries/${trip.id}/days/${first.id}/activities`)
+      .send({ name: 'Overflow', cost: { amountMinor: 1, currency: 'EGP' } })
+      .expect(400);
+    await owner
+      .post(`/api/itineraries/${trip.id}/transport-costs`)
+      .send({
+        dayId: first.id,
+        mode: 'bus',
+        fromCityId: 'cairo',
+        toCityId: 'paris',
+        amountMinor: 1,
+        currency: 'EGP',
+      })
+      .expect(400);
+    const stored = (await owner.get(`/api/itineraries/${trip.id}`).expect(200))
+      .body;
+    expect(stored.days[0].activities).toEqual([]);
+    expect(stored.days[0].transportCosts).toEqual([]);
+    expect(stored.budgetSummary.totalByCurrency).toEqual({
+      EGP: Number.MAX_SAFE_INTEGER,
+    });
+  });
+
+  it('reads legacy itineraries lacking the new monetary arrays', async () => {
+    const id = new Types.ObjectId();
+    await itineraries.collection.insertOne({
+      _id: id,
+      ...base,
+      ownerId: new Types.ObjectId(ownerId),
+      visibility: 'public',
+      days: [
+        {
+          _id: new Types.ObjectId(),
+          cityId: 'cairo',
+          notes: '',
+          activities: [
+            {
+              _id: new Types.ObjectId(),
+              name: 'Old activity',
+              description: '',
+              cost: { amountMinor: 50, currency: 'EUR' },
+            },
+          ],
+        },
+      ],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      __v: 0,
+    });
+    const owner = await signIn();
+    expect(
+      (await owner.get(`/api/itineraries/${id}/budget-summary`).expect(200))
+        .body.totalByCurrency,
+    ).toEqual({ EUR: 50 });
+    const publicView = (
+      await request(app.getHttpServer())
+        .get(`/api/itineraries/public/${id}`)
+        .expect(200)
+    ).body;
+    expect(publicView.days[0].budgets).toEqual([]);
+    expect(publicView.days[0].transportCosts).toEqual([]);
+    expect(publicView.cityGroups[0].budgetTotals).toEqual({ EUR: 50 });
+  });
+
+  it('documents original-currency summary and monetary routes in Swagger', async () => {
+    const schema = (
+      await request(app.getHttpServer()).get('/api/docs-json').expect(200)
+    ).body;
+    expect(schema.paths['/api/budgets/{id}'].patch.security).toEqual([
+      { giu_session: [] },
+    ]);
+    expect(
+      schema.paths['/api/itineraries/{id}/budget-summary'].get.responses['200']
+        .content['application/json'].schema.$ref,
+    ).toContain('NativeBudgetSummaryDto');
+    expect(
+      schema.components.schemas.CreateBudgetDto.properties.currency.enum,
+    ).toContain('EGP');
+  });
+
+  it('rejects a raced budget write/day deletion without losing committed data', async () => {
+    const { trip, first } = await prepareBudgetTrip();
+    const a = await itineraries.findById(trip.id).orFail();
+    const b = await itineraries.findById(trip.id).orFail();
+    jest
+      .spyOn(itineraries, 'findOne')
+      .mockReturnValueOnce({ exec: async () => a } as never)
+      .mockReturnValueOnce({ exec: async () => b } as never);
+    const service = app.get(ItinerariesService);
+    const results = await Promise.allSettled([
+      service.addBudget(ownerId, trip.id, first.id, {
+        category: 'food',
+        amountMinor: 100,
+        currency: 'EGP',
+      }),
+      service.deleteDay(ownerId, trip.id, first.id),
+    ]);
+    expect(
+      results.filter((result) => result.status === 'fulfilled'),
+    ).toHaveLength(1);
+    const rejection = results.find((result) => result.status === 'rejected');
+    expect(rejection?.status === 'rejected' && rejection.reason.status).toBe(
+      409,
+    );
+    const stored = await itineraries.findById(trip.id).orFail();
+    const remaining = stored.days.find((day) => day._id.equals(first.id));
+    expect(remaining ? remaining.budgets.length : 0).toBe(remaining ? 1 : 0);
+    expect(stored.days.length).toBe(remaining ? 2 : 1);
+  });
+
+  it('blocks budget access during mandatory password change', async () => {
+    const { owner, trip, first } = await prepareBudgetTrip();
+    await users.updateOne(
+      { _id: ownerId },
+      { $set: { mustChangePassword: true } },
+    );
+    await owner.get(`/api/itineraries/${trip.id}/budget-summary`).expect(403);
+    await owner
+      .post(`/api/itineraries/${trip.id}/days/${first.id}/budgets`)
+      .send({ category: 'food', amountMinor: 1, currency: 'EGP' })
+      .expect(403);
+    await owner
+      .post(`/api/itineraries/${trip.id}/transport-costs`)
+      .send({
+        dayId: first.id,
+        mode: 'bus',
+        fromCityId: 'cairo',
+        toCityId: 'paris',
+        amountMinor: 1,
+        currency: 'EGP',
+      })
+      .expect(403);
   });
 });

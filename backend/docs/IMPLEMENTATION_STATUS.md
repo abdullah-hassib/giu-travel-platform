@@ -1,5 +1,12 @@
 # November 14, 2026 — Implementation status
 
+## November 15 original-currency budgeting slice
+
+- Added seven budget/transport/summary operations with traveler/owner guards, DTO validation, Swagger and no-store responses. Daily categories, activity costs and intercity costs are included in native currency totals by day/category and city group.
+- Embedded entries share the itinerary's optimistic save. Transport can move between owned days with a stable ID; deletion/reordering and cloning preserve valid ownership/day references, recalculate totals and copy all budget/transport content independently.
+- Missing legacy monetary arrays are treated as empty. Combined-source overflow, invalid/null amounts and unsupported conversion queries are rejected before persistence. No currencies are mixed or invented rates returned.
+- Added 28 real HTTP/MongoDB regression cases. FX conversion/cache/fallback and preferred currency remain pending under ITN-18; the user confirmed no FX key is configured. Media/provider integration and administration PR #9 remain deferred. See BUDGETING.md for contracts and demo steps.
+
 ## November 15 itinerary-core slice
 
 - Implemented owner-managed private itinerary CRUD, ordered days (60 maximum), activity CRUD with optional time/cost, derived calendar dates and consecutive city groups, public visibility/search/read, and independent private cloning of current content with attribution.

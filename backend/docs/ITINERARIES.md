@@ -6,14 +6,14 @@
 | --- | --- |
 | ITN-01, ITN-03 | Private creation, owner CRUD, title/countries/start-date validation, newest-updated list |
 | ITN-05 | Ordered days, required official city, derived dates, maximum 60 days |
-| ITN-07, ITN-08 | Delete/reorder days; recalculate numbering, dates, consecutive city groups and activity costs. Full budget totals follow in budgeting. |
-| ITN-09 | Consecutive city groups and original-currency activity subtotals. Full budget subtotals remain pending. |
+| ITN-07, ITN-08 | Delete/reorder days; recalculate numbering, dates, consecutive city groups and activity costs. Full original-currency budget totals are now included; see BUDGETING.md. |
+| ITN-09 | Consecutive city groups and original-currency activity subtotals. Full original-currency budget subtotals are now included. |
 | ITN-10 | Activity CRUD, description, optional local HH:mm time and original-currency cost |
 | ITN-20 | Public/private visibility; public reads/search immediately respect changes |
-| ITN-21 core | Public search/read and independent private cloning of current days/activities/costs with attribution. Budget/image copying requires their later implementation. |
+| ITN-21 core | Public search/read and independent private cloning of current days/activities/costs with attribution. Budget and transport copying is now included; image integration remains pending. |
 | ACC-11, GEN-05, GEN-13 | Ownership, server validation, role guards and fixed ten-row pagination |
 
-This is a working itinerary core. Budget entries, transport costs, FX conversion, activity images and flight/hotel search integration remain separate slices. Administration status PR #9 remains deferred and unmerged.
+This is a working itinerary core. Budget entries and transport costs are implemented in the native-budgeting slice. FX conversion, activity images and flight/hotel search integration remain separate slices. Administration status PR #9 remains deferred and unmerged.
 
 ## Reference-data provenance
 
@@ -55,11 +55,11 @@ Own lists accept only `page`. Public search accepts `page`, `search`, `countryCo
 
 ## Consistency, money and cloning
 
-Days and activities are embedded under one owner itinerary. Dates/day numbers are derived from the array order and start date; consecutive equal cities form separate groups when interrupted by another city. Group `activityTotals` contains original-currency activity-only totals in minor units. The implementation does not mix currencies or claim FX-converted/full-budget totals. Amounts and totals exceeding JavaScript's safe-integer range are rejected before persistence. Dates beyond the supported four-digit calendar range are also rejected.
+Days and activities are embedded under one owner itinerary. Dates/day numbers are derived from the array order and start date; consecutive equal cities form separate groups when interrupted by another city. Group `activityTotals` contains original-currency activity-only totals in minor units. Full native budgetTotals/budgetSummary include budget entries, activities and transport with separate original currencies; FX conversion remains pending. Amounts and totals exceeding JavaScript's safe-integer range are rejected before persistence. Dates beyond the supported four-digit calendar range are also rejected.
 
 Optimistic concurrency protects all read/modify/save operations. A raced update returns 409 and the client must reload/retry. This also prevents concurrent additions exceeding the sixty-day cap. Deleting a day deletes its embedded activities/costs in the same parent update. Parent deletion removes that parent and embedded data. Frontend confirmation dialogs belong to the M2 workflow.
 
-Clones copy the currently supported days, notes, activities, times and costs. They get new parent/day/activity IDs, private visibility, the new owner, and a `clonedFrom` snapshot of source itinerary ID, author ID and public display name. Editing, hiding or deleting the source does not alter existing clones. Future budget/media support must extend clone coverage and regression tests before those requirements are marked complete.
+Clones copy days, notes, activities, times, costs, budgets and transport with fresh identifiers and valid cloned-day references. They get new parent/day/activity IDs, private visibility, the new owner, and a `clonedFrom` snapshot of source itinerary ID, author ID and public display name. Editing, hiding or deleting the source does not alter existing clones. Budget/transport clone coverage is now verified; future media support must extend clone tests before the remaining requirement is marked complete.
 
 ## Demo and verification
 
