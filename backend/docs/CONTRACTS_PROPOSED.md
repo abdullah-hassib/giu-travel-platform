@@ -25,6 +25,16 @@ These definitions are *discussion artifacts*. The uploaded official GIU PDF has 
 - Choose in-process events vs persisted outbox before relying on delivery; for critical payment state transitions prefer persisted outbox / transaction strategy.
 
 ## Open questions / approval gates
+
+### Next administration write slice — proposed for Hassib/Omar review
+
+Before implementing account suspension/reactivation (ACC-15/ACC-16), agree on durable event delivery for GEN-01/GEN-07. The current EventPublisher is an unimplemented proposal. Password-reset and moderator-creation audit events can use the same agreed mechanism.
+
+Proposed mechanism: write the account mutation and an outbox event in one MongoDB transaction. Omar's consumer records the audit entry and required in-app notification idempotently using the event ID, with retry for temporary failures. The HTTP operation succeeds after the account mutation and outbox record commit. Delivery failures remain observable and retryable. Atlas transaction availability and a replica-set test harness must be verified for that slice.
+
+Proposed event envelope uses the existing DomainEvent fields, with event types `account.suspended`, `account.reactivated`, `account.password_reset` and `moderator.created`, actor/target IDs, correlation ID, previous/new status where applicable, and provider assignment IDs only when needed. Passwords, tokens, hashes, names and emails are excluded. Consumer ownership, transport API/injection token, event names, retry/dead-letter behavior and audit visibility need agreement before code depends on them. Omar may supply an existing compatible interface instead.
+
+This is a review proposal. No shared TypeScript contracts or Omar-owned modules have been changed, and account write routes remain unexposed until their required behavior can be implemented and verified.
 1. Confirm all statuses and allowed transitions separately for flight and hotel bookings.
 2. Confirm exact roles, provider ownership and moderator assignment semantics.
 3. Confirm payment provider, currencies, gateway callback verification and refund policies.

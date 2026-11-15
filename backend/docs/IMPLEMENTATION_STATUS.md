@@ -1,5 +1,12 @@
 # November 14, 2026 — Implementation status
 
+## November 15 administrator account-list slice (ACC-14, GEN-05)
+
+- Added GET /api/admin/accounts through AdministrationModule using the existing User model, SessionGuard and RolesGuard. The endpoint supports literal case-insensitive name/email search and combined role/status filters, ten-row pages, stable newest-first ordering, sanitized rows and no-store responses.
+- Response projection excludes password hashes, session versions, lockout state and consent metadata. MongoDB aggregation facets generate rows and totals from the same input stream. Legacy missing registration timestamps are null.
+- Real HTTP/MongoDB tests load the actual AdministrationModule/AuthModule and guards, including guest/non-admin denial, inactive administrator denial, pagination, projection, filtering, regex escaping, invalid/operator query rejection and Swagger generation.
+- Account status changes, admin-assisted reset and moderator creation remain unimplemented. The next write slice requires an agreed durable audit/notification handoff with Omar. The read-only list emits no placeholder events.
+
 ## November 15 access/refresh authentication slice
 
 - User-approved design implemented for ACC-06/ACC-19: separate access/refresh HttpOnly cookies, five-minute access expiry, atomic rotation, replay-family revocation, refresh-only logout and clearing both cookies on logout/password change/deactivation. Swagger describes the new endpoint, both cookie schemes and sanitized response schemas.
