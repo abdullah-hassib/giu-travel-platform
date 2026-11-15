@@ -24,6 +24,10 @@ Routes implemented in source: `/api/auth/register`, `/api/auth/login`, `/api/aut
 
 Registration now requires `termsAccepted: true`. Registration and password changes require at least eight characters with a letter and a digit. Login continues to accept existing credentials. Lockout configuration must use `AUTH_MAX_FAILED_ATTEMPTS=5` and `AUTH_LOCKOUT_MINUTES=15` to match ACC-05.
 
+ACC-06 idle expiry is thirty minutes. Each successfully authenticated request updates server-side activity. Expired, revoked, suspended-account and stale-version sessions cannot renew activity. The existing configured absolute session lifetime still applies. Legacy sessions use their persisted update/creation timestamps until the first successful authenticated request records `lastAuthenticatedAt`.
+
+The persistence e2e suite uses `mongodb-memory-server-core` to create and stop its own disposable local MongoDB. It never loads `.env` or connects to Atlas. Its default setup downloads a test binary when needed. To use an existing local `mongod` instead, set `MONGOMS_SYSTEM_BINARY` to that executable and `MONGOMS_VERSION` to its version before running `npm run test:e2e`. Setting `MONGOMS_RUNTIME_DOWNLOAD=false` prevents downloads. These are test-process settings, independent of application credentials.
+
 In Swagger, register using `fullName`, `email`, a compliant `password` and `termsAccepted: true`. Omitting consent or using a password without a letter/digit returns 400. On a disposable test account, the fifth incorrect login returns 429, and login remains blocked for fifteen minutes. Account lockout uses an atomic MongoDB update pipeline, so MongoDB 4.2 or newer is required. Use isolated service/HTTP tests before human-authorized live database checks.
 
 `npm run seed:admin` bootstraps an administrator from one-time environment variables. Example on a developer machine (replace the email; enter a strong private password at the prompt):

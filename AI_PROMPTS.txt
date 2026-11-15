@@ -76,3 +76,14 @@ Thirty-minute inactivity expiry, access/refresh-cookie requirements, complete pr
 ================================================
 
 Maintenance note (2026-11-15): ChatGPT consolidated and clarified this log for readability at the user's request. The material AI-assisted tasks and known verification limitations above remain disclosed. Update this file with further material AI-assisted development as it occurs.
+
+================================================
+Date: 2026-11-15
+Student: Hassib
+Tool: Codex
+Related requirements: ACC-06 (idle-expiry portion), ACC-04, ACC-05, ACC-08; ACC-19 remains pending
+Prompt / request (summary): Continue assigned mandatory Milestone 1 backend tasks sequentially, inspect latest develop, verify each scoped slice, maintain professional AI records and pause for architectural or integration decisions.
+How the output was used: Updated from origin/develop f179744 before branching. Read the available personal task PDF from Downloads (filename without the requested (1) suffix), relevant official PDF pages and ACC-06/ACC-19 workbook text. Added thirty-minute server-side inactivity expiry and monotonic activity renewal with an atomic revocation/expiry recheck. Existing sessions use persisted update/creation timestamps until renewed. Preserved the current cookie routes and absolute lifetime. Added mongodb-memory-server-core as a development-only test harness and eleven tests against an isolated real MongoDB process. Updated documentation and test-run instructions. No teammate-owned modules changed.
+Reported verification: Typecheck, build and lint passed. Nine unit suites / 34 tests and three e2e suites / 37 tests passed. The eleven persistence cases ran against local MongoDB 8.2.7 in a disposable database, including concurrent failed logins and revocation races. Other HTTP tests continue to use mocks. No .env, Atlas credentials or shared database was accessed. The installed MongoDB binary was selected through test-only process variables after the default binary download timed out. The harness release preserves Node 20 support.
+Outstanding work: Access/refresh-cookie architecture and refresh revocation, remaining account/admin requirements and cross-team contracts require subsequent slices. ACC-06 and ACC-19 are not claimed complete. Live Atlas and deployed browser verification remain pending.
+================================================

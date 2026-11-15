@@ -1,12 +1,14 @@
 import { HttpException, HttpStatus, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { FilterQuery, Model } from 'mongoose';
 import { UsersService, PublicUser } from '../users/users.service';
 import { RegisterDto, LoginDto } from './dto/auth.dto';
 import { UserSession } from './schemas/user-session.schema';
 import { hashPassword, verifyPassword } from './security/password';
 import { hashSessionToken, newSessionToken } from './security/session-cookie';
+
+const SESSION_IDLE_TIMEOUT_MS = 30 * 60 * 1000;
 
 export interface LoginResult {
   user: PublicUser;
@@ -57,16 +59,14 @@ export class AuthService {
       userId: user._id,
       tokenHash: hashSessionToken(token),
       sessionVersion: user.sessionVersion ?? 0,
+      lastAuthenticatedAt: new Date(),
       expiresAt: new Date(Date.now() + this.sessionTtlMilliseconds),
     });
     return { token, user: UsersService.view(user) };
   }
 
   async authenticate(token: string): Promise<PublicUser> {
-    const session = await this.sessions.findOne({
-      tokenHash: hashSessionToken(token),
-      expiresAt: { $gt: new Date() },
-    }).exec();
+    const session = await this.sessions.findOne(this.activeSessionFilter(token, new Date())).exec();
     if (!session) throw new UnauthorizedException('Authentication required');
     const user = await this.users.findById(session.userId.toString());
     if (!user || user.status !== 'active') throw new UnauthorizedException('Authentication required');
@@ -74,7 +74,26 @@ export class AuthService {
     if ((session.sessionVersion ?? 0) !== (user.sessionVersion ?? 0)) {
       throw new UnauthorizedException('Authentication required');
     }
+    // Recheck expiry and revocation after loading the account. Failed authentication
+    // cannot prolong a session, and concurrent requests cannot move activity backwards.
+    const authenticatedAt = new Date();
+    const result = await this.sessions.updateOne(
+      this.activeSessionFilter(token, authenticatedAt),
+      { $max: { lastAuthenticatedAt: authenticatedAt } },
+    ).exec();
+    if (result.matchedCount !== 1) throw new UnauthorizedException('Authentication required');
     return UsersService.view(user);
+  }
+
+  private activeSessionFilter(token: string, now: Date): FilterQuery<UserSession> {
+    return {
+      tokenHash: hashSessionToken(token),
+      expiresAt: { $gt: now },
+      $expr: { $gt: [
+        { $ifNull: ['$lastAuthenticatedAt', { $ifNull: ['$updatedAt', '$createdAt'] }] },
+        new Date(now.getTime() - SESSION_IDLE_TIMEOUT_MS),
+      ] },
+    };
   }
 
   async logout(token: string | null): Promise<void> {
