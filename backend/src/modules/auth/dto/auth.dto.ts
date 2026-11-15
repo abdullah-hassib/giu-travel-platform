@@ -1,6 +1,29 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { Equals, IsBoolean, IsEmail, IsString, Length, Matches, MaxLength, MinLength } from 'class-validator';
+import { USER_ROLES, USER_STATUSES, UserRole, UserStatus } from '../../users/schemas/user.schema';
+
+export class AuthUserDto {
+  @ApiProperty({ example: '507f1f77bcf86cd799439011' })
+  id!: string;
+
+  @ApiProperty({ example: 'traveler@example.com' })
+  email!: string;
+
+  @ApiProperty({ example: 'Traveler Name' })
+  fullName!: string;
+
+  @ApiProperty({ enum: [...USER_ROLES], isArray: true })
+  roles!: UserRole[];
+
+  @ApiProperty({ enum: [...USER_STATUSES] })
+  status!: UserStatus;
+}
+
+export class AuthResponseDto {
+  @ApiProperty({ type: AuthUserDto })
+  user!: AuthUserDto;
+}
 
 const normalizeEmail = ({ value }: { value: unknown }): unknown =>
   typeof value === 'string' ? value.trim().toLowerCase() : value;

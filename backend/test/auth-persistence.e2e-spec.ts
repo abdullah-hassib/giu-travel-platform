@@ -1,4 +1,9 @@
 import { ConfigService } from '@nestjs/config';
+import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { Test } from '@nestjs/testing';
+import request from 'supertest';
+import { AuthController } from '../src/modules/auth/auth.controller';
+import { SessionGuard } from '../src/modules/auth/security/session.guard';
 import { Model, Connection, createConnection } from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server-core';
 import { AuthService } from '../src/modules/auth/auth.service';
@@ -19,6 +24,7 @@ describe('Authentication persistence (isolated MongoDB)', () => {
   let auth: AuthService;
   let user: UserDocument;
   let passwordHash: string;
+  let app: INestApplication;
 
   beforeAll(async () => {
     server = await MongoMemoryServer.create();
@@ -28,6 +34,18 @@ describe('Authentication persistence (isolated MongoDB)', () => {
     await Promise.all([users.init(), sessions.init()]);
     usersService = new UsersService(users);
     auth = new AuthService(usersService, sessions, new ConfigService());
+    const module = await Test.createTestingModule({
+      controllers: [AuthController],
+      providers: [
+        { provide: AuthService, useValue: auth },
+        { provide: ConfigService, useValue: new ConfigService({ NODE_ENV: 'test' }) },
+        SessionGuard,
+      ],
+    }).compile();
+    app = module.createNestApplication();
+    app.setGlobalPrefix('api');
+    app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
+    await app.init();
     passwordHash = await hashPassword('test-password1');
   });
 
@@ -38,8 +56,99 @@ describe('Authentication persistence (isolated MongoDB)', () => {
 
   afterEach(() => jest.restoreAllMocks());
   afterAll(async () => {
+    await app?.close();
     await connection?.close();
     await server?.stop();
+  });
+
+  it('rotates credentials after access expiry while preserving absolute expiry', async () => {
+    const login = await auth.login({ email: user.email, password: 'test-password1' });
+    await sessions.collection.updateOne({ tokenHash: hashSessionToken(login.token) }, { $set: { accessExpiresAt: new Date(0) } });
+    await expect(auth.authenticate(login.token)).rejects.toMatchObject({ status: 401 });
+    const rotated = await auth.refresh(login.refreshToken);
+    expect(rotated.token).not.toBe(login.token);
+    expect(rotated.refreshToken).not.toBe(login.refreshToken);
+    expect(rotated.expiresAt).toEqual(login.expiresAt);
+    await expect(auth.authenticate(rotated.token)).resolves.toMatchObject({ id: user._id.toString() });
+    await expect(auth.authenticate(login.token)).rejects.toMatchObject({ status: 401 });
+    const stored = await sessions.findOne({ userId: user._id }).orFail();
+    expect(stored.tokenHash).toBe(hashSessionToken(rotated.token));
+    expect(stored.refreshTokenHash).toBe(hashSessionToken(rotated.refreshToken));
+    expect(JSON.stringify(stored)).not.toContain(rotated.refreshToken);
+  });
+
+  it('revokes the family when a consumed refresh token is replayed', async () => {
+    const login = await auth.login({ email: user.email, password: 'test-password1' });
+    const rotated = await auth.refresh(login.refreshToken);
+    await expect(auth.refresh(login.refreshToken)).rejects.toMatchObject({ status: 401 });
+    await expect(auth.authenticate(rotated.token)).rejects.toMatchObject({ status: 401 });
+    await expect(auth.refresh(rotated.refreshToken)).rejects.toMatchObject({ status: 401 });
+  });
+
+  it('permits at most one concurrent rotation and revokes the raced family', async () => {
+    const login = await auth.login({ email: user.email, password: 'test-password1' });
+    const results = await Promise.allSettled([auth.refresh(login.refreshToken), auth.refresh(login.refreshToken)]);
+    expect(results.filter((result) => result.status === 'fulfilled').length).toBeLessThanOrEqual(1);
+    expect(results.some((result) => result.status === 'rejected')).toBe(true);
+    expect(await sessions.countDocuments()).toBe(0);
+  });
+
+  it.each(['suspended', 'deactivated'])('denies refresh for a %s account', async (status) => {
+    const login = await auth.login({ email: user.email, password: 'test-password1' });
+    await users.updateOne({ _id: user._id }, { $set: { status } });
+    await expect(auth.refresh(login.refreshToken)).rejects.toMatchObject({ status: 401 });
+    await expect(auth.authenticate(login.token)).rejects.toMatchObject({ status: 401 });
+  });
+
+  it.each(['idle', 'absolute'])('cannot refresh past %s expiry', async (kind) => {
+    const login = await auth.login({ email: user.email, password: 'test-password1' });
+    const expired = kind === 'idle'
+      ? { lastAuthenticatedAt: new Date(Date.now() - 30 * 60_000) }
+      : { expiresAt: new Date(0) };
+    await sessions.collection.updateOne({ tokenHash: hashSessionToken(login.token) }, { $set: expired });
+    await expect(auth.refresh(login.refreshToken)).rejects.toMatchObject({ status: 401 });
+  });
+
+  it('denies refresh after a password-version change even before cleanup', async () => {
+    const login = await auth.login({ email: user.email, password: 'test-password1' });
+    await users.updateOne({ _id: user._id }, { $inc: { sessionVersion: 1 } });
+    await expect(auth.refresh(login.refreshToken)).rejects.toMatchObject({ status: 401 });
+  });
+
+  it('logs out by refresh credential when the access credential is absent', async () => {
+    const login = await auth.login({ email: user.email, password: 'test-password1' });
+    await auth.logout(null, login.refreshToken);
+    await auth.logout(null, login.refreshToken);
+    await expect(auth.refresh(login.refreshToken)).rejects.toMatchObject({ status: 401 });
+    await expect(auth.authenticate(login.token)).rejects.toMatchObject({ status: 401 });
+  });
+
+  it('rejects missing or unknown refresh tokens without revoking another session', async () => {
+    const login = await auth.login({ email: user.email, password: 'test-password1' });
+    await expect(auth.refresh(null)).rejects.toMatchObject({ status: 401 });
+    await expect(auth.refresh(`${newSessionToken()}.${newSessionToken()}`)).rejects.toMatchObject({ status: 401 });
+    await expect(auth.authenticate(login.token)).resolves.toMatchObject({ id: user._id.toString() });
+  });
+
+  it('supports the cookie-only HTTP login, protected request, refresh and logout flow', async () => {
+    const agent = request.agent(app.getHttpServer());
+    const login = await agent.post('/api/auth/login').send({ email: user.email, password: 'test-password1' }).expect(200);
+    expect(Object.keys(login.body)).toEqual(['user']);
+    const cookies = login.headers['set-cookie'] as unknown as string[];
+    expect(cookies).toHaveLength(2);
+    expect(cookies.every((cookie) => cookie.includes('HttpOnly') && cookie.includes('SameSite=Strict'))).toBe(true);
+    await agent.get('/api/auth/me').expect(200);
+    await sessions.collection.updateMany({}, { $set: { accessExpiresAt: new Date(0) } });
+    await agent.get('/api/auth/me').expect(401);
+    const refreshed = await agent.post('/api/auth/refresh').expect(200);
+    expect(Object.keys(refreshed.body)).toEqual(['user']);
+    expect(refreshed.headers['cache-control']).toBe('no-store');
+    await agent.get('/api/auth/me').expect(200);
+    const logout = await agent.post('/api/auth/logout').expect(204);
+    expect((logout.headers['set-cookie'] as unknown as string[])).toHaveLength(2);
+    await agent.get('/api/auth/me').expect(401);
+    await agent.post('/api/auth/refresh').expect(401);
+    expect(await sessions.countDocuments()).toBe(0);
   });
 
   async function createSession(lastAuthenticatedAt: Date): Promise<string> {

@@ -5,7 +5,7 @@ import { UsersService } from '../users/users.service';
 import { UpdateProfileDto } from '../users/dto/update-profile.dto';
 import { AuthService } from './auth.service';
 import { AuthenticatedRequest, SessionGuard } from './security/session.guard';
-import { SESSION_COOKIE_NAME } from './security/session-cookie';
+import { clearAuthenticationCookies, SESSION_COOKIE_NAME } from './security/session-cookie';
 
 @ApiTags('Users')
 @ApiCookieAuth(SESSION_COOKIE_NAME)
@@ -32,6 +32,6 @@ export class UsersController {
   async deactivate(@Req() request: AuthenticatedRequest, @Res({ passthrough: true }) response: Response): Promise<void> {
     await this.users.deactivate(request.authUser.id);
     await this.auth.revokeAllSessions(request.authUser.id);
-    response.clearCookie(SESSION_COOKIE_NAME, { path: '/api' });
+    clearAuthenticationCookies(response);
   }
 }

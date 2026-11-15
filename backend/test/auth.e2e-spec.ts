@@ -20,15 +20,16 @@ describe('Auth HTTP (isolated, no MongoDB)', () => {
     sessionTtlMilliseconds: 86_400_000,
   };
   const users = { updateProfile: jest.fn().mockResolvedValue(user) };
+  const config = { get: jest.fn().mockReturnValue('test') };
   beforeAll(async () => {
     auth.register.mockResolvedValue(user);
-    auth.login.mockResolvedValue({ user, token: 'a'.repeat(43) });
+    auth.login.mockResolvedValue({ user, token: 'a'.repeat(43), refreshToken: 'b'.repeat(43) + '.' + 'c'.repeat(43), accessExpiresAt: new Date(Date.now() + 300_000), expiresAt: new Date(Date.now() + 86_400_000) });
     auth.logout.mockResolvedValue(undefined);
     const module = await Test.createTestingModule({
       controllers: [AuthController, UsersController],
       providers: [
         { provide: AuthService, useValue: auth },
-        { provide: ConfigService, useValue: { get: () => 'test' } },
+        { provide: ConfigService, useValue: config },
         { provide: UsersService, useValue: users },
         { provide: SessionGuard, useValue: { canActivate: () => true } },
       ],
@@ -108,5 +109,20 @@ describe('Auth HTTP (isolated, no MongoDB)', () => {
     await request(app.getHttpServer()).patch('/api/auth/change-password')
       .send({ currentPassword: 'old-password', newPassword: 'new-password1' }).expect(204);
     expect(auth.changePassword).toHaveBeenLastCalledWith(user.id, 'old-password', 'new-password1');
+  });
+
+  it('issues both cookies as Secure, HttpOnly and SameSite=Strict in production', async () => {
+    config.get.mockReturnValue('production');
+    try {
+      const response = await request(app.getHttpServer()).post('/api/auth/login')
+        .send({ email: user.email, password: 'long-enough-password' }).expect(200);
+      const cookies = response.headers['set-cookie'] as unknown as string[];
+      expect(cookies).toHaveLength(2);
+      expect(cookies.every((cookie) => cookie.includes('Secure') && cookie.includes('HttpOnly') && cookie.includes('SameSite=Strict'))).toBe(true);
+      expect(Object.keys(response.body)).toEqual(['user']);
+      expect(response.headers['cache-control']).toBe('no-store');
+    } finally {
+      config.get.mockReturnValue('test');
+    }
   });
 });
