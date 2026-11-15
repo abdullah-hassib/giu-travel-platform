@@ -1,5 +1,10 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { ActivityCostDto } from './itinerary.dto';
+import {
+  BudgetEntryViewDto,
+  TransportEntryViewDto,
+} from '../../budgeting/dto/budget.dto';
+import { NativeBudgetSummaryDto } from '../../budgeting/dto/budget-summary.dto';
 
 export class ActivityViewDto {
   @ApiProperty() id!: string;
@@ -10,6 +15,9 @@ export class ActivityViewDto {
 }
 
 export class DayViewDto {
+  @ApiProperty({ type: [BudgetEntryViewDto] }) budgets!: BudgetEntryViewDto[];
+  @ApiProperty({ type: [TransportEntryViewDto] })
+  transportCosts!: TransportEntryViewDto[];
   @ApiProperty() id!: string;
   @ApiProperty() dayNumber!: number;
   @ApiProperty({ example: '2026-11-20' }) date!: string;
@@ -20,6 +28,13 @@ export class DayViewDto {
 }
 
 export class CityGroupDto {
+  @ApiProperty({
+    type: 'object',
+    additionalProperties: { type: 'integer' },
+    description:
+      'All budget/activity/intercity costs by original currency, in minor units',
+  })
+  budgetTotals!: Record<string, number>;
   @ApiProperty() cityId!: string;
   @ApiProperty() cityName!: string;
   @ApiProperty() firstDayNumber!: number;
@@ -47,6 +62,8 @@ export class CloneAttributionDto {
 }
 
 export class ItineraryViewDto {
+  @ApiProperty({ type: NativeBudgetSummaryDto })
+  budgetSummary!: NativeBudgetSummaryDto;
   @ApiProperty() id!: string;
   @ApiProperty() ownerId!: string;
   @ApiProperty() title!: string;

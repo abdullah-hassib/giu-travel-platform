@@ -13,6 +13,18 @@ import {
   Types,
 } from 'mongoose';
 import { User } from '../users/schemas/user.schema';
+import { itineraryDate } from './calendar';
+import {
+  addCurrencyTotal,
+  nativeBudgetSummary,
+} from '../budgeting/native-budget-summary';
+import {
+  CreateBudgetDto,
+  CreateTransportDto,
+  UpdateBudgetDto,
+  UpdateTransportDto,
+} from '../budgeting/dto/budget.dto';
+import { NativeBudgetSummaryDto } from '../budgeting/dto/budget-summary.dto';
 import { CITIES, COUNTRIES } from './reference-data';
 import {
   CreateActivityDto,
@@ -34,6 +46,8 @@ import {
   ItineraryActivity,
   ItineraryDay,
   ItineraryDocument,
+  BudgetEntry,
+  TransportEntry,
 } from './schemas/itinerary.schema';
 
 type PublicItinerary = Itinerary & { author: { fullName: string }[] };
@@ -45,22 +59,11 @@ export class ItinerariesService {
     @InjectModel(User.name) private readonly users: Model<User>,
   ) {}
 
-  private date(startDate: string, offset: number): string {
-    const date = new Date(`${startDate}T00:00:00.000Z`);
-    date.setUTCDate(date.getUTCDate() + offset);
-    if (!Number.isFinite(date.getTime()) || date.getUTCFullYear() > 9999)
-      throw new BadRequestException(
-        'Day dates exceed the supported calendar range',
-      );
-    return date.toISOString().split('T')[0];
-  }
-
   private validate(itinerary: Itinerary): void {
     if (itinerary.days.length > 60)
       throw new BadRequestException('An itinerary has at most sixty days');
     if (itinerary.days.length)
-      this.date(itinerary.startDate, itinerary.days.length - 1);
-    const totals: Record<string, number> = {};
+      itineraryDate(itinerary.startDate, itinerary.days.length - 1);
     for (const day of itinerary.days) {
       const city = CITIES.find((candidate) => candidate.id === day.cityId);
       if (!city || !itinerary.countryCodes.includes(city.countryCode)) {
@@ -68,17 +71,8 @@ export class ItinerariesService {
           'Each day city must belong to a selected itinerary country',
         );
       }
-      for (const activity of day.activities) {
-        if (activity.cost) {
-          totals[activity.cost.currency] =
-            (totals[activity.cost.currency] ?? 0) + activity.cost.amountMinor;
-          if (!Number.isSafeInteger(totals[activity.cost.currency]))
-            throw new BadRequestException(
-              'Activity total exceeds the safe integer range',
-            );
-        }
-      }
     }
+    nativeBudgetSummary(itinerary);
   }
 
   private async save(itinerary: ItineraryDocument): Promise<ItineraryViewDto> {
@@ -166,6 +160,8 @@ export class ItinerariesService {
       cityId: dto.cityId,
       notes: dto.notes ?? '',
       activities: [],
+      budgets: [],
+      transportCosts: [],
     });
     return this.save(itinerary);
   }
@@ -271,6 +267,145 @@ export class ItinerariesService {
     return this.save(itinerary);
   }
 
+  async addBudget(
+    ownerId: string,
+    id: string,
+    dayId: string,
+    dto: CreateBudgetDto,
+  ): Promise<ItineraryViewDto> {
+    const itinerary = await this.owned(ownerId, id);
+    this.day(itinerary, dayId).budgets.push({
+      _id: new Types.ObjectId(),
+      category: dto.category,
+      amountMinor: dto.amountMinor,
+      currency: dto.currency,
+    });
+    return this.save(itinerary);
+  }
+
+  private async budget(
+    ownerId: string,
+    id: string,
+  ): Promise<{
+    itinerary: ItineraryDocument;
+    day: ItineraryDay;
+    entry: BudgetEntry;
+  }> {
+    const itinerary = await this.itineraries
+      .findOne({ ownerId, 'days.budgets._id': id })
+      .exec();
+    if (itinerary) {
+      for (const day of itinerary.days) {
+        const entry = day.budgets.find((candidate) => candidate._id.equals(id));
+        if (entry) return { itinerary, day, entry };
+      }
+    }
+    throw new NotFoundException('Budget entry not found');
+  }
+
+  async updateBudget(
+    ownerId: string,
+    id: string,
+    dto: UpdateBudgetDto,
+  ): Promise<ItineraryViewDto> {
+    const { itinerary, entry } = await this.budget(ownerId, id);
+    if (dto.category !== undefined) entry.category = dto.category;
+    if (dto.amountMinor !== undefined) entry.amountMinor = dto.amountMinor;
+    if (dto.currency !== undefined) entry.currency = dto.currency;
+    return this.save(itinerary);
+  }
+
+  async deleteBudget(ownerId: string, id: string): Promise<ItineraryViewDto> {
+    const { itinerary, day } = await this.budget(ownerId, id);
+    day.budgets = day.budgets.filter((entry) => !entry._id.equals(id));
+    return this.save(itinerary);
+  }
+
+  async addTransport(
+    ownerId: string,
+    id: string,
+    dto: CreateTransportDto,
+  ): Promise<ItineraryViewDto> {
+    const itinerary = await this.owned(ownerId, id);
+    this.day(itinerary, dto.dayId).transportCosts.push({
+      _id: new Types.ObjectId(),
+      mode: dto.mode,
+      fromCityId: dto.fromCityId,
+      toCityId: dto.toCityId,
+      amountMinor: dto.amountMinor,
+      currency: dto.currency,
+    });
+    return this.save(itinerary);
+  }
+
+  private async transport(
+    ownerId: string,
+    id: string,
+  ): Promise<{
+    itinerary: ItineraryDocument;
+    day: ItineraryDay;
+    entry: TransportEntry;
+  }> {
+    const itinerary = await this.itineraries
+      .findOne({ ownerId, 'days.transportCosts._id': id })
+      .exec();
+    if (itinerary) {
+      for (const day of itinerary.days) {
+        const entry = day.transportCosts.find((candidate) =>
+          candidate._id.equals(id),
+        );
+        if (entry) return { itinerary, day, entry };
+      }
+    }
+    throw new NotFoundException('Transport entry not found');
+  }
+
+  async updateTransport(
+    ownerId: string,
+    id: string,
+    dto: UpdateTransportDto,
+  ): Promise<ItineraryViewDto> {
+    const { itinerary, day, entry } = await this.transport(ownerId, id);
+    if (dto.mode !== undefined) entry.mode = dto.mode;
+    if (dto.fromCityId !== undefined) entry.fromCityId = dto.fromCityId;
+    if (dto.toCityId !== undefined) entry.toCityId = dto.toCityId;
+    if (dto.amountMinor !== undefined) entry.amountMinor = dto.amountMinor;
+    if (dto.currency !== undefined) entry.currency = dto.currency;
+    if (dto.dayId !== undefined && !day._id.equals(dto.dayId)) {
+      const destination = this.day(itinerary, dto.dayId);
+      day.transportCosts = day.transportCosts.filter(
+        (candidate) => !candidate._id.equals(id),
+      );
+      destination.transportCosts.push({
+        _id: entry._id,
+        mode: entry.mode,
+        fromCityId: entry.fromCityId,
+        toCityId: entry.toCityId,
+        amountMinor: entry.amountMinor,
+        currency: entry.currency,
+      });
+    }
+    return this.save(itinerary);
+  }
+
+  async deleteTransport(
+    ownerId: string,
+    id: string,
+  ): Promise<ItineraryViewDto> {
+    const { itinerary, day } = await this.transport(ownerId, id);
+    day.transportCosts = day.transportCosts.filter(
+      (entry) => !entry._id.equals(id),
+    );
+    return this.save(itinerary);
+  }
+
+  async budgetSummary(
+    ownerId: string,
+    id: string,
+  ): Promise<NativeBudgetSummaryDto> {
+    return nativeBudgetSummary(await this.owned(ownerId, id));
+  }
+
   private publicPipeline(filter: FilterQuery<Itinerary>): PipelineStage[] {
     return [
       { $match: { ...filter, visibility: 'public' } },
@@ -329,6 +464,20 @@ export class ItinerariesService {
         _id: new Types.ObjectId(),
         cityId: day.cityId,
         notes: day.notes,
+        budgets: (day.budgets ?? []).map((entry) => ({
+          _id: new Types.ObjectId(),
+          category: entry.category,
+          amountMinor: entry.amountMinor,
+          currency: entry.currency,
+        })),
+        transportCosts: (day.transportCosts ?? []).map((entry) => ({
+          _id: new Types.ObjectId(),
+          mode: entry.mode,
+          fromCityId: entry.fromCityId,
+          toCityId: entry.toCityId,
+          amountMinor: entry.amountMinor,
+          currency: entry.currency,
+        })),
         activities: day.activities.map((activity) => ({
           _id: new Types.ObjectId(),
           name: activity.name,
@@ -436,13 +585,29 @@ export class ItinerariesService {
     itinerary: Itinerary,
     author?: ItineraryAuthorDto,
   ): ItineraryViewDto {
+    const budgetSummary = nativeBudgetSummary(itinerary);
     const days = itinerary.days.map((day, index) => ({
       id: day._id.toString(),
       dayNumber: index + 1,
-      date: this.date(itinerary.startDate, index),
+      date: itineraryDate(itinerary.startDate, index),
       cityId: day.cityId,
       cityName: CITIES.find((city) => city.id === day.cityId)!.name,
       notes: day.notes,
+      budgets: (day.budgets ?? []).map((entry) => ({
+        id: entry._id.toString(),
+        category: entry.category,
+        amountMinor: entry.amountMinor,
+        currency: entry.currency,
+      })),
+      transportCosts: (day.transportCosts ?? []).map((entry) => ({
+        id: entry._id.toString(),
+        dayId: day._id.toString(),
+        mode: entry.mode,
+        fromCityId: entry.fromCityId,
+        toCityId: entry.toCityId,
+        amountMinor: entry.amountMinor,
+        currency: entry.currency,
+      })),
       activities: day.activities.map((activity) => ({
         id: activity._id.toString(),
         name: activity.name,
@@ -468,11 +633,17 @@ export class ItinerariesService {
           startDate: day.date,
           endDate: day.date,
           activityTotals: {},
+          budgetTotals: {},
         };
         cityGroups.push(group);
       }
       group.dayCount += 1;
       group.endDate = day.date;
+      for (const [currency, amount] of Object.entries(
+        budgetSummary.byDay[day.dayNumber - 1].totalByCurrency,
+      )) {
+        addCurrencyTotal(group.budgetTotals, currency, amount);
+      }
       for (const activity of day.activities) {
         if (activity.cost)
           group.activityTotals[activity.cost.currency] =
@@ -492,6 +663,7 @@ export class ItinerariesService {
       updatedAt: itinerary.updatedAt,
       days,
       cityGroups,
+      budgetSummary,
       author,
       clonedFrom: itinerary.clonedFrom
         ? {

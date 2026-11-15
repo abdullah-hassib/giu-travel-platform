@@ -1,4 +1,10 @@
 import { Module } from '@nestjs/common';
-/** Deliberately empty Milestone 1 feature boundary; no business logic yet. */
-@Module({})
+import { AuthModule } from '../auth/auth.module';
+import { ItinerariesModule } from '../itineraries/itineraries.module';
+import { BudgetingController } from './budgeting.controller';
+
+@Module({
+  imports: [AuthModule, ItinerariesModule],
+  controllers: [BudgetingController],
+})
 export class BudgetingModule {}
