@@ -1,0 +1,38 @@
+2026-11-14 — GIU Software Project I — Milestone 1 Backend Foundation
+Material AI assistance: ChatGPT (GPT-6) generated the backend repository scaffold, NestJS modules, shared config/validation/Swagger/error handling/health controller, preliminary authorization and cross-module interface proposals, Jest test sources, and documentation.
+The human task asked for a feature-based NestJS+TypeScript REST foundation using MongoDB Atlas/Mongoose, Swagger, class-validator/class-transformer, Jest and environmental configuration; feature logic intentionally deferred.
+No official GIU specification, requirements workbook, or reference CSV datasets were available for inspection in this execution context; contracts are explicitly unapproved proposals. No secrets were generated.
+Execution environment had no npm registry connectivity; packages could not be installed and tests/build/start/Swagger/database were not verified. Human developers must review, run checks and update this log with any further material AI prompts before submission.
+
+================================================
+Date: 2026-11-14
+Student: GIU development team (human review required)
+Tool: ChatGPT (GPT-6)
+Related Requirement: ACC-01, ACC-04, ACC-05, ACC-06, ACC-08, ACC-09, ACC-11, ACC-12, ACC-19 and backend foundation
+
+Prompt:
+"i dont get this , start the build" — after the request to create Milestone 1 backend foundation and the upload of the official GIU Project Description PDF.
+
+How the output was used:
+The AI revised the existing foundation into the first source-code authentication and user-profile vertical slice. It created MongoDB User and UserSession schemas, scrypt password hashing, opaque hashed server-side sessions, HttpOnly cookies, route guards, profile and session lifecycle APIs, a one-time administrator seed script, tests, and updated documentation. It also reconciled the proposed role names with the official PDF (airline vs hotel moderators). The Excel workbook and reference CSV datasets were not provided, so exact password/lockout/session and other detailed business rules are explicitly provisional.
+
+Verification:
+TypeScript syntax parsing and local import resolution passed (51 TypeScript files); standalone Node.js cryptography/session tests passed. Real npm install/build, Jest, Swagger startup and Atlas checks were blocked by unavailable npm registry/dependencies and credentials; these results MUST NOT be reported as passing.
+================================================
+
+Date: 2026-11-15
+Tool: Codex
+Prompt: User approved starting Hassib Milestone 1 implementation after the read-only audit.
+Use: First slice trims fullName before existing DTO length validation for registration and own-profile updates (ACC-01, ACC-09). Added isolated HTTP regression tests for invalid names and normalized service inputs. Existing limits remain provisional pending the workbook.
+Affected files: backend/src/modules/auth/dto/auth.dto.ts; backend/src/modules/users/dto/update-profile.dto.ts; backend/test/auth.e2e-spec.ts; backend/test/jest-e2e.json; AI_PROMPTS.txt.
+Verification: See reported command outputs for this slice. HTTP tests mock authentication and user services and use an overridden session guard. No live database or external gateway verification performed.
+Actual verification: typecheck, build and lint exited 0. Unit tests passed 8 suites / 17 tests. After repairing pre-existing invalid JSON regex escaping in test/jest-e2e.json, isolated HTTP tests passed 2 suites / 15 tests (9 new regression cases).
+
+Date: 2026-11-15
+Tool: Codex
+Prompt: Fix tsconfig.json error and continue Hassib Milestone 1 implementation.
+Use: Removed unused baseUrl after confirming relative local imports; CLI typecheck already passed before the edit, so the exact editor diagnostic remains unconfirmed. Added backward-compatible sessionVersion fields to users/sessions. Password updates increment the version atomically and compare the verified old hash, preventing concurrent password overwrites. Authentication rejects stale sessions, including sessions created by an overlapping old-password login. Deactivation also increments the version. Existing records without versions use zero. Added service regression tests. Session cleanup errors still propagate, but older sessions remain rejected.
+Requirements: ACC-04, ACC-08, ACC-12, ACC-19. Workbook-specific policies remain provisional.
+Affected files: backend/tsconfig.json; backend/src/modules/auth/auth.service.ts; backend/src/modules/auth/auth.service.spec.ts; backend/src/modules/auth/schemas/user-session.schema.ts; backend/src/modules/users/users.service.ts; backend/src/modules/users/users.service.spec.ts; backend/src/modules/users/schemas/user.schema.ts; AI_PROMPTS.txt.
+Verification so far: typecheck exited 0; unit tests passed 9 suites / 25 tests. Database operations were mocked in the new service tests. No secrets or live databases accessed.
+Final verification for this slice: build and lint exited 0; isolated HTTP tests passed 2 suites / 15 tests. Live Atlas and editor diagnostics remain unverified.
