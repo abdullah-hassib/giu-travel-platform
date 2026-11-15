@@ -109,7 +109,10 @@ describe('AuthService', () => {
     const doc = { ...newDoc('unused'), sessionVersion: userVersion };
     const users = { findById: jest.fn().mockResolvedValue(doc) };
     const session = { userId: doc._id, sessionVersion };
-    const sessions = { findOne: jest.fn().mockReturnValue({ exec: async () => session }) };
+    const sessions = {
+      findOne: jest.fn().mockReturnValue({ exec: async () => session }),
+      updateOne: jest.fn().mockReturnValue({ exec: async () => ({ matchedCount: 1 }) }),
+    };
     const auth = new AuthService(users as unknown as UsersService, sessions as never, new ConfigService());
     if (accepted) {
       await expect(auth.authenticate('test-token')).resolves.toEqual(UsersService.view(doc as never));

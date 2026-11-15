@@ -17,6 +17,9 @@ export class UserSession {
 
   @Prop({ type: Date, required: true })
   expiresAt!: Date;
+
+  @Prop({ type: Date })
+  lastAuthenticatedAt?: Date;
 }
 
 export const UserSessionSchema = SchemaFactory.createForClass(UserSession);

@@ -1,5 +1,12 @@
 # November 14, 2026 — Implementation status
 
+## November 15 idle-expiry slice (ACC-06)
+
+- Authenticated requests renew `lastAuthenticatedAt` atomically only while the session is still unexpired and present. Thirty minutes of inactivity requires a new login, independently of the TTL background cleanup schedule. The existing absolute lifetime remains enforced.
+- Legacy session records fall back to their persisted update/creation timestamps. Concurrent requests use `$max` so activity cannot move backwards. Suspended accounts, stale session versions and sessions revoked between lookup and renewal are rejected.
+- Added real isolated-MongoDB regression tests for idle/absolute expiry, renewal, legacy sessions, revocation races, password invalidation, and the prior atomic lockout behavior. The harness owns a disposable database and does not use Atlas or `.env`.
+- ACC-06 remains partially complete until refresh-token logout is implemented alongside ACC-19. The existing opaque single-cookie contract is preserved pending an explicit access/refresh architecture decision.
+
 ## November 15 authentication update
 
 - The official requirements workbook linked from `docs/GIU_Travel_Implementation_Checklist.md` is now readable through Drive. ACC-01, ACC-04, ACC-05 and ACC-08 were checked against its text for this slice. Earlier missing-workbook statements below describe the November 14 snapshot.
@@ -8,7 +15,7 @@
 - Failed-attempt counting, expiry-window reset and lock creation use a single conditional MongoDB update pipeline. A successful login cannot reset an active lock or a changed password/account. ACC-05 configuration permits exactly five attempts and fifteen minutes.
 - Suspended accounts receive an account-suspended response. Existing accounts can still log in using their original passwords, including passwords created before the stronger registration rules.
 - Session versioning from the previous slice rejects stale sessions after password changes or deactivation.
-- Still pending in authentication/accounts: thirty-minute idle expiry and the access/refresh-cookie requirements, admin-assisted reset and first-login password change, phone/preferred currency, and booking/content integration for account deactivation. This slice does not complete ACC-06, ACC-09, ACC-11, ACC-12 or ACC-19.
+- Still pending in authentication/accounts: access/refresh-cookie requirements, admin-assisted reset and first-login password change, phone/preferred currency, and booking/content integration for account deactivation. This slice does not complete ACC-06, ACC-09, ACC-11, ACC-12 or ACC-19.
 - Service regression tests mock database operations. Live MongoDB concurrency verification remains pending.
 
 ## Source of truth
