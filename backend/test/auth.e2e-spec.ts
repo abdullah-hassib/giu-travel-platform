@@ -50,7 +50,7 @@ describe('Auth HTTP (isolated, no MongoDB)', () => {
     expect(auth.register).not.toHaveBeenCalled();
   });
   it('registers a valid traveler', async () => {
-    await request(app.getHttpServer()).post('/api/auth/register').send({ email: 'test@example.com', password: 'long-enough-password', fullName: 'Tester' }).expect(201);
+    await request(app.getHttpServer()).post('/api/auth/register').send({ email: 'test@example.com', password: 'long-enough-password1', termsAccepted: true, fullName: 'Tester' }).expect(201);
     expect(auth.register).toHaveBeenCalledTimes(1);
   });
   it('sets an HttpOnly, SameSite=Strict cookie on successful login', async () => {
@@ -65,7 +65,7 @@ describe('Auth HTTP (isolated, no MongoDB)', () => {
   it.each(['   ', ' A ', 'A'.repeat(101), 42])('rejects invalid registration name %p before calling the service', async (fullName) => {
     auth.register.mockClear();
     await request(app.getHttpServer()).post('/api/auth/register')
-      .send({ email: user.email, password: 'long-enough-password', fullName }).expect(400);
+      .send({ email: user.email, password: 'long-enough-password1', termsAccepted: true, fullName }).expect(400);
     expect(auth.register).not.toHaveBeenCalled();
   });
 
@@ -77,9 +77,36 @@ describe('Auth HTTP (isolated, no MongoDB)', () => {
 
   it('passes trimmed registration and profile names to their services', async () => {
     await request(app.getHttpServer()).post('/api/auth/register')
-      .send({ email: user.email, password: 'long-enough-password', fullName: '  A Tester  ' }).expect(201);
+      .send({ email: user.email, password: 'long-enough-password1', termsAccepted: true, fullName: '  A Tester  ' }).expect(201);
     expect(auth.register).toHaveBeenLastCalledWith(expect.objectContaining({ fullName: 'A Tester' }));
     await request(app.getHttpServer()).patch('/api/users/me').send({ fullName: '  A Tester  ' }).expect(200);
     expect(users.updateProfile).toHaveBeenLastCalledWith(user.id, expect.objectContaining({ fullName: 'A Tester' }));
+  });
+
+  it.each([undefined, false, 'true', 1])('rejects registration without explicit boolean consent %p', async (termsAccepted) => {
+    auth.register.mockClear();
+    await request(app.getHttpServer()).post('/api/auth/register')
+      .send({ email: user.email, fullName: user.fullName, password: 'valid-password1', termsAccepted }).expect(400);
+    expect(auth.register).not.toHaveBeenCalled();
+  });
+
+  it.each(['abcdefgh', '12345678', 'abc1234'])('rejects a noncompliant registration password %p', async (password) => {
+    auth.register.mockClear();
+    await request(app.getHttpServer()).post('/api/auth/register')
+      .send({ email: user.email, fullName: user.fullName, password, termsAccepted: true }).expect(400);
+    expect(auth.register).not.toHaveBeenCalled();
+  });
+
+  it.each(['abcdefgh', '12345678', 'abc1234'])('rejects a noncompliant replacement password %p', async (newPassword) => {
+    auth.changePassword.mockClear();
+    await request(app.getHttpServer()).patch('/api/auth/change-password')
+      .send({ currentPassword: 'old-password', newPassword }).expect(400);
+    expect(auth.changePassword).not.toHaveBeenCalled();
+  });
+
+  it('accepts a replacement password with both a letter and a digit', async () => {
+    await request(app.getHttpServer()).patch('/api/auth/change-password')
+      .send({ currentPassword: 'old-password', newPassword: 'new-password1' }).expect(204);
+    expect(auth.changePassword).toHaveBeenLastCalledWith(user.id, 'old-password', 'new-password1');
   });
 });

@@ -22,6 +22,9 @@ export class User {
   @Prop({ type: String, required: true, trim: true })
   fullName!: string;
 
+  @Prop({ type: Date })
+  termsAcceptedAt?: Date;
+
   @Prop({ type: [String], enum: USER_ROLES, default: ['traveler'] })
   roles!: UserRole[];
 

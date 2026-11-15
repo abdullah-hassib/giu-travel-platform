@@ -1,5 +1,5 @@
 import { ConfigService } from '@nestjs/config';
-import { UnauthorizedException } from '@nestjs/common';
+import { HttpException, UnauthorizedException } from '@nestjs/common';
 import { Types } from 'mongoose';
 import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
@@ -17,6 +17,62 @@ const newDoc = (hash: string) => ({
 });
 
 describe('AuthService', () => {
+  it('returns a lockout response on the fifth failed attempt', async () => {
+    const doc = newDoc(await hashPassword('correct-password'));
+    const users = {
+      findByEmailWithPassword: jest.fn().mockResolvedValue(doc),
+      recordFailedLogin: jest.fn().mockResolvedValue(true),
+    };
+    const sessions = { create: jest.fn() };
+    const auth = new AuthService(users as unknown as UsersService, sessions as never, new ConfigService());
+    await expect(auth.login({ email: doc.email, password: 'wrong' })).rejects.toMatchObject({ status: 429 });
+    expect(users.recordFailedLogin).toHaveBeenCalledWith(doc._id.toString(), 5, 15, doc.passwordHash);
+    expect(sessions.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects a login that loses a race to a lockout or account change', async () => {
+    const doc = newDoc(await hashPassword('correct-password'));
+    const users = {
+      findByEmailWithPassword: jest.fn().mockResolvedValue(doc),
+      resetFailedLogins: jest.fn().mockResolvedValue(false),
+    };
+    const sessions = { create: jest.fn() };
+    const auth = new AuthService(users as unknown as UsersService, sessions as never, new ConfigService());
+    await expect(auth.login({ email: doc.email, password: 'correct-password' })).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(sessions.create).not.toHaveBeenCalled();
+  });
+
+  it('does not reset or extend a currently locked account', async () => {
+    const doc = { ...newDoc('unused'), lockedUntil: new Date(Date.now() + 60_000) };
+    const users = {
+      findByEmailWithPassword: jest.fn().mockResolvedValue(doc),
+      recordFailedLogin: jest.fn(),
+      resetFailedLogins: jest.fn(),
+    };
+    const auth = new AuthService(users as unknown as UsersService, {} as never, new ConfigService());
+    await expect(auth.login({ email: doc.email, password: 'wrong' })).rejects.toBeInstanceOf(HttpException);
+    expect(users.recordFailedLogin).not.toHaveBeenCalled();
+    expect(users.resetFailedLogins).not.toHaveBeenCalled();
+  });
+
+  it('starts an expired lock window through the atomic failed-attempt update', async () => {
+    const doc = { ...newDoc(await hashPassword('correct-password')), lockedUntil: new Date(0) };
+    const users = {
+      findByEmailWithPassword: jest.fn().mockResolvedValue(doc),
+      recordFailedLogin: jest.fn().mockResolvedValue(false),
+      resetFailedLogins: jest.fn(),
+    };
+    const auth = new AuthService(users as unknown as UsersService, {} as never, new ConfigService());
+    await expect(auth.login({ email: doc.email, password: 'wrong' })).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(users.recordFailedLogin).toHaveBeenCalledTimes(1);
+    expect(users.resetFailedLogins).not.toHaveBeenCalled();
+  });
+
+  it('reports a suspended account separately from invalid credentials', async () => {
+    const users = { findByEmailWithPassword: jest.fn().mockResolvedValue({ ...newDoc('unused'), status: 'suspended' }) };
+    const auth = new AuthService(users as unknown as UsersService, {} as never, new ConfigService());
+    await expect(auth.login({ email: 'test@example.com', password: 'wrong' })).rejects.toThrow('Account suspended');
+  });
   it('rejects invalid credentials and records failure', async () => {
     const doc = newDoc(await hashPassword('correct-password'));
     const users = {
@@ -34,7 +90,7 @@ describe('AuthService', () => {
     const doc = newDoc(await hashPassword('correct-password'));
     const users = {
       findByEmailWithPassword: jest.fn().mockResolvedValue(doc),
-      resetFailedLogins: jest.fn().mockResolvedValue(undefined),
+      resetFailedLogins: jest.fn().mockResolvedValue(true),
     };
     const sessions = { create: jest.fn().mockResolvedValue({}) };
     const auth = new AuthService(users as unknown as UsersService, sessions as never, new ConfigService());
@@ -67,7 +123,7 @@ describe('AuthService', () => {
     let currentVersion = 0;
     const users = {
       findByEmailWithPassword: jest.fn().mockResolvedValue(doc),
-      resetFailedLogins: jest.fn().mockResolvedValue(undefined),
+      resetFailedLogins: jest.fn().mockResolvedValue(true),
       findById: jest.fn().mockImplementation(async () => ({ ...doc, sessionVersion: currentVersion })),
     };
     let storedSession: { userId: Types.ObjectId; sessionVersion: number };

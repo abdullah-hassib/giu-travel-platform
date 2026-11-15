@@ -1,5 +1,16 @@
 # November 14, 2026 — Implementation status
 
+## November 15 authentication update
+
+- The official requirements workbook linked from `docs/GIU_Travel_Implementation_Checklist.md` is now readable through Drive. ACC-01, ACC-04, ACC-05 and ACC-08 were checked against its text for this slice. Earlier missing-workbook statements below describe the November 14 snapshot.
+- Registration requires `termsAccepted: true` and records a server-side `termsAcceptedAt` timestamp for new travelers. Existing accounts are not assigned a retroactive consent timestamp.
+- Registration and replacement passwords require at least eight characters, a letter and a digit. The existing 128-character maximum remains an implementation limit.
+- Failed-attempt counting, expiry-window reset and lock creation use a single conditional MongoDB update pipeline. A successful login cannot reset an active lock or a changed password/account. ACC-05 configuration permits exactly five attempts and fifteen minutes.
+- Suspended accounts receive an account-suspended response. Existing accounts can still log in using their original passwords, including passwords created before the stronger registration rules.
+- Session versioning from the previous slice rejects stale sessions after password changes or deactivation.
+- Still pending in authentication/accounts: thirty-minute idle expiry and the access/refresh-cookie requirements, admin-assisted reset and first-login password change, phone/preferred currency, and booking/content integration for account deactivation. This slice does not complete ACC-06, ACC-09, ACC-11, ACC-12 or ACC-19.
+- Service regression tests mock database operations. Live MongoDB concurrency verification remains pending.
+
 ## Source of truth
 - Official 14-page GIU Software Project I Winter 2026 PDF is available in the user chat. Relevant sections: roles (p. 2), accounts (pp. 3–4), required API endpoints (pp. 6–10), Milestone 1 deadline November 20 (p. 6), Git and AI usage (pp. 11–13).
 - The separate **Excel requirements workbook remains missing**. It specifies exact validation, password rules, lockout duration, session expiry, policies, caps, and acceptance criteria.

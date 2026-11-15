@@ -1,5 +1,14 @@
 import { environmentSchema } from './env.validation';
 describe('environment validation', () => {
+  it('enforces the workbook five-attempt, fifteen-minute lockout rule', () => {
+    const base = { MONGODB_URI: 'mongodb://localhost/test' };
+    expect(environmentSchema.validate({ ...base, AUTH_MAX_FAILED_ATTEMPTS: 6 }).error).toBeDefined();
+    expect(environmentSchema.validate({ ...base, AUTH_LOCKOUT_MINUTES: 10 }).error).toBeDefined();
+    const { error, value } = environmentSchema.validate(base);
+    expect(error).toBeUndefined();
+    expect(value.AUTH_MAX_FAILED_ATTEMPTS).toBe(5);
+    expect(value.AUTH_LOCKOUT_MINUTES).toBe(15);
+  });
   it('requires MongoDB URI', () => {
     expect(environmentSchema.validate({}).error).toBeDefined();
   });
