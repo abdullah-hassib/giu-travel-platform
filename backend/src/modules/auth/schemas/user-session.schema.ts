@@ -12,6 +12,15 @@ export class UserSession {
   @Prop({ type: String, required: true, unique: true })
   tokenHash!: string;
 
+  @Prop({ type: String })
+  refreshFamilyHash?: string;
+
+  @Prop({ type: String })
+  refreshTokenHash?: string;
+
+  @Prop({ type: Date })
+  accessExpiresAt?: Date;
+
   @Prop({ type: Number, default: 0, min: 0 })
   sessionVersion!: number;
 
@@ -24,3 +33,4 @@ export class UserSession {
 
 export const UserSessionSchema = SchemaFactory.createForClass(UserSession);
 UserSessionSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+UserSessionSchema.index({ refreshFamilyHash: 1 }, { unique: true, sparse: true });

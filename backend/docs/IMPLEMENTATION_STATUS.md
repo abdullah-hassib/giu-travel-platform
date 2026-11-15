@@ -1,11 +1,18 @@
 # November 14, 2026 — Implementation status
 
+## November 15 access/refresh authentication slice
+
+- User-approved design implemented for ACC-06/ACC-19: separate access/refresh HttpOnly cookies, five-minute access expiry, atomic rotation, replay-family revocation, refresh-only logout and clearing both cookies on logout/password change/deactivation. Swagger describes the new endpoint, both cookie schemes and sanitized response schemas.
+- Existing absolute and thirty-minute idle limits apply to refresh. Refresh is denied for inactive accounts and stale session versions. Legacy single-cookie records remain bounded by their existing limits until re-login.
+- Real isolated-MongoDB tests now cover rotation, consumed-token replay, concurrent refresh, expiry, logout, account status/version denial and the real HTTP cookie flow. Production Secure/HttpOnly/SameSite cookie flags are checked in HTTP tests. Live Atlas and HTTPS browser verification remain pending. See API_CONVENTIONS.md for the frontend refresh coordination and transition rules.
+- Authentication flow implementation is covered by available tests. Admin-assisted password reset, mandatory first-login changes, profile currency/phone and booking/content dependencies remain separate incomplete account requirements.
+
 ## November 15 idle-expiry slice (ACC-06)
 
 - Authenticated requests renew `lastAuthenticatedAt` atomically only while the session is still unexpired and present. Thirty minutes of inactivity requires a new login, independently of the TTL background cleanup schedule. The existing absolute lifetime remains enforced.
 - Legacy session records fall back to their persisted update/creation timestamps. Concurrent requests use `$max` so activity cannot move backwards. Suspended accounts, stale session versions and sessions revoked between lookup and renewal are rejected.
 - Added real isolated-MongoDB regression tests for idle/absolute expiry, renewal, legacy sessions, revocation races, password invalidation, and the prior atomic lockout behavior. The harness owns a disposable database and does not use Atlas or `.env`.
-- ACC-06 remains partially complete until refresh-token logout is implemented alongside ACC-19. The existing opaque single-cookie contract is preserved pending an explicit access/refresh architecture decision.
+- The refresh-token portion was implemented in the subsequent access/refresh slice described above.
 
 ## November 15 authentication update
 

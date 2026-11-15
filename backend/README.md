@@ -22,6 +22,8 @@ Atlas readiness: `http://localhost:3000/api/health/ready`
 
 Routes implemented in source: `/api/auth/register`, `/api/auth/login`, `/api/auth/logout`, `/api/auth/me`, `/api/auth/change-password`, `/api/users/me` (GET, PATCH, DELETE), plus health and Swagger.
 
+`POST /api/auth/refresh` rotates the access and refresh cookies and returns `{ user }`. Login also returns `{ user }` and sets both cookies. Access credentials expire after five minutes. Refresh preserves the existing absolute deadline and thirty-minute idle limit. Clients must serialize refresh requests across tabs; reuse of a consumed refresh credential revokes the family. Logout clears both cookies and revokes the family even when only the refresh cookie remains. Existing single-cookie sessions can continue within their original limits; log in again to acquire refresh capability. See [authentication contract](docs/API_CONVENTIONS.md#approved-authentication-contract-acc-06-acc-19).
+
 Registration now requires `termsAccepted: true`. Registration and password changes require at least eight characters with a letter and a digit. Login continues to accept existing credentials. Lockout configuration must use `AUTH_MAX_FAILED_ATTEMPTS=5` and `AUTH_LOCKOUT_MINUTES=15` to match ACC-05.
 
 ACC-06 idle expiry is thirty minutes. Each successfully authenticated request updates server-side activity. Expired, revoked, suspended-account and stale-version sessions cannot renew activity. The existing configured absolute session lifetime still applies. Legacy sessions use their persisted update/creation timestamps until the first successful authenticated request records `lastAuthenticatedAt`.
@@ -44,4 +46,4 @@ Never put credentials into Git, AI chats, or the project ZIP. Run only once afte
 
 ## Important
 
-The official GIU specification PDF has been reviewed, but the exact mandatory rules require the missing Excel workbook and the reference-data CSVs. The current password, lockout, and session defaults are provisional. The npm registry was unavailable in the AI build environment, so no dependency installation, true NestJS build, Jest execution, MongoDB integration or Swagger startup has passed yet. Other modules are still skeletons. **Do not merge this code without human review and successful checks.**
+The official workbook is readable through its linked Drive file. Authentication has been checked with compilation, lint, unit tests, HTTP tests and an isolated real MongoDB process. Production cookie flags are tested; local HTTP development uses non-Secure cookies. Live Atlas and HTTPS browser verification remain pending. Other required features remain incomplete, and reference data/integration contracts still need coordination. See the dated implementation status for requirement coverage and remaining work.
