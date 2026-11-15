@@ -1,5 +1,13 @@
 # November 14, 2026 — Implementation status
 
+## November 15 draft account-status slice (ACC-15/ACC-16 server portion)
+
+- Implemented suspend/reactivate commands with admin guards, target restrictions, strict path/body validation, idempotent transitions and positive Swagger/error documentation.
+- Status changes, version increments, target session deletion and sanitized pending events commit atomically. Repeat/concurrent identical commands produce one event. Reset/password/lockout flags and unrelated sessions are preserved. Transaction failures roll back status and session changes.
+- Twenty-four new real HTTP/replica-set tests cover all target and caller roles, inactive callers, old access/refresh rejection, concurrent status/reset commands, rollback, invalid input, self-deactivation handling and Swagger.
+- Notification/audit modules are still empty. Pending events do not imply delivered audit/notification records. This feature is draft and incomplete for cross-module acceptance; it must not merge before the required consumer integration is verified.
+- Self-deactivated account recovery is an explicit review question; these commands currently return 409 for deactivated targets. Provider/booking/content integration still requires Adham/MK/Omar contracts.
+
 ## November 15 admin-assisted password-reset slice (ACC-07a, ACC-08)
 
 - Added POST /api/admin/users/:id/reset-password with admin role checks, validated ObjectIds/passwords, forbidden administrator targets and no secret response body. Inactive target status is preserved.

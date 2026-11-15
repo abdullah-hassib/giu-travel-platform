@@ -11,6 +11,16 @@
 - Auth: a MongoDB-backed opaque session token is stored only as a SHA-256 hash, with an `HttpOnly` `SameSite=Strict` browser cookie (`Secure` under production HTTPS). Swagger defines cookie authentication, not bearer authentication. `/api/auth/me` and `/api/users/me` require SessionGuard. RolesGuard exists for future administrative/provider routes, which must also enforce ownership.
 - Health: `GET /api/health/live` and `GET /api/health/ready` (`503` until database connection is healthy).
 
+## Draft account-status commands (ACC-15, ACC-16; integration pending)
+
+`PATCH /api/admin/accounts/:id/suspend` changes an active traveler/moderator to suspended. `PATCH /api/admin/accounts/:id/reactivate` changes a suspended traveler/moderator to active. Both require an active administrator, accept no body fields, and return 204 after the status update, session-version increment, deletion of all target sessions and pending event commit in one transaction. Existing administrators are forbidden targets (403); malformed IDs return 400 and missing targets 404.
+
+Repeated requests for the current desired state return 204 without another version increment/event. Concurrent identical requests create one transition/event. Login lockout and mandatory-password-change flags are preserved. Reactivation requires a fresh login and cannot revive old access/refresh credentials. Other users' sessions are unaffected.
+
+The current implementation treats self-deactivated accounts as a separate recovery case and returns 409 for either command. This boundary needs review because the workbook specifies suspension/reactivation without defining recovery from self-deactivation.
+
+Status events are durable but remain pending. The notification/audit consumer is not implemented in this checkout, so these routes are not claimed to satisfy the complete ACC-15/GEN-01/GEN-07 behavior. The feature stays in a draft PR until delivery is integrated and verified. Bookings, provider visibility and content are outside this service's writes and need their owning modules for integration checks.
+
 ## Administrator-assisted reset (ACC-07a, ACC-08)
 
 `POST /api/admin/users/:id/reset-password` requires an active administrator and a MongoDB replica set supporting transactions. The body is `{ password }`, with the registration password rules (8–128 characters, a letter and a digit). The target must exist and be a traveler or moderator. Administrator targets are forbidden. The response is 204 with no secret in the body.

@@ -26,6 +26,14 @@ These definitions are *discussion artifacts*. The uploaded official GIU PDF has 
 
 ## Open questions / approval gates
 
+### Concrete handoffs required for the administration phase
+
+Omar: the draft status producer writes `account.suspended` / `account.reactivated` into `admin_outbox` in the same transaction as the status/session change. The envelope has UUID id, version 1, ISO occurredAt, correlationId, actorId, payload `{ targetUserId, previousStatus, newStatus }` and pending status. The consumer needs an agreed module/export or API, idempotent handling by event id, durable audit/in-app notification writes, retry/ack behavior and a real integration test. No worker or consumer exists in this checkout. Pending delivery blocks merging the account-status feature. The password-reset event retains its existing target-only payload.
+
+Adham/MK: moderator provisioning needs authoritative provider identifiers, existence/type/active-state checks and one-provider assignment semantics. Provider deactivation needs owner-controlled search/booking behavior, preservation of existing confirmed bookings and provider notifications. Admin booking inspection needs sanitized owner-supplied read interfaces with type/status/date filters. Their current modules are shells; this administration slice does not invent provider/booking persistence.
+
+Acceptance review: confirm whether self-deactivated users can be recovered through the admin reactivate command. The draft currently limits reactivation to suspension and returns 409 for self-deactivated accounts. Also reconcile the proposed TypeScript booking states against authoritative GEN-11 before payment integration: Pending Payment -> Confirmed -> Completed; Pending Payment -> Expired; Confirmed -> Cancelled. These are the only required transitions. Existing draft types are not approved for dependent implementation.
+
 ### Next administration write slice — proposed for Hassib/Omar review
 
 Current producer implementation: ACC-07a writes `account.password_reset` into the `admin_outbox` collection in the same transaction as the reset/session deletion. It uses UUID id/correlationId, type, version 1, ISO occurredAt, actorId, payload.targetUserId and status pending. The consumer handoff is still awaiting Omar integration; no worker or delivery is claimed. Pending events have no expiry. The envelope contains no credentials or personal profile fields. This implementation does not approve the remaining suspension/provider event names or consumer behavior on behalf of other developers.
