@@ -1,5 +1,13 @@
 # November 14, 2026 — Implementation status
 
+## November 16 preferred-currency budgeting (ITN-18)
+
+- Budget summaries now add preferred-currency totals for every daily budget, activity cost and intercity transport cost. Native data remains available alongside converted totals. Rate date, fetch time, stale/fallback flags and source are exposed. Profiles with no preference keep the existing native response.
+- Added a database-backed daily FXRatesAPI snapshot with one successful fetch per UTC day across processes. Atomic retry claims recover failed/crashed fetches after a one-minute backoff. Attempt IDs prevent late responses from overwriting a recovered result. Provider failure falls back to the latest successful cache; an empty cache returns a sanitized 503. The public endpoint was verified without a private key, correcting the earlier key requirement assumption.
+- Decimal-fraction conversion handles the supported currencies' minor units, rounds daily-category/source subtotals half up and reconciles day/category/overall totals. Individual and combined overflow returns 400. Booking/payment prices are outside this path. Swagger and BUDGETING.md document the contract and choices.
+- Typecheck, build and lint passed with 71 unit tests and 218 e2e tests. Thirty-six new unit and twenty-two new HTTP/database cases cover validation, arithmetic, cache reuse/concurrency, fallback/recovery, old-attempt races, editing/reordering/deletion, cloning, permissions and Swagger. A separate live public-API/disposable-database check fetched all seven rates once, reused the stored snapshot and converted safely. Rate date was November 15. No private .env/shared Atlas access or new packages.
+- M1_BACKEND_COVERAGE.md now tracks 36 primary assigned functional rows. Twenty-one have implemented backend behavior and two are partial, supporting an approximate sixty-percent implementation estimate. Remaining administration, payments/refunds, media and provider-search work requires the documented cross-team integrations. Live HTTPS browser and shared Atlas transaction verification remain pending.
+
 ## November 16 profile completion (ACC-09)
 
 - Own profile editing now supports name, phone and preferred currency for every authenticated role. Reuses the seven official supported currency codes. International phone validation is a documented implementation choice because the workbook gives no regional format. Phone may be cleared with null; name and currency reject null.

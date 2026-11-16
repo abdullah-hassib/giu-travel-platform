@@ -1,0 +1,22 @@
+# Hassib Milestone 1 backend coverage, November 16
+
+Scope follows Hassib's personal assignment and the official GIU project PDF. Requirement IDs and mandatory classifications were checked against the [official workbook](https://drive.google.com/file/d/17WYE0p9EHUn-GUDrtqtCAekhqecOX8H1/view). This table tracks backend implementation in Hassib's assigned areas. Frontend acceptance checks belong to Milestone 2.
+
+Of 36 primary functional requirement rows in this scope, 21 have implemented backend behavior, two have partial coverage and 13 remain pending. The 21 implemented rows represent about 58 percent, which supports a working estimate of roughly 60 percent with the existing partial work and foundation. Requirements differ in effort, particularly payment and booking integration, so this estimate is not a grading score or a prediction of remaining hours. Shared validation/pagination requirements are supporting checks rather than additional rows in this count.
+
+| Requirements | Count | Backend status | Evidence or remaining dependency |
+| --- | --- | --- | --- |
+| ACC-01, ACC-04, ACC-05, ACC-06, ACC-07a, ACC-08, ACC-09, ACC-14, ACC-19 | 9 | Implemented | Registration/consent, cookie authentication/rotation/expiry, lockout, reset/forced password change, profile fields and account listing. Unit and HTTP/MongoDB coverage. Production cookie flags are asserted. Live HTTPS browser verification remains pending. |
+| ACC-11 | 1 | Partial | Private itinerary ownership enforced. Booking/admin/provider ownership needs the booking modules and agreed contracts. |
+| ACC-12 | 1 | Partial | Existing soft deactivation/session revocation and public-itinerary author hiding. Upcoming Confirmed booking checks and cross-module deleted-user rendering remain pending. |
+| ACC-13, ACC-15, ACC-16, ACC-17 | 4 | Pending | Provider-assigned moderator creation, completed suspension/reactivation and provider behavior, admin booking list. PR #9 is a deferred draft. Provider/booking schemas and notification/audit integration require coordination. |
+| ITN-01, ITN-03, ITN-05, ITN-07, ITN-08, ITN-09, ITN-10, ITN-14, ITN-16, ITN-18, ITN-20, ITN-21 | 12 | Implemented | Owned itineraries/days/activities, derived dates/grouping, all cost types, native and preferred-currency summaries, visibility/public search and independent cloning. Real HTTP/MongoDB tests and public FX smoke verification. Shared reference API/seeding remains Kuwaity's integration work. Activity media is tracked separately under ITN-12. |
+| ITN-12, ITN-25, ITN-26 | 3 | Pending | MK's upload contract, hotel-search integration and Adham's flight/airport search integration. |
+| PAY-01, PAY-02, PAY-03, PAY-04 | 4 | Pending | Stripe test PaymentIntents/webhooks/retry/expiry, policy snapshot/acceptance, refunds and a coordinated platform currency. Requires booking/provider/inventory contracts plus private Stripe setup. |
+| GEN-07, GEN-10 | 2 | Pending | Admin audit delivery/read API and reports/content moderation. Existing admin outbox producer requires Omar's consumer. Report/content modules need teammate contracts. |
+
+GEN-05 ten-row pagination and GEN-13 validation/authorization/password hashing are covered on implemented routes. Future modules must apply those rules when integrated. GEN-12 source records are reused as a read-only snapshot. Reference seeding/APIs remain assigned to Kuwaity. User confirmation dialogs and role landing/navigation are frontend acceptance work.
+
+ACC-09 is merged in [PR #12](https://github.com/abdullah-hassib/giu-travel-platform/pull/12). The ITN-18 slice adds database-backed daily FX conversion and retains original monetary data. Public daily requests work without an API key as verified on November 16. Optional credentials belong only in private local configuration. Shared Atlas transactions and live HTTPS browser flows still need environment verification.
+
+Next requirements depend on specific teammate interfaces. Agree on provider IDs/assignment, booking states and transactional payment/inventory callbacks with Adham and MK, and notification/audit delivery with Omar. Keep PR #9 deferred until its delivery dependencies are verified. The user previously asked to defer complex supporting work in teammate-owned areas.

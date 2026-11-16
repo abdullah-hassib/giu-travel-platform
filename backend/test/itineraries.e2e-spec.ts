@@ -1288,7 +1288,7 @@ describe('Itinerary core (real feature modules, HTTP and MongoDB)', () => {
     expect(
       schema.paths['/api/itineraries/{id}/budget-summary'].get.responses['200']
         .content['application/json'].schema.$ref,
-    ).toContain('NativeBudgetSummaryDto');
+    ).toContain('BudgetSummaryDto');
     expect(
       schema.components.schemas.CreateBudgetDto.properties.currency.enum,
     ).toContain('EGP');
