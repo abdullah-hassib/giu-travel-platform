@@ -13,6 +13,16 @@ The implemented itinerary-specific contract, including fixed ten-row pagination,
 - Auth: a MongoDB-backed opaque session token is stored only as a SHA-256 hash, with an `HttpOnly` `SameSite=Strict` browser cookie (`Secure` under production HTTPS). Swagger defines cookie authentication, not bearer authentication. `/api/auth/me` and `/api/users/me` require SessionGuard. RolesGuard exists for future administrative/provider routes, which must also enforce ownership.
 - Health: `GET /api/health/live` and `GET /api/health/ready` (`503` until database connection is healthy).
 
+## Own profile (ACC-09)
+
+`GET /api/users/me` and `PATCH /api/users/me` require an active session for any account role. Sessions requiring a password change receive 403 until that change is complete. Responses use `Cache-Control: no-store` and the sanitized identity schema, including `phone` and `preferredCurrency`.
+
+PATCH accepts any subset of `fullName`, `phone` and `preferredCurrency`. Name keeps the existing trimmed 2–100 character rule. Phone is validated as an international phone number with a country code, for example `+201001234567`. This format is an implementation choice because ACC-09 does not prescribe a regional format. Set phone to null to clear it. Preferred currency is one of EGP, AED, GBP, USD, EUR, JPY and SAR, reusing the official country-workbook snapshot used by itineraries. Surrounding whitespace is removed and currency codes are uppercased. Null name/currency, invalid phones and unknown fields return 400 before any field is saved.
+
+Existing accounts have null phone/currency until edited. No default currency or phone is inferred. Omitted fields are preserved, and an empty patch returns the current profile. Atomic field updates preserve concurrent edits to different fields. Changes apply only to the authenticated account. Identity, login and refresh return the latest saved profile values. Admin account-list projection remains limited to its existing fields.
+
+Swagger demo after login: PATCH `/api/users/me` with `{ "fullName": "Hassib", "phone": "+201001234567", "preferredCurrency": "EGP" }`, then GET `/api/users/me` and `/api/auth/me`. A body containing a valid name and an unsupported currency must return 400 with the original name preserved. Selecting preferred currency supplies ACC-09 data for the subsequent ITN-18 conversion slice.
+
 ## Administrator-assisted reset (ACC-07a, ACC-08)
 
 `POST /api/admin/users/:id/reset-password` requires an active administrator and a MongoDB replica set supporting transactions. The body is `{ password }`, with the registration password rules (8–128 characters, a letter and a digit). The target must exist and be a traveler or moderator. Administrator targets are forbidden. The response is 204 with no secret in the body.

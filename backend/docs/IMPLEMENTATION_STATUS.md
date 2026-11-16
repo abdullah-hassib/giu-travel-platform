@@ -1,5 +1,14 @@
 # November 14, 2026 — Implementation status
 
+## November 16 profile completion (ACC-09)
+
+- Own profile editing now supports name, phone and preferred currency for every authenticated role. Reuses the seven official supported currency codes. International phone validation is a documented implementation choice because the workbook gives no regional format. Phone may be cleared with null; name and currency reject null.
+- Sanitized profile/login/refresh/identity views expose nullable phone and preferredCurrency. Legacy records are compatible and receive no inferred preference. Unknown fields, malformed phones and unsupported currencies reject the whole update. Atomic updates preserve concurrent changes to different fields.
+- Swagger documents the request/response and permission/validation errors. Profile responses use no-store. Thirty-nine new real HTTP/MongoDB tests cover all roles/currencies, normalization, invalid/partial updates, legacy records, identity/refresh propagation, owner isolation, inactive/forced-password sessions, concurrency and Swagger.
+- Typecheck, build, lint, 35 unit tests and 196 e2e tests passed with disposable local MongoDB. The user reports their Atlas connection now works; this slice did not run against shared Atlas. FX/live API verification and existing cross-team dependencies remain pending.
+
+Earlier dated sections below are historical snapshots. Their pending lists are superseded by newer entries above.
+
 ## November 15 original-currency budgeting slice
 
 - Added seven budget/transport/summary operations with traveler/owner guards, DTO validation, Swagger and no-store responses. Daily categories, activity costs and intercity costs are included in native currency totals by day/category and city group.

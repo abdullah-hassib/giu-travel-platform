@@ -50,6 +50,8 @@ Never put credentials into Git, AI chats, or the project ZIP. Run only once afte
 
 ## Important
 
+ACC-09 profile editing supports name, international phone and the official supported preferred currencies through `PATCH /api/users/me`. All fields validate before an atomic save. Existing accounts return null phone/currency until set. See [profile inputs and Swagger demo](docs/API_CONVENTIONS.md#own-profile-acc-09).
+
 Budget and intercity transport CRUD plus original-currency day/category/group totals are available. See [budgeting API contract and demo](docs/BUDGETING.md). FX conversion remains deferred until a key is privately configured; the current summary labels every total by its original currency.
 
 The itinerary core now supports private CRUD, ordered days/activities, public discovery and private cloning. See [itinerary API contract and demo](docs/ITINERARIES.md) for requests, reference provenance, ownership, concurrency and remaining budgeting/media integration work.

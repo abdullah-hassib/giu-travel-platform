@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
+import { CURRENCIES } from '../../itineraries/reference-data';
 
 export const USER_ROLES = ['traveler', 'admin', 'airline_moderator', 'hotel_moderator'] as const;
 export type UserRole = (typeof USER_ROLES)[number];
@@ -24,6 +25,12 @@ export class User {
 
   @Prop({ type: String, required: true, trim: true })
   fullName!: string;
+
+  @Prop({ type: String, default: null })
+  phone?: string | null;
+
+  @Prop({ type: String, enum: CURRENCIES, default: null })
+  preferredCurrency?: string | null;
 
   @Prop({ type: Date })
   termsAcceptedAt?: Date;

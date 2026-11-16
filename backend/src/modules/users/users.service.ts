@@ -8,6 +8,8 @@ export interface PublicUser {
   id: string;
   email: string;
   fullName: string;
+  phone?: string | null;
+  preferredCurrency?: string | null;
   roles: User['roles'];
   status: User['status'];
   mustChangePassword?: boolean;
@@ -22,6 +24,8 @@ export class UsersService {
       id: user._id.toString(),
       email: user.email,
       fullName: user.fullName,
+      phone: user.phone ?? null,
+      preferredCurrency: user.preferredCurrency ?? null,
       roles: user.roles,
       status: user.status,
       mustChangePassword: user.mustChangePassword ?? false,
@@ -127,7 +131,11 @@ export class UsersService {
   async updateProfile(userId: string, dto: UpdateProfileDto): Promise<PublicUser> {
     const updated = await this.users.findOneAndUpdate(
       { _id: userId, status: 'active' },
-      { $set: { ...(dto.fullName !== undefined ? { fullName: dto.fullName.trim() } : {}) } },
+      { $set: {
+        ...(dto.fullName !== undefined ? { fullName: dto.fullName.trim() } : {}),
+        ...(dto.phone !== undefined ? { phone: dto.phone } : {}),
+        ...(dto.preferredCurrency !== undefined ? { preferredCurrency: dto.preferredCurrency } : {}),
+      } },
       { new: true, runValidators: true },
     ).exec();
     if (!updated) throw new NotFoundException('User not found');
