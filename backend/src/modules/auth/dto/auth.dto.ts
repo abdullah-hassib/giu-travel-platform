@@ -2,6 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { Equals, IsBoolean, IsEmail, IsString, Length, Matches, MaxLength, MinLength } from 'class-validator';
 import { USER_ROLES, USER_STATUSES, UserRole, UserStatus } from '../../users/schemas/user.schema';
+import { CURRENCIES } from '../../itineraries/reference-data';
 
 export class AuthUserDto {
   @ApiPropertyOptional({ default: false, description: 'Restricted session: identity, refresh, logout and password change only' })
@@ -14,6 +15,12 @@ export class AuthUserDto {
 
   @ApiProperty({ example: 'Traveler Name' })
   fullName!: string;
+
+  @ApiProperty({ type: String, nullable: true, example: '+201001234567' })
+  phone!: string | null;
+
+  @ApiProperty({ type: String, enum: CURRENCIES, nullable: true, description: 'Null until the user selects a supported currency' })
+  preferredCurrency!: string | null;
 
   @ApiProperty({ enum: [...USER_ROLES], isArray: true })
   roles!: UserRole[];
