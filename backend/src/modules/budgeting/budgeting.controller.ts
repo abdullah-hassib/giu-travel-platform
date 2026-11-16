@@ -22,6 +22,7 @@ import {
   ApiOperation,
   ApiTags,
   ApiUnauthorizedResponse,
+  ApiServiceUnavailableResponse,
 } from '@nestjs/swagger';
 import {
   SessionGuard,
@@ -39,7 +40,9 @@ import {
   UpdateBudgetDto,
   UpdateTransportDto,
 } from './dto/budget.dto';
-import { NativeBudgetSummaryDto } from './dto/budget-summary.dto';
+import { BudgetSummaryDto } from './dto/converted-budget-summary.dto';
+import { FxRatesService } from './fx-rates.service';
+import { convertedBudgetSummary } from './converted-budget-summary';
 
 @ApiTags('Itinerary budgets')
 @ApiCookieAuth(SESSION_COOKIE_NAME)
@@ -59,7 +62,10 @@ import { NativeBudgetSummaryDto } from './dto/budget-summary.dto';
 @Roles('traveler')
 @Controller()
 export class BudgetingController {
-  constructor(private readonly itineraries: ItinerariesService) {}
+  constructor(
+    private readonly itineraries: ItinerariesService,
+    private readonly fx: FxRatesService,
+  ) {}
 
   @Post('itineraries/:id/days/:dayId/budgets')
   @Header('Cache-Control', 'no-store')
@@ -154,14 +160,31 @@ export class BudgetingController {
   @Header('Cache-Control', 'no-store')
   @ApiOperation({
     summary:
-      'ITN-14: original-currency totals by day/category; ITN-18 FX conversion remains deferred',
+      'ITN-14/ITN-18: native totals and preferred-currency conversion with cached daily rates',
   })
-  @ApiOkResponse({ type: NativeBudgetSummaryDto })
-  summary(
+  @ApiOkResponse({ type: BudgetSummaryDto })
+  @ApiServiceUnavailableResponse({
+    description:
+      'FX unavailable with no usable cached rates. Original amounts remain available on the itinerary.',
+  })
+  async summary(
     @Query() _query: NativeBudgetSummaryQueryDto,
     @Req() request: AuthenticatedRequest,
     @Param() params: ItineraryIdDto,
   ) {
-    return this.itineraries.budgetSummary(request.authUser.id, params.id);
+    const native = await this.itineraries.budgetSummary(
+      request.authUser.id,
+      params.id,
+    );
+    const currency = request.authUser.preferredCurrency;
+    if (!currency) return native;
+    return {
+      ...native,
+      converted: convertedBudgetSummary(
+        native,
+        currency,
+        await this.fx.current(),
+      ),
+    };
   }
 }
