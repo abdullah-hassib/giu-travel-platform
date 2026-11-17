@@ -1,8 +1,8 @@
-# Hassib Milestone 1 backend coverage, November 16
+# Hassib Milestone 1 backend coverage, November 17
 
 Scope follows Hassib's personal assignment and the official GIU project PDF. Requirement IDs and mandatory classifications were checked against the [official workbook](https://drive.google.com/file/d/17WYE0p9EHUn-GUDrtqtCAekhqecOX8H1/view). This table tracks backend implementation in Hassib's assigned areas. Frontend acceptance checks belong to Milestone 2.
 
-Of 36 primary functional requirement rows in this scope, 21 have implemented backend behavior, two have partial coverage and 13 remain pending. The 21 implemented rows represent about 58 percent, which supports a working estimate of roughly 60 percent with the existing partial work and foundation. Requirements differ in effort, particularly payment and booking integration, so this estimate is not a grading score or a prediction of remaining hours. Shared validation/pagination requirements are supporting checks rather than additional rows in this count.
+Of 36 primary functional requirement rows in this scope, 21 have implemented backend behavior, five have partial coverage and ten remain pending. The 21 implemented rows represent about 58 percent, supporting the existing estimate around 60 percent with partial work and foundation. The independent Stripe gateway adds partial payment/refund coverage. The requested 75-percent target still requires completed service/booking integrations. Requirements differ in effort, particularly payment and booking integration, so this estimate is not a grading score or a prediction of remaining hours. Shared validation/pagination requirements are supporting checks rather than additional rows in this count.
 
 | Requirements | Count | Backend status | Evidence or remaining dependency |
 | --- | --- | --- | --- |
@@ -12,7 +12,8 @@ Of 36 primary functional requirement rows in this scope, 21 have implemented bac
 | ACC-13, ACC-15, ACC-16, ACC-17 | 4 | Pending | Provider-assigned moderator creation, completed suspension/reactivation and provider behavior, admin booking list. PR #9 is a deferred draft. Provider/booking schemas and notification/audit integration require coordination. |
 | ITN-01, ITN-03, ITN-05, ITN-07, ITN-08, ITN-09, ITN-10, ITN-14, ITN-16, ITN-18, ITN-20, ITN-21 | 12 | Implemented | Owned itineraries/days/activities, derived dates/grouping, all cost types, native and preferred-currency summaries, visibility/public search and independent cloning. Real HTTP/MongoDB tests and public FX smoke verification. Shared reference API/seeding remains Kuwaity's integration work. Activity media is tracked separately under ITN-12. |
 | ITN-12, ITN-25, ITN-26 | 3 | Pending | MK's upload contract, hotel-search integration and Adham's flight/airport search integration. |
-| PAY-01, PAY-02, PAY-03, PAY-04 | 4 | Pending | Stripe test PaymentIntents/webhooks/retry/expiry, policy snapshot/acceptance, refunds and a coordinated platform currency. Requires booking/provider/inventory contracts plus private Stripe setup. |
+| PAY-01, PAY-03, PAY-04 | 3 | Partial | USD was selected with Hassib's delegated authority. The tested SDK gateway validates USD amounts, creates/retrieves/cancels test intents, creates/retrieves authorized refunds and verifies raw webhook signatures. Durable services, booking/provider/inventory adapters, real test credentials and notification integration remain pending. |
+| PAY-02 | 1 | Pending | Provider policy snapshots, review/acceptance and payment gating require the agreed booking adapter and service implementation. |
 | GEN-07, GEN-10 | 2 | Pending | Admin audit delivery/read API and reports/content moderation. Existing admin outbox producer requires Omar's consumer. Report/content modules need teammate contracts. |
 
 GEN-05 ten-row pagination and GEN-13 validation/authorization/password hashing are covered on implemented routes. Future modules must apply those rules when integrated. GEN-12 source records are reused as a read-only snapshot. Reference seeding/APIs remain assigned to Kuwaity. User confirmation dialogs and role landing/navigation are frontend acceptance work.
@@ -20,3 +21,5 @@ GEN-05 ten-row pagination and GEN-13 validation/authorization/password hashing a
 ACC-09 is merged in [PR #12](https://github.com/abdullah-hassib/giu-travel-platform/pull/12). The ITN-18 slice adds database-backed daily FX conversion and retains original monetary data. Public daily requests work without an API key as verified on November 16. Optional credentials belong only in private local configuration. Shared Atlas transactions and live HTTPS browser flows still need environment verification.
 
 Next requirements depend on specific teammate interfaces. Agree on provider IDs/assignment, booking states and transactional payment/inventory callbacks with Adham and MK, and notification/audit delivery with Omar. Keep PR #9 deferred until its delivery dependencies are verified. The user previously asked to defer complex supporting work in teammate-owned areas.
+
+The user reported no external team interfaces or private Stripe setup on November 17. The booking/transaction proposal is in draft PR #14. See STRIPE_GATEWAY.md for the implemented independent gateway, method contracts, USD limits and verification boundaries.

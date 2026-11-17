@@ -1,19 +1,19 @@
 # Payment and refund integration proposal
 
-November 17, 2026. Proposed for Hassib, Adham, MK and Omar to review before dependent implementation. This document describes contracts to approve. It contains no implemented adapter or completed payment requirement.
+November 17, 2026. Hassib approved the proposed booking-adapter and transaction design for his service implementation. Adham, MK and Omar still need to connect their concrete adapters and consumers. The late-payment settlement policy remains an explicit decision before that dependent behavior is completed.
 
 ## Current dependency check
 
-Latest remote develop is `7e27229`, with no newer team feature branches. FlightBookingsModule, HotelBookingsModule, AirlinesModule, HotelsModule, NotificationsModule, AuditLoggingModule and MediaUploadsModule remain module skeletons. PaymentsModule and RefundsModule are also empty. The existing shared TypeScript contracts are unconsumed proposals. Their booking states omit Expired and must be reconciled before use.
+The team modules were inspected at `7e27229`. FlightBookingsModule, HotelBookingsModule, AirlinesModule, HotelsModule, NotificationsModule, AuditLoggingModule and MediaUploadsModule remain module skeletons. The independent USD/Stripe gateway is now merged in PR #15 at develop `1890556`. Existing common TypeScript booking contracts remain unconsumed proposals. Their states omit Expired and must be reconciled before use. New payment-side adapters will follow the approved GEN-11 lifecycle.
 
-Hassib's backend coverage stays at 21 implemented primary rows and two partial rows out of 36. The requested 75-percent target requires about six additional completed rows. Payment/policy/refund work and booking/provider integration are the next substantial dependencies.
+Hassib's backend coverage has 21 implemented primary rows and five partial rows out of 36. The requested 75-percent target requires about six additional completed rows. Policy/payment/refund services and actual booking/provider integration are the next substantial dependencies.
 
 ## Requirements fixed by the workbook
 
 - PAY-01 uses Stripe test-mode PaymentIntents and Elements. The backend verifies successful payment through a signed webhook before confirming a booking. Failed payment remains retryable during the hold. Expiry cancels the intent.
 - PAY-02 requires provider policy display and timestamped acceptance before payment. Airline policy data covers cancellation and baggage. Hotel policy data covers cancellation and check-in/check-out times.
 - PAY-03 issues a positive authorized cancellation refund through Stripe and exposes Pending, Refunded or Failed, with an in-app notification.
-- PAY-04 requires one team-selected platform currency for flight/hotel prices, payments and refunds. The workbook does not select its code.
+- PAY-04 requires one platform currency for flight/hotel prices, payments and refunds. Hassib delegated selection and USD is selected, as implemented in the gateway.
 - FLT-22 and HTL-18 require ten-minute holds. GEN-11 permits Pending Payment to Confirmed or Expired, and Confirmed to Completed or Cancelled. Booking owners implement their inventory and lifecycle rules.
 
 Exact mandatory rules come from the [official workbook](https://drive.google.com/file/d/17WYE0p9EHUn-GUDrtqtCAekhqecOX8H1/view). The supplied implementation guide includes these requirement IDs for convenient cross-reference.
@@ -52,7 +52,7 @@ Webhook verification depends on the original request bytes. Stripe's documentati
 
 ## Proposed implementation order and verification
 
-1. Agree the platform currency and the adapter contracts above. Confirm where the team implementations are located. Resolve late-payment/hold-expiry settlement with the booking owners.
+1. Use the selected USD currency and Hassib-approved adapter design. Implement his services against that boundary, then connect the team implementations. Resolve late-payment/hold-expiry settlement before finalizing that race behavior.
 2. Build policy display/acceptance and payment linkage in a requirement-scoped branch. Verify ownership, stale policy/amount rejection, timestamping and concurrent acceptance/initiation against a disposable replica set.
 3. Build test-mode Stripe creation/retry/webhooks with durable event handling. Cover invalid signatures, altered bytes, duplicates, unordered events, mismatched IDs/amounts/currencies, transient failures and simultaneous expiry/payment.
 4. Build refund creation/reconciliation and Omar's delivery handoff. Verify duplicate cancellations and webhook retries cannot issue excess refunds, and refund status follows the verified gateway result.
@@ -62,9 +62,8 @@ Each branch retains DTO validation, session/role/ownership enforcement, Swagger 
 
 ## Inputs awaiting the team
 
-- The single PAY-04 currency code.
 - Branch names or concrete interfaces for booking/provider/inventory and Omar's notification/audit integration.
-- Approval of the adapter and transaction design above, including late-success settlement.
+- The late-success settlement rule after a released hold. Hassib has approved the general adapter/transaction design.
 - Private Stripe test configuration using `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET`, or confirmed alternative variable names. Reply only with configuration status. Secret values belong in private local configuration.
 
 The user previously asked to defer complex work in teammate-owned areas. Expanding that ownership would require a new explicit scope decision.

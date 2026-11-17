@@ -175,3 +175,24 @@ How the output was used: Inspected clean local develop and fetched every remote 
 Verification and scope: Documentation-only change. Reviewed the proposal against PAY-01/02/03/04, FLT-22, HTL-18 and GEN-11, checked referenced source links and ran git diff --check. Application tests were not rerun for this proposal; the previous implementation baseline remains 71 unit and 218 e2e tests. No shared TypeScript contract, runtime code, teammate module or private .env was changed or read.
 Outstanding work: Progress remains approximately sixty percent. The draft proposal does not complete payment or integration requirements. Shared currency, actual adapters/consumer interfaces and architectural agreement are needed before dependent implementation. User authorization to manage GitHub remains in effect. The earlier instruction to defer complex teammate-owned work remains applicable until the user changes scope.
 ================================================
+
+================================================
+Date: 2026-11-17
+Student: Hassib
+Tool: Codex
+Related requirements: PAY-01/03/04 infrastructure; signature verification, idempotency and payment/refund currency
+Prompt / request (summary): User delegated the platform currency choice, reported no team interfaces and no Stripe test credentials, and continued the target of roughly seventy-five percent.
+How the output was used: Fetched latest develop 7e27229 and created feature/stripe-test-gateway. Selected USD and recorded the decision. Added the official stripe 23.1.0 dependency after verifying its Node 20 support and current API parameters. Implemented an exported internal gateway for test-mode intent create/retrieve/cancel, authorized refund create/retrieve and official-SDK raw webhook verification. Added stable operation keys, strict USD/provider amount limits, internal record correlation, response mode/amount/currency checks, safe error mapping and minimal output. Private configuration remains lazy. Added setup/consumer documentation, updated status/coverage and requested approval of the existing draft PR 14 booking-adapter/transaction design before the dependent service slice. No shared booking types or teammate modules changed.
+Reported verification: Typecheck, build and lint passed. Twelve unit suites / 147 tests and seven e2e suites / 218 tests passed. Seventy-six new gateway tests use the real SDK with controlled HTTP transport and synthetic credentials/events. Coverage includes encoded requests, stable casing/idempotency, restricted test credentials, invalid/live inputs, provider/transport errors, cancellation races, bounded refunds and status mapping, response mismatches, raw-byte/timestamp signatures, malformed envelopes and real Nest module configuration. No real Stripe API request, private .env access or shared Atlas test was performed. Existing e2e tests use disposable local MongoDB.
+Implementation choices and limits: USD was chosen under explicit delegated authority. SDK 23.1.0 defaults to API 2026-10-28.endive; gateway operations use automatic card capture, five-second request timeout and two SDK network retries. Stripe's USD intent limit is 50 through 99999999 cents; refund amounts can be smaller and must be positive and bounded by the original paid amount. Consumers must persist operation IDs and enforce ownership/policies/hold/cancellation rules before invoking the gateway. No public payment/refund route, durable event consumer, booking/inventory settlement or notification delivery is claimed. Primary implemented coverage remains 21 of 36 rows, with five partial and ten pending. Reaching seventy-five percent still requires the real service/integration work and Stripe setup. Draft PR 14 architecture approval remains pending.
+================================================
+
+================================================
+Date: 2026-11-17
+Student: Hassib
+Tool: Codex
+Related requirements: PAY-01/02/03/04 integration design
+Prompt / request (summary): User explicitly approved the booking-adapter and transaction design proposed in draft PR 14 after delegating the USD selection.
+How the output was used: Updated the review document to distinguish Hassib's approval from the team adapters/consumers still pending. Recorded the already merged gateway and USD decision, preserving the late-success settlement question. Merged latest develop into the documentation branch and resolved AI_PROMPTS.txt by preserving both independent appended histories.
+Verification and limits: Documentation diff and conflict-marker checks. Runtime files are the already tested gateway merge with 147 unit and 218 e2e passing tests; no additional application changes. No private configuration accessed. Actual team adapters, Stripe setup and the late-payment business rule remain pending. Hassib's independent policy/payment services may now use the approved adapter boundary.
+================================================
