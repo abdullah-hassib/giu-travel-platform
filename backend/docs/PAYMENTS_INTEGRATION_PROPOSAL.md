@@ -1,6 +1,6 @@
 # Payment and refund integration proposal
 
-November 17, 2026. Hassib approved the proposed booking-adapter and transaction design for his service implementation. Adham, MK and Omar still need to connect their concrete adapters and consumers. The late-payment settlement policy remains an explicit decision before that dependent behavior is completed.
+November 17, 2026. Hassib approved the booking-adapter and transaction design for his service implementation. Adham, MK and Omar still need to connect their concrete adapters and consumers. Hassib delegated late-payment settlement, and automatic full refund is selected when a succeeded payment cannot be fulfilled after the hold was released, with the booking remaining Expired.
 
 ## Current dependency check
 
@@ -32,7 +32,7 @@ Exact mandatory rules come from the [official workbook](https://drive.google.com
 
 An adapter accepts a transaction session so payment state, booking state, inventory and required outbox records can commit together on the existing MongoDB replica set. Stripe requests run outside transaction callbacks because those callbacks may retry. Outbound requests use persisted logical-operation identities and Stripe idempotency keys. The proposed integration uses the repository's existing connection and authentication guards.
 
-The team must agree how to handle a verified successful payment when the inventory hold has already been released. The implementation must preserve the GEN-11 lifecycle and avoid overselling. A compensation/refund rule is needed before this race can be treated as finished. This proposal does not select a new business policy for that case.
+For a verified successful payment when inventory has already been released, the selected compensation is an automatic full refund. The booking remains Expired under GEN-11. The services must record and retry that refund idempotently and notify through Omar's integration. Hassib delegated this settlement choice on November 17.
 
 ## Proposed API behavior
 
@@ -63,7 +63,6 @@ Each branch retains DTO validation, session/role/ownership enforcement, Swagger 
 ## Inputs awaiting the team
 
 - Branch names or concrete interfaces for booking/provider/inventory and Omar's notification/audit integration.
-- The late-success settlement rule after a released hold. Hassib has approved the general adapter/transaction design.
 - Private Stripe test configuration using `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET`, or confirmed alternative variable names. Reply only with configuration status. Secret values belong in private local configuration.
 
 The user previously asked to defer complex work in teammate-owned areas. Expanding that ownership would require a new explicit scope decision.

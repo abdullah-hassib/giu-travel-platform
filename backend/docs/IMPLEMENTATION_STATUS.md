@@ -1,5 +1,13 @@
 # November 14, 2026 — Implementation status
 
+## November 17 policy-service candidate (PAY-02)
+
+- Added GET booking policies and POST explicit acceptance with traveler/session/owner enforcement, DTO validation, no-store responses and Swagger. The approved adapter boundary supplies authoritative USD booking/policy data. A token binds quote, policy, provider, owner and hold deadline; state changes preserve historical consent recognition.
+- Persisted acceptance uses a unique booking identity and server timestamp. Repeated/concurrent acceptance is idempotent. The transactional adapter write prevents silent stale-quote acceptance and rolls back if persistence fails. Source data is positively projected before output/storage.
+- Forty-two real HTTP/replica-set tests cover both policy variants, stale edits, invalid/privilege fields, privacy, roles, inactivity restrictions, expiry, concurrent acceptance and rollback. The actual feature module and guards are used with test-only MongoDB booking adapters. Full validation passed typecheck, build, lint, 147 unit tests and 260 e2e tests.
+- This service slice is kept in a draft PR until concrete team adapters are integrated. Runtime defaults to an empty integration list and returns 503. No real Stripe/Atlas/private configuration accessed. Payment initiation gating and durable settlement are the next implementation slice. PAY-02 remains partial.
+- Hassib approved the general adapter/transaction design and delegated the late-success decision. Automatic full refund is selected when a paid booking cannot be fulfilled after its hold was released; the booking remains Expired. That compensation behavior is planned for the payment/refund services.
+
 ## November 17 USD and independent Stripe test gateway
 
 - Hassib delegated platform-currency selection. USD is the selected flight/hotel/payment/refund currency and is enforced by the gateway's minor-unit validation. Future provider and booking adapters must consume that rule.

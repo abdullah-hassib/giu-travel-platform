@@ -52,6 +52,8 @@ Never put credentials into Git, AI chats, or the project ZIP. Run only once afte
 
 ## Important
 
+Policy review/acceptance routes are implemented against the approved flight/hotel adapter boundary. Actual booking adapters remain pending and an unconfigured integration returns 503. See [policy API and transaction contract](docs/PAYMENT_POLICIES.md).
+
 USD is selected as the flight/hotel/payment/refund platform currency. The internal test-mode Stripe gateway provides validated intent/refund operations and signed raw-event verification. Private Stripe setup and booking/service integration are pending. See [gateway contracts and setup](docs/STRIPE_GATEWAY.md).
 
 ACC-09 profile editing supports name, international phone and the official supported preferred currencies through `PATCH /api/users/me`. All fields validate before an atomic save. Existing accounts return null phone/currency until set. See [profile inputs and Swagger demo](docs/API_CONVENTIONS.md#own-profile-acc-09).

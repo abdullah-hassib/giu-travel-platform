@@ -1,7 +1,7 @@
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import Stripe from 'stripe';
-import { PaymentsModule } from './payments.module';
+import { StripeGatewayModule } from './stripe-gateway.module';
 import { assertPlatformMoney, PLATFORM_CURRENCY } from './platform-money';
 import {
   STRIPE_TEST_CLIENT_FACTORY,
@@ -499,7 +499,7 @@ describe('Stripe test-mode gateway (real SDK, isolated transport)', () => {
   );
 
   it('loads the real module and remains usable before private configuration exists', async () => {
-    const module = await Test.createTestingModule({ imports: [PaymentsModule] })
+    const module = await Test.createTestingModule({ imports: [StripeGatewayModule] })
       .overrideProvider(ConfigService)
       .useValue(
         new ConfigService({ STRIPE_SECRET_KEY: '', STRIPE_WEBHOOK_SECRET: '' }),
