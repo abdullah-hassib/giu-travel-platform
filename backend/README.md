@@ -52,6 +52,8 @@ Never put credentials into Git, AI chats, or the project ZIP. Run only once afte
 
 ## Important
 
+USD is selected as the flight/hotel/payment/refund platform currency. The internal test-mode Stripe gateway provides validated intent/refund operations and signed raw-event verification. Private Stripe setup and booking/service integration are pending. See [gateway contracts and setup](docs/STRIPE_GATEWAY.md).
+
 ACC-09 profile editing supports name, international phone and the official supported preferred currencies through `PATCH /api/users/me`. All fields validate before an atomic save. Existing accounts return null phone/currency until set. See [profile inputs and Swagger demo](docs/API_CONVENTIONS.md#own-profile-acc-09).
 
 Budget and intercity transport CRUD include native day/category/group totals and preferred-currency summary conversion with daily database rates and fallback. Public daily FXRatesAPI access has been verified without a key. An optional private `FXRATES_API_KEY` can be configured for authenticated quota. See [budgeting API contract and demo](docs/BUDGETING.md).
