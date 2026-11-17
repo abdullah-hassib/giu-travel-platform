@@ -13,20 +13,39 @@ import {
   PolicyAcceptanceSchema,
 } from './schemas/policy-acceptance.schema';
 import { StripeGatewayModule } from './stripe-gateway.module';
+import { RefundsModule } from '../refunds/refunds.module';
+import { Payment, PaymentSchema } from './schemas/payment.schema';
+import {
+  PaymentEvent,
+  PaymentEventSchema,
+} from './schemas/payment-event.schema';
+import { PaymentsService } from './payments.service';
+import { PaymentsController } from './payments.controller';
+import { PaymentWebhookController } from './payment-webhook.controller';
+import { PaymentReconciliationWorker } from './payment-reconciliation.worker';
 
 @Module({
   imports: [
     ConfigModule,
     StripeGatewayModule,
     AuthModule,
+    RefundsModule,
     MongooseModule.forFeature([
       { name: PolicyAcceptance.name, schema: PolicyAcceptanceSchema },
+      { name: Payment.name, schema: PaymentSchema },
+      { name: PaymentEvent.name, schema: PaymentEventSchema },
     ]),
   ],
-  controllers: [BookingPoliciesController],
+  controllers: [
+    BookingPoliciesController,
+    PaymentsController,
+    PaymentWebhookController,
+  ],
   providers: [
     BookingPaymentAdapters,
     BookingPoliciesService,
+    PaymentsService,
+    PaymentReconciliationWorker,
     { provide: BOOKING_PAYMENT_ADAPTERS, useValue: [] },
   ],
   exports: [StripeGatewayModule],

@@ -1,6 +1,6 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
-import { Connection, Model, Types } from 'mongoose';
+import { ClientSession, Connection, Model, Types } from 'mongoose';
 import {
   BookingKind,
   BookingPaymentAdapters,
@@ -48,6 +48,30 @@ export class BookingPoliciesService {
       accepted,
       acceptedAt: accepted ? acceptance.acceptedAt.toISOString() : null,
     };
+  }
+
+  async requireAccepted(
+    snapshot: BookingPaymentSnapshot,
+    session: ClientSession,
+  ): Promise<PolicyAcceptanceDocument> {
+    const accepted = await this.acceptances
+      .findOne({
+        kind: snapshot.kind,
+        bookingId: snapshot.id,
+        userId: snapshot.userId,
+        policyToken: bookingPolicyToken(snapshot),
+      })
+      .session(session)
+      .exec();
+    if (
+      !accepted ||
+      accepted.acceptedAt.getTime() >= snapshot.holdExpiresAt.getTime()
+    ) {
+      throw new ConflictException(
+        'Accept the current provider policies before payment',
+      );
+    }
+    return accepted;
   }
 
   async review(

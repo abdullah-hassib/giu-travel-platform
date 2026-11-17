@@ -76,6 +76,30 @@ export interface BookingPaymentAdapter {
   ): Promise<BookingPaymentSnapshot>;
 }
 
+export interface BookingSettlementAdapter extends BookingPaymentAdapter {
+  /** Link only the same logical payment, keep its quote/policies immutable. */
+  linkPayment(
+    userId: string,
+    bookingId: string,
+    paymentId: string,
+    session: ClientSession,
+  ): Promise<void>;
+  /** Atomically consume the hold once, or expire/release it and return Expired. */
+  confirmPayment(
+    userId: string,
+    bookingId: string,
+    paymentId: string,
+    session: ClientSession,
+  ): Promise<'Confirmed' | 'Expired'>;
+  /** Pending Payment -> Expired only. Repeated calls must not release twice. */
+  expirePayment(
+    userId: string,
+    bookingId: string,
+    paymentId: string,
+    session: ClientSession,
+  ): Promise<void>;
+}
+
 @Injectable()
 export class BookingPaymentAdapters {
   constructor(
@@ -100,5 +124,19 @@ export class BookingPaymentAdapters {
         'Booking payment integration is not configured',
       );
     return adapter;
+  }
+
+  forSettlement(kind: BookingKind): BookingSettlementAdapter {
+    const adapter = this.forKind(kind) as Partial<BookingSettlementAdapter>;
+    if (
+      typeof adapter.linkPayment !== 'function' ||
+      typeof adapter.confirmPayment !== 'function' ||
+      typeof adapter.expirePayment !== 'function'
+    ) {
+      throw new ServiceUnavailableException(
+        'Booking payment settlement is not configured',
+      );
+    }
+    return adapter as BookingSettlementAdapter;
   }
 }
