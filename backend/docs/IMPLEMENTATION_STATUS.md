@@ -1,5 +1,13 @@
 # November 14, 2026 — Implementation status
 
+## November 17 USD and independent Stripe test gateway
+
+- Hassib delegated platform-currency selection. USD is the selected flight/hotel/payment/refund currency and is enforced by the gateway's minor-unit validation. Future provider and booking adapters must consume that rule.
+- PaymentsModule now exports the internal official-SDK gateway for intent creation/retrieval/cancellation, authorized refund creation/retrieval and raw-byte webhook signature verification. Stable operation keys support safe retries, including uncertain transport results. Response checks enforce test mode, amount, currency and record linkage. Returned views omit raw payment-method/provider data. Missing private configuration is checked lazily and returns sanitized 503 errors.
+- Added exact dependency stripe 23.1.0, compatible with Node 20 and using API version 2026-10-28.endive. Uses the current allowed_payment_method_types parameter. No teammate module or shared booking contract changed. STRIPE_GATEWAY.md documents method boundaries, caller duties, setup and provider amount limits.
+- Typecheck, build and lint passed with 147 unit tests and 218 e2e tests. The 76 new gateway tests run the actual SDK through controlled HTTP responses and use synthetic signatures/credentials. They cover request encoding, idempotency, currency/amount/mode/linkage checks, refunds, network/gateway failures, altered/expired/malformed webhook events and real module configuration. Existing HTTP/MongoDB tests use disposable local databases.
+- No real Stripe request was made. The user reports no private Stripe credentials or external team interfaces. Payment/policy/refund HTTP services, durable records/event deduplication, booking/inventory settlement and notifications remain pending. PAY-01/03/04 have partial infrastructure coverage, PAY-02 remains pending, and the primary completed-row count remains 21/36. The requested 75-percent target has not been reached. The booking/transaction architecture in draft PR #14 is awaiting approval.
+
 ## November 16 preferred-currency budgeting (ITN-18)
 
 - Budget summaries now add preferred-currency totals for every daily budget, activity cost and intercity transport cost. Native data remains available alongside converted totals. Rate date, fetch time, stale/fallback flags and source are exposed. Profiles with no preference keep the existing native response.
