@@ -1,3 +1,10 @@
+# November 19 flight search and itinerary reuse
+
+- Added public GET /api/flights/search and /api/flights/:id with official airport-local calendar dates, active/Scheduled/future filtering, actual booked/held inventory, grouped eligible cabins, matching infant rounding, inclusive party-fare/cabin filters, sorting and stable ten-flight pages with independent return options. Privileged creation retains method-level role/assignment/forced-password checks.
+- Added GET /api/itineraries/:id/flights for owner travelers, deriving all first-city destination airports and start/last-day defaults from the current itinerary. Shared filtering/date overrides, reordering/start-date changes, foreign/private/public ownership and numeric/public/private Swagger behavior are tested. No hold/payment is created by a search.
+- Typecheck, build, lint and 209 unit tests passed. The flight HTTP/database suite passed all 58 cases (26 new search/itinerary cases), and the fresh remaining regression run passed all 522 cases: 580 total across 23 suites. Databases/configuration are disposable; no private .env, shared data or live Stripe action was used.
+- Remaining mandatory slices: flight/combined admin booking pages; schedule/capacity edits and whole-flight cancellation; assigned-moderator booking/passenger reads; e-ticket/CSV/logo uploads and further admin mutation audit producers. Live Stripe acceptance still requires private setup. See FLIGHT_SEARCH.md.
+
 # November 18 concrete flight foundation and payment integration
 
 - Implemented the approved FLIGHT_INTEGRATION_PLAN.md reconciliation: official IATA reference identifiers and unchanged official seed/endpoints, provider-first airline creation, authoritative moderator assignments and typed transactional flight creation. Preserved Adham author history and independent timezone/pricing/schema validation.

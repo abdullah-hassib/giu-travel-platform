@@ -2,6 +2,12 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { AuthModule } from '../auth/auth.module';
 import { HotelsModule } from '../hotels/hotels.module';
+import { FlightsModule } from '../flights/flights.module';
+import { ReferenceDataModule } from '../reference-data/reference-data.module';
+import {
+  ItineraryFlightsController,
+  ItineraryFlightsService,
+} from './itinerary-flights.controller';
 import {
   ItineraryHotelsController,
   ItineraryHotelsService,
@@ -21,6 +27,8 @@ import {
   imports: [
     AuthModule,
     HotelsModule,
+    FlightsModule,
+    ReferenceDataModule,
     MongooseModule.forFeature([
       { name: Itinerary.name, schema: ItinerarySchema },
       { name: User.name, schema: UserSchema },
@@ -31,9 +39,15 @@ import {
     ItineraryActivitiesController,
     PublicItinerariesController,
     ItineraryHotelsController,
+    ItineraryFlightsController,
     ActivityImagesController,
   ],
-  providers: [ItinerariesService, ItineraryHotelsService, ActivityMediaStorage],
+  providers: [
+    ItinerariesService,
+    ItineraryHotelsService,
+    ItineraryFlightsService,
+    ActivityMediaStorage,
+  ],
   exports: [ItinerariesService],
 })
 export class ItinerariesModule {}

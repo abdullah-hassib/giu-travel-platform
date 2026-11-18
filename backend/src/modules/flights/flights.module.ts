@@ -11,6 +11,8 @@ import { DomainEventsModule } from '../domain-events/domain-events.module';
 import { Flight, FlightSchema } from './schemas/flight.schema';
 import { FlightsController } from './flights.controller';
 import { FlightsService } from './flights.service';
+import { FlightSearchService } from './flight-search.service';
+import { FlightBookingsModule } from '../flight-bookings/flight-bookings.module';
 
 @Module({
   imports: [
@@ -19,13 +21,14 @@ import { FlightsService } from './flights.service';
     ModeratorAssignmentsModule,
     AirlinesModule,
     DomainEventsModule,
+    FlightBookingsModule,
     MongooseModule.forFeature([
       { name: Flight.name, schema: FlightSchema },
       { name: Airline.name, schema: AirlineSchema },
     ]),
   ],
   controllers: [FlightsController],
-  providers: [FlightsService],
-  exports: [FlightsService],
+  providers: [FlightsService, FlightSearchService],
+  exports: [FlightsService, FlightSearchService],
 })
 export class FlightsModule {}
