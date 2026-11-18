@@ -18,7 +18,7 @@ export interface ModeratedContent {
     id: string,
     action: ModerationAction,
     session: ClientSession,
-  ): Promise<{ authorId: string }>;
+  ): Promise<{ authorId: string; imageIdsToDelete?: string[] }>;
 }
 
 export function preview(text: string, length = 200): string {
