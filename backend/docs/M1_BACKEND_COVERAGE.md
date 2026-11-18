@@ -12,7 +12,8 @@ Scope follows Hassib's personal task allocation and the official GIU PDF/workboo
 | ACC-17 | Approved read-only booking projection boundary is documented. | Concrete flight/hotel projections, combined pagination and filters. |
 | ITN-01/03/05/07/08/09/10/14/16/18/20/21 | Private CRUD, ordered days/activities, dates/groups, all cost types, native/preferred-currency summaries, visibility/search and independent cloning. | Preserve current behavior; media and provider searches are separate requirements below. |
 | ITN-12 | Activity CRUD and MK's shared image validation/storage are available. | Activity image attachment/removal and private/clone lifecycle integration. |
-| ITN-25/26 | Itinerary dates/city groups, authoritative reference locations and MK's hotel search are available. | Connect itinerary hotel searches; await Adham's flight search integration. |
+| ITN-25 | Owned city-group hotel search reuses MK's real availability/filter/sort/pagination service with server-derived city and dates. | Preserve tested integration behavior. |
+| ITN-26 | Itinerary dates/groups and authoritative airports are available. | Await Adham's flight search integration. |
 | PAY-01/02 | Policy acceptance, immutable quotes, owned create/retry/status, signed raw webhook settlement, expiry/recovery and duplicate protection; actual hotel bookings/inventory connected. | Flight booking adapter and privately configured live Stripe test verification. |
 | PAY-03/04 | Bounded cancellation/late-payment refunds, reconciliation and USD enforcement; hotel cancellation reserves the real refund atomically using saved policies. | Flight cancellation/pricing integration, live Stripe verification and actual notification delivery. |
 | GEN-07 | Administrative actions produce durable, sanitized transactional records. | Admin history read API and retention/consumer handoff. |
