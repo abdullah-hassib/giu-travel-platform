@@ -2,6 +2,10 @@
 
 These definitions are *discussion artifacts*. The uploaded official GIU PDF has been reviewed; they still must be reconciled with the missing Excel requirements workbook and approved by the four human developers before implementations depend on them.
 
+## November 18 approval update
+
+Hassib approved the administration provider/assignment/outbox plan in ADMINISTRATION_INTEGRATION_PLAN.md before implementation. The candidate implements the moderator/status producer boundary documented in ADMINISTRATION.md. This approval does not approve the older booking/payment proposals below or actual team adapters/consumers on their owners' behalf. Those historical sections are not runtime contracts. The official workbook is now available and was checked for ACC-13/15/16/17. Account routes are exposed only in this draft candidate, with concrete provider and audit/notification integration still pending.
+
 ## Identity and authorization
 - `UserId`, `ProviderId`, `EntityId`: strings representing MongoDB ObjectIds (24-character hex). Validate at inbound boundaries; avoid accidental mixing in services (branded types may follow).
 - **PDF-confirmed role categories**: registered traveler, administrator, airline moderator, hotel moderator (plus unauthenticated guest and automated system services). TypeScript naming proposed: `traveler`, `admin`, `airline_moderator`, `hotel_moderator`. There is no generic `provider` account role in the PDF. Confirm exact code names and multi-role access in the workbook.

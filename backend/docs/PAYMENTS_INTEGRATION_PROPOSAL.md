@@ -1,6 +1,6 @@
 # Payment and refund integration proposal
 
-November 17, 2026. Hassib approved the proposed booking-adapter and transaction design for his service implementation. Adham, MK and Omar still need to connect their concrete adapters and consumers. The late-payment settlement policy remains an explicit decision before that dependent behavior is completed.
+November 17, 2026. Hassib approved the booking-adapter and transaction design for his service implementation. Adham, MK and Omar still need to connect their concrete adapters and consumers. Hassib delegated late-payment settlement, and automatic full refund is selected when a succeeded payment cannot be fulfilled after the hold was released, with the booking remaining Expired.
 
 ## Current dependency check
 
@@ -26,13 +26,13 @@ Exact mandatory rules come from the [official workbook](https://drive.google.com
 | Booking payment linkage | Adham/MK with Hassib | Atomically associate one logical payment with the booking and its policy acceptance/revision. Concurrent initiation/retries must converge on that same payment. The exact shared fields await adapter agreement. |
 | Confirmation and hold expiry | Adham/MK | Accept the supplied MongoDB session and perform a conditional state/inventory update. Confirm only a still-valid held booking after the verified matching payment. Expire the booking and release inventory exactly once. Include booking reference generation and their own domain events. |
 | Payment and policy persistence | Hassib | Store guarded linkage and immutable acceptance data, correlate the Stripe intent, verify signatures and test mode, enforce the accepted total/currency/policy revision, and coordinate idempotent settlement. |
-| Cancellation refund authorization | Adham/MK | Supply a stable cancellation ID, booking/payment ID and final authorized integer minor-unit refund amount after applying the booking's saved policy. The provider owner supplies tier selection/date interpretation. Provider cancellation requires the workbook's full refund. |
+| Cancellation refund authorization | Adham/MK | Supply booking/payment/owner IDs and the final authorized integer minor-unit refund amount after applying the booking's saved policy. GEN-11 permits one final cancellation per booking, so the service derives its stable cancellation key from kind/booking ID. The provider owner supplies tier selection/date interpretation. Provider cancellation requires the workbook's full refund. |
 | Stripe refund processing | Hassib | Check the authorized amount against the verified paid amount and platform currency, create/reconcile one Stripe refund per cancellation operation, record its result and expose it to authorized booking views. |
 | Audit and in-app delivery | Omar | Idempotently consume committed events using their event ID and persist the required audit/notification record. Agree event names, payload fields, retry behavior and consumer acknowledgement before wiring. |
 
 An adapter accepts a transaction session so payment state, booking state, inventory and required outbox records can commit together on the existing MongoDB replica set. Stripe requests run outside transaction callbacks because those callbacks may retry. Outbound requests use persisted logical-operation identities and Stripe idempotency keys. The proposed integration uses the repository's existing connection and authentication guards.
 
-The team must agree how to handle a verified successful payment when the inventory hold has already been released. The implementation must preserve the GEN-11 lifecycle and avoid overselling. A compensation/refund rule is needed before this race can be treated as finished. This proposal does not select a new business policy for that case.
+For a verified successful payment when inventory has already been released, the selected compensation is an automatic full refund. The booking remains Expired under GEN-11. The services must record and retry that refund idempotently and notify through Omar's integration. Hassib delegated this settlement choice on November 17.
 
 ## Proposed API behavior
 
@@ -40,7 +40,7 @@ The team must agree how to handle a verified successful payment when the invento
 | --- | --- |
 | GET /api/bookings/:type/:id/policies | Active traveler, owned booking. Return its saved applicable policies and revision for review. |
 | POST /api/bookings/:type/:id/accept-policies | Active traveler, owned payable booking, explicit boolean acceptance and the displayed revision. Persist the server timestamp and immutable accepted snapshot. Changed policy revision requires review again. |
-| POST /api/payments | Active traveler and owned payable booking with accepted matching policies. Accept booking identity and an operation key. Derive amount, currency, ownership and hold deadline from server data. Return the owner-safe payment view and the client secret needed by Elements with no-store caching. |
+| POST /api/payments | Active traveler and owned payable booking with accepted matching policies. Accept booking identity; derive one persisted operation identity, amount, currency, ownership and hold deadline on the server. Return the owner-safe payment view and the client secret needed by Elements with no-store caching. |
 | POST /api/payments/:id/retry | Same owner checks and an active hold. Reconcile/reuse the existing intent and acceptance. An uncertain create result is retried with the same persisted operation identity. |
 | GET /api/payments/:id | Owner-safe payment status through the existing session guard. Explicit admin/moderator booking read access is integrated through ACC-11 adapters. |
 | POST /api/payments/webhook | Exact raw request bytes and a valid Stripe signature. Verify test mode, intent linkage, amount and currency. Durably deduplicate events and apply conditional state changes. A durable failed application remains retryable. |
@@ -52,7 +52,7 @@ Webhook verification depends on the original request bytes. Stripe's documentati
 
 ## Proposed implementation order and verification
 
-1. Use the selected USD currency and Hassib-approved adapter design. Implement his services against that boundary, then connect the team implementations. Resolve late-payment/hold-expiry settlement before finalizing that race behavior.
+1. Use the selected USD currency and Hassib-approved adapter design, including delegated full-refund compensation after hold expiry. Implement his services against that boundary, then connect the team implementations.
 2. Build policy display/acceptance and payment linkage in a requirement-scoped branch. Verify ownership, stale policy/amount rejection, timestamping and concurrent acceptance/initiation against a disposable replica set.
 3. Build test-mode Stripe creation/retry/webhooks with durable event handling. Cover invalid signatures, altered bytes, duplicates, unordered events, mismatched IDs/amounts/currencies, transient failures and simultaneous expiry/payment.
 4. Build refund creation/reconciliation and Omar's delivery handoff. Verify duplicate cancellations and webhook retries cannot issue excess refunds, and refund status follows the verified gateway result.
@@ -60,10 +60,11 @@ Webhook verification depends on the original request bytes. Stripe's documentati
 
 Each branch retains DTO validation, session/role/ownership enforcement, Swagger documentation and meaningful tests. Test doubles can verify the proposed boundary while the actual team adapters are pending. Full requirement coverage is recorded after the real integrations pass.
 
+The policy and settlement service candidates now implement steps 2–4 against transactional booking fixtures, with the delivery consumer still pending. See [PAYMENT_SETTLEMENT.md](PAYMENT_SETTLEMENT.md) for concrete callbacks, routes, retry behavior and demo limits. The gateway is merged; dependent service candidates remain draft until integration verification.
+
 ## Inputs awaiting the team
 
 - Branch names or concrete interfaces for booking/provider/inventory and Omar's notification/audit integration.
-- The late-success settlement rule after a released hold. Hassib has approved the general adapter/transaction design.
 - Private Stripe test configuration using `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET`, or confirmed alternative variable names. Reply only with configuration status. Secret values belong in private local configuration.
 
 The user previously asked to defer complex work in teammate-owned areas. Expanding that ownership would require a new explicit scope decision.

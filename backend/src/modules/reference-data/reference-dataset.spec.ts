@@ -61,7 +61,7 @@ describe('Official reference CSV ingestion', () => {
       csv.Attractions.replace(
         'Giza Pyramids and Sphinx',
         '"Giza, Pyramids and ""Sphinx"""',
-      ).replace(/\n/g, '\r\n');
+      ).replace(/\r?\n/g, '\r\n');
     const data = parseReferenceCsv(csv);
     expect(data.attractions[0].name).toBe('Giza, Pyramids and "Sphinx"');
     expect(data.attractions[7].name).toBe('Römerberg');
