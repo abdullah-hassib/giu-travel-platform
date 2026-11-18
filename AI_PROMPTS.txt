@@ -196,3 +196,14 @@ Prompt / request (summary): User explicitly approved the booking-adapter and tra
 How the output was used: Updated the review document to distinguish Hassib's approval from the team adapters/consumers still pending. Recorded the already merged gateway and USD decision, preserving the late-success settlement question. Merged latest develop into the documentation branch and resolved AI_PROMPTS.txt by preserving both independent appended histories.
 Verification and limits: Documentation diff and conflict-marker checks. Runtime files are the already tested gateway merge with 147 unit and 218 e2e passing tests; no additional application changes. No private configuration accessed. Actual team adapters, Stripe setup and the late-payment business rule remain pending. Hassib's independent policy/payment services may now use the approved adapter boundary.
 ================================================
+
+================================================
+Date: 2026-11-17
+Student: Omar
+Tool: Codex
+Related requirements: GEN-01, GEN-07, ACC-07a; notification triggers in ACC-15, FLT-05, FLT-06, FLT-23, HTL-17 and PAY-03
+Prompt / request (summary): Work step by step on Omar's notification and audit logging assignment using the official project description, mandatory requirements CSV, and GIU Travel backend. Test changes incrementally; the user will create the pull request after the assignment is finished.
+How the output was used: Created a feature branch from develop. Implemented the GEN-01 notification list, unread count and mark-as-read API with recipient ownership and duplicate-event protection; added the GEN-07 administrator-only audit listing API, filters, pagination and append-only event-ID persistence; consumed the existing account.password_reset outbox event into an audit record and marked delivery atomically. Added the typed domain-event publisher and durable MongoDB outbox consumer for transactional notification/audit effects, plus API documentation and feature tests. The user treats the three notification route names and response shapes as agreed for this branch and will create the pull request.
+Reported verification: Build, typecheck, lint and all 147 unit tests passed. The full end-to-end suite passed all 243 tests across ten suites, including HTTP/MongoDB checks for user ownership, admin/moderator denial, pagination, filters, Swagger, duplicate delivery and atomic rollback/retry of notification and audit effects.
+Outstanding work: Connect account/provider suspension, flight schedule and booking, hotel reservation, refund and moderation producers with Hassib, Adham and MK. Their modules are not implemented on this branch, so those integrations and the full milestone assignment are not yet complete. No commit or pull request has been created.
+================================================

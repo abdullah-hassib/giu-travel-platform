@@ -23,6 +23,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { MediaUploadsModule } from './modules/media-uploads/media-uploads.module';
 import { AuditLoggingModule } from './modules/audit-logging/audit-logging.module';
 import { ReferenceDataModule } from './modules/reference-data/reference-data.module';
+import { DomainEventsModule } from './modules/domain-events/domain-events.module';
 
 @Module({
   imports: [
@@ -31,7 +32,7 @@ import { ReferenceDataModule } from './modules/reference-data/reference-data.mod
     HealthModule, AuthModule, UsersModule, AdministrationModule, AirlinesModule, FlightsModule,
     FlightBookingsModule, HotelsModule, RoomsModule, HotelBookingsModule, ReviewsModule,
     PaymentsModule, RefundsModule, ItinerariesModule, BudgetingModule, BlogModule,
-    CommunityModule, NotificationsModule, MediaUploadsModule, AuditLoggingModule, ReferenceDataModule,
+    CommunityModule, NotificationsModule, MediaUploadsModule, AuditLoggingModule, ReferenceDataModule, DomainEventsModule,
   ],
 })
 export class AppModule {}

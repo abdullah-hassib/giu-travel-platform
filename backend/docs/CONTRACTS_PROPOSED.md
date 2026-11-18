@@ -1,6 +1,6 @@
 # Shared contracts — PROPOSED / NOT APPROVED
 
-These definitions are *discussion artifacts*. The uploaded official GIU PDF has been reviewed; they still must be reconciled with the missing Excel requirements workbook and approved by the four human developers before implementations depend on them.
+These definitions are *discussion artifacts*. The official GIU PDF and mandatory requirements CSV are available; event names and payloads still need agreement from the owning developers before cross-module producers depend on them.
 
 ## Identity and authorization
 - `UserId`, `ProviderId`, `EntityId`: strings representing MongoDB ObjectIds (24-character hex). Validate at inbound boundaries; avoid accidental mixing in services (branded types may follow).
@@ -19,24 +19,24 @@ These definitions are *discussion artifacts*. The uploaded official GIU PDF has 
 - `BookingPaymentRequest`: bookingId, kind, userId, amountMinor, currency, idempotencyKey. `PaymentBookingResult`: bookingId, paymentId, state, correlationId. API payment initiation, webhooks, replays, compensation and handling failed payments are deliberately deferred.
 
 ## Events, notifications and audit
-- Proposed `DomainEvent`: `id`, `type`, `version`, `occurredAt`, `correlationId`, optional `actorId`, payload. `EventPublisher` is an interface only; no broker/outbox decision yet.
-- Proposed notification event types: booking.confirmed, booking.cancelled, payment.captured, payment.failed, refund.completed. Confirm required channels, templates, trigger conditions and retries.
+- `DomainEvent` now has a typed event-name union and notification/audit effect payloads. `DOMAIN_EVENT_PUBLISHER` resolves to a MongoDB outbox publisher. Producers can pass their transaction session; the consumer applies notification and audit effects and marks the event delivered in one transaction. Event names and payloads remain proposals until their owning feature developers agree.
+- Notification event names include booking confirmation/cancellation, flight schedule changes/cancellations, refund status changes, account suspension, provider deactivation, plus the existing payment/refund candidates. Confirm exact trigger conditions, recipient selection, message templates, and owner-specific payload fields.
 - Proposed audit record: actorId, action, entityType, entityId, timestamp, correlationId, outcome, sanitized metadata. Avoid credentials, tokens, payment card data, and personal data in logs.
-- Choose in-process events vs persisted outbox before relying on delivery; for critical payment state transitions prefer persisted outbox / transaction strategy.
+- The durable MongoDB outbox is the implemented handoff for the current feature branch. Agree on transaction participation, event retention, retry monitoring, and any dead-letter policy before production use.
 
 ## Open questions / approval gates
 
-### Next administration write slice — proposed for Hassib/Omar review
+### Existing administration event producer and Omar consumer
 
-Current producer implementation: ACC-07a writes `account.password_reset` into the `admin_outbox` collection in the same transaction as the reset/session deletion. It uses UUID id/correlationId, type, version 1, ISO occurredAt, actorId, payload.targetUserId and status pending. The consumer handoff is still awaiting Omar integration; no worker or delivery is claimed. Pending events have no expiry. The envelope contains no credentials or personal profile fields. This implementation does not approve the remaining suspension/provider event names or consumer behavior on behalf of other developers.
+Current producer implementation: ACC-07a writes `account.password_reset` into the `admin_outbox` collection in the same transaction as the reset/session deletion. It uses UUID id/correlationId, type, version 1, ISO occurredAt, actorId, payload.targetUserId and status pending. Omar's feature branch now consumes this event into one audit record and marks it delivered in the same MongoDB transaction. Pending events have no expiry. The envelope contains no credentials or personal profile fields. This implementation does not approve the remaining suspension/provider event names or consumer behavior on behalf of other developers.
 
-Before implementing account suspension/reactivation (ACC-15/ACC-16), agree on durable event delivery for GEN-01/GEN-07. The current EventPublisher is an unimplemented proposal. Password-reset and moderator-creation audit events can use the same agreed mechanism.
+Before implementing account suspension/reactivation (ACC-15/ACC-16), agree on the owner-specific event names and payloads for GEN-01/GEN-07. The reusable publisher and consumer are implemented in Omar's feature branch. Password-reset remains on its existing admin outbox producer and consumer.
 
-Proposed mechanism: write the account mutation and an outbox event in one MongoDB transaction. Omar's consumer records the audit entry and required in-app notification idempotently using the event ID, with retry for temporary failures. The HTTP operation succeeds after the account mutation and outbox record commit. Delivery failures remain observable and retryable. Atlas transaction availability and a replica-set test harness must be verified for that slice.
+The implemented consumer polls pending reset events every five seconds and processes up to 50 per poll. Audit creation and the delivered status update commit atomically. A failure rolls back both, leaves the event pending, and is retried on a later poll. A unique audit event ID prevents duplicate records. This event creates an audit entry; GEN-01 does not require a password-reset notification. Atlas transaction availability and a replica-set test harness are required.
 
-Proposed event envelope uses the existing DomainEvent fields, with event types `account.suspended`, `account.reactivated`, `account.password_reset` and `moderator.created`, actor/target IDs, correlation ID, previous/new status where applicable, and provider assignment IDs only when needed. Passwords, tokens, hashes, names and emails are excluded. Consumer ownership, transport API/injection token, event names, retry/dead-letter behavior and audit visibility need agreement before code depends on them. Omar may supply an existing compatible interface instead.
+Proposed event envelope uses the existing DomainEvent fields, with event types `account.suspended`, `account.reactivated`, `account.password_reset` and `moderator.created`, actor/target IDs, correlation ID, previous/new status where applicable, and provider assignment IDs only when needed. Passwords, tokens, hashes, names and emails are excluded. Producers should include only the notification/audit effects needed for that event. Retry behavior is transaction rollback followed by polling; dead-letter policy and event retention remain open.
 
-This is a review proposal. No shared TypeScript contracts or Omar-owned modules have been changed, and account write routes remain unexposed until their required behavior can be implemented and verified.
+The additional event names and payloads above remain review proposals. Omar's notification and audit APIs, plus the password-reset audit consumer, are implemented on `feature/GEN-01-notifications-audit`. No Hassib-, Adham-, or MK-owned producer module has been changed. The remaining event producers and payload details still require owner agreement before their integration is complete.
 1. Confirm all statuses and allowed transitions separately for flight and hotel bookings.
 2. Confirm exact roles, provider ownership and moderator assignment semantics.
 3. Confirm payment provider, currencies, gateway callback verification and refund policies.
