@@ -3,9 +3,11 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { OutboxEvent } from '../../common/events/outbox-event.schema';
 import { AdminOutboxEvent } from './schemas/admin-outbox.schema';
+import { AuditLog } from '../audit-logging/schemas/audit-log.schema';
 import {
   ACCOUNT_HISTORY_ACTIONS,
   DOMAIN_HISTORY_ACTIONS,
+  ADMIN_HISTORY_ACTIONS,
   AdminHistoryPageDto,
   AdminHistoryQueryDto,
   AdminHistoryViewDto,
@@ -18,6 +20,7 @@ export class AdminHistoryService {
     @InjectModel(AdminOutboxEvent.name)
     private readonly accounts: Model<AdminOutboxEvent>,
     @InjectModel(OutboxEvent.name) private readonly domain: Model<OutboxEvent>,
+    @InjectModel(AuditLog.name) private readonly archive: Model<AuditLog>,
   ) {}
   async list(query: AdminHistoryQueryDto): Promise<AdminHistoryPageDto> {
     if (query.from && query.to && query.from > query.to)
@@ -121,6 +124,28 @@ export class AdminHistoryService {
             ],
           },
         },
+        { $set: { sourceRank: 0 } },
+        {
+          $unionWith: {
+            coll: this.archive.collection.name,
+            pipeline: [
+              { $match: { action: { $in: [...ADMIN_HISTORY_ACTIONS] }, actorId: { $type: 'string', $ne: '' }, outcome: 'success' } },
+              { $project: {
+                _id: 0, id: '$eventId', action: 1, actorId: 1,
+                occurredAt: { $dateToString: { date: '$occurredAt', format: '%Y-%m-%dT%H:%M:%S.%LZ' } },
+                correlationId: 1, target: { type: '$resourceType', id: '$resourceId' },
+                outcome: { $literal: 'committed' }, deliveryStatus: { $literal: 'delivered' },
+                sourceRank: { $literal: 1 },
+              } },
+            ],
+          },
+        },
+        // Keep the original event ID and response contract, including before
+        // delivery. An archived copy must not double-count a retained envelope.
+        { $sort: { sourceRank: 1 } },
+        { $group: { _id: '$id', row: { $first: '$$ROOT' } } },
+        { $replaceWith: '$row' },
+        { $unset: 'sourceRank' },
         { $match: match },
         {
           $facet: {

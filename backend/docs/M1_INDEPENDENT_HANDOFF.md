@@ -1,3 +1,5 @@
+> November 18 team-integration update: Adham PR #31 and Omar PR #36 are now available. Omar's services are reconciled with real account/hotel/provider/moderation/refund event delivery and the canonical audit archive projection. See NOTIFICATIONS_AND_AUDIT.md. Flight code still needs the concrete review in FLIGHT_INTEGRATION_PLAN.md and missing mandatory APIs. The completion report below records the earlier independent-work checkpoint.
+
 # Hassib Milestone 1: available work completed November 18
 
 Scope: Hassib's assigned backend work, mandatory requirements only, due November 20, 2026. The official GIU PDF/workbook and personal allocation remain authoritative. Kuwaity's separately authorized reference-data work was already merged and its shared seed verified. This report distinguishes implemented available features from cross-team/live acceptance still outstanding.

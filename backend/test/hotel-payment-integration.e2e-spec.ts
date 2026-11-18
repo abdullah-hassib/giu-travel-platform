@@ -23,6 +23,12 @@ import request from 'supertest';
 import { OutboxEvent } from '../src/common/events/outbox-event.schema';
 import { HttpErrorFilter } from '../src/common/filters/http-error.filter';
 import { AdministrationModule } from '../src/modules/administration/administration.module';
+import { DomainEventsModule } from '../src/modules/domain-events/domain-events.module';
+import { CommittedOutboxConsumer } from '../src/modules/domain-events/committed-outbox-consumer';
+import { AdminOutboxConsumer } from '../src/modules/audit-logging/admin-outbox-consumer';
+import { AuditLoggingService } from '../src/modules/audit-logging/audit-logging.service';
+import { AuditLog } from '../src/modules/audit-logging/schemas/audit-log.schema';
+import { Notification } from '../src/modules/notifications/schemas/notification.schema';
 import { hashPassword } from '../src/modules/auth/security/password';
 import { UserSession } from '../src/modules/auth/schemas/user-session.schema';
 import { PaymentsService } from '../src/modules/payments/payments.service';
@@ -116,6 +122,7 @@ describe('MK hotels with Hassib administration, payments and refunds', () => {
         }),
         AdministrationModule,
         PaymentsModule,
+        DomainEventsModule,
       ],
     })
       .overrideProvider(StripeTestGateway)
@@ -414,6 +421,66 @@ describe('MK hotels with Hassib administration, payments and refunds', () => {
     expect(await users.countDocuments({ email: 'missing@example.com' })).toBe(
       0,
     );
+  });
+
+  it('delivers real booking and refund transitions once through Omar notifications', async () => {
+    const consumer = app.get(CommittedOutboxConsumer);
+    const { bookingId, payment } = await initiate();
+    await settle(payment);
+    expect(await consumer.consumePending()).toBe(1);
+    expect(await consumer.consumePending()).toBe(0);
+    const confirmed = await traveler.get('/api/notifications').expect(200);
+    expect(confirmed.body.data).toHaveLength(1);
+    expect(confirmed.body.data[0]).toMatchObject({ eventType: 'booking.confirmed', resourceType: 'hotel-booking', resourceId: bookingId });
+    expect(confirmed.body.data[0].message).toContain('Confirmed');
+    expect((await otherTraveler.get('/api/notifications').expect(200)).body.meta.total).toBe(0);
+    await traveler.post(`/api/hotel-bookings/${bookingId}/cancel`).expect(200);
+    await consumer.consumePending();
+    await app.get(RefundsService).runDue();
+    await consumer.consumePending();
+    expect(await consumer.consumePending()).toBe(0);
+    const result = (await traveler.get('/api/notifications').expect(200)).body.data;
+    expect(result.filter((row: { eventType: string }) => row.eventType === 'booking.cancelled')).toHaveLength(1);
+    expect(result.some((row: { eventType: string; message: string }) => row.eventType === 'refund.status_changed' && row.message.includes('Refunded'))).toBe(true);
+  });
+
+  it('rolls back notification, audit and acknowledgment together, then safely retries concurrent consumers', async () => {
+    const { payment } = await initiate();
+    await settle(payment);
+    const consumer = app.get(CommittedOutboxConsumer);
+    const failure = jest.spyOn(app.get(AuditLoggingService), 'append').mockRejectedValueOnce(new Error('controlled persistence failure'));
+    await expect(consumer.consumePending()).rejects.toThrow('controlled persistence failure');
+    expect(await app.get<Model<Notification>>(getModelToken(Notification.name)).countDocuments()).toBe(0);
+    expect((await outbox.findOne({ type: 'hotel_booking.confirmed' }).orFail()).status).toBe('pending');
+    failure.mockRestore();
+    const results = await Promise.all([consumer.consumePending(), consumer.consumePending()]);
+    expect(results.reduce((sum, count) => sum + count, 0)).toBe(1);
+    expect(await app.get<Model<Notification>>(getModelToken(Notification.name)).countDocuments()).toBe(1);
+    expect(await app.get<Model<AuditLog>>(getModelToken(AuditLog.name)).countDocuments()).toBe(1);
+  });
+
+  it('notifies only affected provider users and suspensions, preserving committed history after delivery', async () => {
+    const { bookingId, payment } = await initiate();
+    await settle(payment);
+    await admin.patch(`/api/admin/providers/hotel/${hotelId}/deactivate`).send({}).expect(204);
+    const consumer = app.get(CommittedOutboxConsumer);
+    await consumer.consumePending();
+    for (const agent of [moderator, traveler]) {
+      const notifications = (await agent.get('/api/notifications').expect(200)).body.data;
+      expect(notifications.filter((row: { eventType: string }) => row.eventType === 'provider.deactivated')).toHaveLength(1);
+    }
+    expect((await otherTraveler.get('/api/notifications').expect(200)).body.meta.total).toBe(0);
+    expect((await bookings.findById(bookingId).orFail()).status).toBe('Confirmed');
+    const owner = await users.findOne({ email: 'owner@example.com' }).orFail();
+    await admin.patch(`/api/admin/accounts/${owner._id}/suspend`).send({}).expect(204);
+    await app.get(AdminOutboxConsumer).consumePending();
+    const notificationModel = app.get<Model<Notification>>(getModelToken(Notification.name));
+    expect(await notificationModel.countDocuments({ recipientId: owner._id.toString(), eventType: 'account.suspended' })).toBe(1);
+    const history = (await admin.get('/api/admin/audit-logs?action=hotel.deactivated').expect(200)).body;
+    expect(history.meta.total).toBe(1);
+    expect(history.data[0].deliveryStatus).toBe('delivered');
+    await outbox.deleteOne({ id: history.data[0].id });
+    expect((await admin.get('/api/admin/audit-logs?action=hotel.deactivated').expect(200)).body).toEqual(history);
   });
 
   it('requires policy acceptance and a verified webhook, then confirms once and retains inventory', async () => {

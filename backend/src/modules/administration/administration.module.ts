@@ -14,6 +14,7 @@ import { AdminBookingsController } from './admin-bookings.controller';
 import { HotelAdminBookingsService } from './hotel-admin-bookings.service';
 import { AdminHistoryController } from './admin-history.controller';
 import { AdminHistoryService } from './admin-history.service';
+import { AuditLog, AuditLogSchema } from '../audit-logging/schemas/audit-log.schema';
 import {
   OutboxEvent,
   OutboxEventSchema,
@@ -45,6 +46,7 @@ import {
       { name: UserSession.name, schema: UserSessionSchema },
       { name: AdminOutboxEvent.name, schema: AdminOutboxEventSchema },
       { name: OutboxEvent.name, schema: OutboxEventSchema },
+      { name: AuditLog.name, schema: AuditLogSchema },
     ]),
   ],
   controllers: [
