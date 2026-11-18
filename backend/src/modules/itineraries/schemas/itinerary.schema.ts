@@ -1,6 +1,15 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Schema as MongoSchema, Types } from 'mongoose';
-import { CITY_IDS, COUNTRY_CODES, CURRENCIES } from '../../reference-data/official-reference';
+import {
+  StoredImage,
+  StoredImageSchema,
+} from '../../media-uploads/stored-image.schema';
+import { MAX_IMAGES_PER_ITEM } from '../../media-uploads/media.service';
+import {
+  CITY_IDS,
+  COUNTRY_CODES,
+  CURRENCIES,
+} from '../../reference-data/official-reference';
 import {
   BUDGET_CATEGORIES,
   BudgetCategory,
@@ -52,6 +61,17 @@ export class ItineraryActivity {
 
   @Prop({ type: ActivityCost })
   cost?: ActivityCost;
+
+  @Prop({
+    type: [StoredImageSchema],
+    default: [],
+    validate: {
+      validator: (images: StoredImage[]) =>
+        images.length <= MAX_IMAGES_PER_ITEM,
+      message: 'At most five images per activity',
+    },
+  })
+  images?: StoredImage[];
 }
 
 @Schema()

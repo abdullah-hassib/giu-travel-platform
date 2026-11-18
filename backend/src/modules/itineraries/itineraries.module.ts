@@ -9,6 +9,8 @@ import {
 import { User, UserSchema } from '../users/schemas/user.schema';
 import { Itinerary, ItinerarySchema } from './schemas/itinerary.schema';
 import { ItinerariesService } from './itineraries.service';
+import { ActivityMediaStorage } from './activity-media.storage';
+import { ActivityImagesController } from './activity-images.controller';
 import {
   ItinerariesController,
   ItineraryActivitiesController,
@@ -29,8 +31,9 @@ import {
     ItineraryActivitiesController,
     PublicItinerariesController,
     ItineraryHotelsController,
+    ActivityImagesController,
   ],
-  providers: [ItinerariesService, ItineraryHotelsService],
+  providers: [ItinerariesService, ItineraryHotelsService, ActivityMediaStorage],
   exports: [ItinerariesService],
 })
 export class ItinerariesModule {}

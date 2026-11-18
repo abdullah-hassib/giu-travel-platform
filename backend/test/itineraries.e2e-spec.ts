@@ -465,6 +465,7 @@ describe('Itinerary core (real feature modules, HTTP and MongoDB)', () => {
       id,
       name: 'Edited',
       description: '',
+      images: [],
     });
     expect(cleared.cityGroups[0].activityTotals).toEqual({});
     const deleted = (await owner.delete(`/api/activities/${id}`).expect(200))
