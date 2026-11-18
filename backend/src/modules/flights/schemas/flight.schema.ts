@@ -103,3 +103,10 @@ FlightSchema.index({
   departureAt: 1,
 });
 FlightSchema.index({ airlineId: 1, departureAt: 1 });
+FlightSchema.index({
+  departureAirportId: 1,
+  arrivalAirportId: 1,
+  departureLocalDate: 1,
+  status: 1,
+  departureAt: 1,
+});

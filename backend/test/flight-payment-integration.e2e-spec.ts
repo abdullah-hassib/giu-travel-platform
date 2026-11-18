@@ -43,6 +43,7 @@ import { referenceModels } from '../src/modules/reference-data/reference.schema'
 import { seedOfficialReferences } from '../src/modules/reference-data/reference-seed';
 import { DomainEventConsumer } from '../src/modules/domain-events/domain-event-consumer';
 import { DomainEventOutbox } from '../src/modules/domain-events/schemas/domain-event-outbox.schema';
+import { ItinerariesModule } from '../src/modules/itineraries/itineraries.module';
 
 const signingSecret = 'whsec_flightIntegrationSyntheticOnly';
 const verifier = new StripeTestGateway(
@@ -127,6 +128,7 @@ describe('Adham flight domain with real Hassib payments, administration and Omar
         AdministrationModule,
         FlightsModule,
         PaymentsModule,
+        ItinerariesModule,
       ],
     })
       .overrideProvider(StripeTestGateway)
@@ -297,14 +299,12 @@ describe('Adham flight domain with real Hassib payments, administration and Omar
     return agent;
   }
   function hold(overrides: Record<string, unknown> = {}, agent = traveler) {
-    return agent
-      .post('/api/flight-bookings/hold')
-      .send({
-        flightId,
-        cabinCategory: 'Economy',
-        passengers: [passenger],
-        ...overrides,
-      });
+    return agent.post('/api/flight-bookings/hold').send({
+      flightId,
+      cabinCategory: 'Economy',
+      passengers: [passenger],
+      ...overrides,
+    });
   }
   async function initiate(overrides: Record<string, unknown> = {}) {
     const bookingId: string = (await hold(overrides).expect(201)).body.booking
@@ -694,13 +694,27 @@ describe('Adham flight domain with real Hassib payments, administration and Omar
       'Confirmed',
     );
     await hold({}, other).expect(404);
-    const historyBefore = (await admin.get('/api/admin/audit-logs?action=provider.deactivated').expect(200)).body;
+    const historyBefore = (
+      await admin
+        .get('/api/admin/audit-logs?action=provider.deactivated')
+        .expect(200)
+    ).body;
     expect(historyBefore.meta.total).toBe(1);
-    expect(historyBefore.data[0]).toMatchObject({ target: { type: 'airline', id: airlineId }, deliveryStatus: 'pending' });
+    expect(historyBefore.data[0]).toMatchObject({
+      target: { type: 'airline', id: airlineId },
+      deliveryStatus: 'pending',
+    });
     await app.get(DomainEventConsumer).consumePending();
-    const historyAfter = (await admin.get('/api/admin/audit-logs?action=provider.deactivated').expect(200)).body;
+    const historyAfter = (
+      await admin
+        .get('/api/admin/audit-logs?action=provider.deactivated')
+        .expect(200)
+    ).body;
     expect(historyAfter.meta.total).toBe(1);
-    expect(historyAfter.data[0]).toMatchObject({ id: historyBefore.data[0].id, deliveryStatus: 'delivered' });
+    expect(historyAfter.data[0]).toMatchObject({
+      id: historyBefore.data[0].id,
+      deliveryStatus: 'delivered',
+    });
     for (const agent of [traveler, moderator])
       expect(
         (await agent.get('/api/notifications').expect(200)).body.data.filter(
@@ -860,5 +874,398 @@ describe('Adham flight domain with real Hassib payments, administration and Omar
     expect(
       (await flights.findById(flightId).orFail()).cabins[0].heldSeats,
     ).toBe(0);
+  });
+  function publicSearch(overrides: Record<string, unknown> = {}) {
+    return request(app.getHttpServer())
+      .get('/api/flights/search')
+      .query({
+        departureAirportCode: 'CAI',
+        arrivalAirportCode: 'JFK',
+        departureDate: '2099-01-15',
+        ...overrides,
+      });
+  }
+  async function itinerary(cities = ['new_york'], startDate = '2099-01-15') {
+    let trip: { id: string; days: { id: string; cityId: string }[] } = (
+      await traveler
+        .post('/api/itineraries')
+        .send({
+          title: 'Flight search trip',
+          countryCodes: ['EG', 'US', 'FR'],
+          startDate,
+        })
+        .expect(201)
+    ).body;
+    for (const cityId of cities)
+      trip = (
+        await traveler
+          .post('/api/itineraries/' + trip.id + '/days')
+          .send({ cityId })
+          .expect(201)
+      ).body;
+    return trip;
+  }
+  it('search: guests receive distinct flights with eligible cabin choices and sanitized details', async () => {
+    const multi = (
+      await createFlight({
+        flightNumber: 'MULTI',
+        cabins: [cabin, { ...cabin, category: 'Business', price: 20_000 }],
+      }).expect(201)
+    ).body.id;
+    const response = await publicSearch()
+      .expect(200)
+      .expect('Cache-Control', 'no-store');
+    expect(response.body.outbound.meta).toEqual({
+      page: 1,
+      limit: 10,
+      total: 2,
+      totalPages: 1,
+    });
+    expect(
+      response.body.outbound.data.find((f: { id: string }) => f.id === multi)
+        .cabins,
+    ).toHaveLength(2);
+    expect(response.body.criteria).toMatchObject({
+      adults: 1,
+      seatsRequired: 1,
+      arrivalAirportCodes: ['JFK'],
+    });
+    expect(response.body.inbound).toBeNull();
+    expect(JSON.stringify(response.body)).not.toMatch(
+      /password|paymentFence|moderatorId|inventoryVersion|identityDocument/,
+    );
+    const details = (
+      await request(app.getHttpServer())
+        .get('/api/flights/' + flightId)
+        .expect(200)
+    ).body;
+    expect(details).toMatchObject({
+      status: 'Scheduled',
+      departureAt: '2099-01-15T10:00:00.000Z',
+      durationMinutes: 660,
+      extraBagPriceMinor: 2500,
+    });
+    expect(details.departureLocalDateTime).toBe('2099-01-15T12:00:00+02:00');
+    expect(details.arrivalLocalDateTime).toBe('2099-01-15T16:00:00-05:00');
+    expect(details.cancellationPolicy).toEqual([
+      { daysBeforeDeparture: 0, refundPercentage: 50 },
+    ]);
+  });
+  it('search: uses local departure dates even when UTC falls on the preceding day', async () => {
+    const late = (
+      await createFlight({
+        flightNumber: 'LOCALDATE',
+        departureLocalDateTime: '2099-01-16T00:30',
+        arrivalLocalDateTime: '2099-01-16T08:00',
+      }).expect(201)
+    ).body.id;
+    expect(
+      (await publicSearch().expect(200)).body.outbound.data.map(
+        (f: { id: string }) => f.id,
+      ),
+    ).toEqual([flightId]);
+    const nextDay = (
+      await publicSearch({ departureDate: '2099-01-16' }).expect(200)
+    ).body.outbound;
+    expect(nextDay.data[0]).toMatchObject({
+      id: late,
+      departureAt: '2099-01-15T22:30:00.000Z',
+    });
+  });
+  it('search: honors held seats, excludes unavailable providers/states and reclaims lapsed holds', async () => {
+    await hold({
+      passengers: [passenger, { ...passenger, fullName: 'Second' }],
+    }).expect(201);
+    expect((await publicSearch().expect(200)).body.outbound.meta.total).toBe(0);
+    advance(11);
+    expect((await publicSearch().expect(200)).body.outbound.meta.total).toBe(1);
+    admin = await login('admin@example.com');
+    await admin
+      .patch('/api/admin/providers/airline/' + airlineId + '/deactivate')
+      .send({})
+      .expect(204);
+    expect((await publicSearch().expect(200)).body.outbound.meta.total).toBe(0);
+    await request(app.getHttpServer())
+      .get('/api/flights/' + flightId)
+      .expect(404);
+    await admin
+      .patch('/api/admin/providers/airline/' + airlineId + '/reactivate')
+      .send({})
+      .expect(204);
+    await flights.updateOne(
+      { _id: flightId },
+      { $set: { status: 'Cancelled' } },
+    );
+    expect((await publicSearch().expect(200)).body.outbound.meta.total).toBe(0);
+    await flights.updateOne(
+      { _id: flightId },
+      {
+        $set: {
+          status: 'Scheduled',
+          departureAt: new Date(Date.now() - 60_000),
+        },
+      },
+    );
+    expect((await publicSearch().expect(200)).body.outbound.meta.total).toBe(0);
+    expect(
+      (
+        await request(app.getHttpServer())
+          .get('/api/flights/' + flightId)
+          .expect(200)
+      ).body.status,
+    ).toBe('Departed');
+  });
+  it('search: preserves inclusive price filters, cabin filters, duration and departure sorting', async () => {
+    const cheap = (
+      await createFlight({
+        flightNumber: 'CHEAP',
+        cabins: [{ ...cabin, price: 5000 }],
+      }).expect(201)
+    ).body.id;
+    const fast = (
+      await createFlight({
+        flightNumber: 'FAST',
+        departureLocalDateTime: '2099-01-15T15:00',
+        arrivalLocalDateTime: '2099-01-15T10:00',
+        cabins: [{ ...cabin, category: 'Business', price: 20_000 }],
+      }).expect(201)
+    ).body.id;
+    const filtered = (
+      await publicSearch({
+        minPriceMinor: 5000,
+        maxPriceMinor: 10_000,
+        order: 'desc',
+      }).expect(200)
+    ).body.outbound;
+    expect(filtered.data.map((f: { id: string }) => f.id)).toEqual([
+      flightId,
+      cheap,
+    ]);
+    expect(
+      (
+        await publicSearch({ cabinCategory: 'Business' }).expect(200)
+      ).body.outbound.data.map((f: { id: string }) => f.id),
+    ).toEqual([fast]);
+    expect(
+      (await publicSearch({ sortBy: 'duration' }).expect(200)).body.outbound
+        .data[0].id,
+    ).toBe(fast);
+    expect(
+      (
+        await publicSearch({ sortBy: 'departureTime', order: 'desc' }).expect(
+          200,
+        )
+      ).body.outbound.data[0].id,
+    ).toBe(fast);
+  });
+  it('search: infant half-cent rounding and seat requirements match the actual held quote', async () => {
+    const tiny = (
+      await createFlight({
+        flightNumber: 'INFANT',
+        cabins: [{ ...cabin, price: 105, totalSeats: 1 }],
+      }).expect(201)
+    ).body.id;
+    const result = (
+      await publicSearch({
+        passengers: 2,
+        infants: 1,
+        minPriceMinor: 116,
+        maxPriceMinor: 116,
+      }).expect(200)
+    ).body;
+    expect(result.criteria).toMatchObject({
+      adults: 1,
+      infants: 1,
+      seatsRequired: 1,
+    });
+    expect(result.outbound.data.map((f: { id: string }) => f.id)).toEqual([
+      tiny,
+    ]);
+    const held = (
+      await hold({
+        flightId: tiny,
+        passengers: [
+          passenger,
+          { ...passenger, fullName: 'Infant', dateOfBirth: '2098-01-01' },
+        ],
+      }).expect(201)
+    ).body.booking;
+    expect(held.totalAmountMinor).toBe(
+      result.outbound.data[0].cabins[0].totalAmountMinor,
+    );
+    expect(held.segments[0].seatsReserved).toBe(1);
+  });
+  it('search: returns outbound/return options reusable as one atomic round-trip hold', async () => {
+    const returnFlightId = await returnFlight();
+    const result = (
+      await publicSearch({ returnDate: '2099-01-24' }).expect(200)
+    ).body;
+    expect(result.inbound.data.map((f: { id: string }) => f.id)).toEqual([
+      returnFlightId,
+    ]);
+    const held = (
+      await hold({
+        flightId: result.outbound.data[0].id,
+        returnFlightId: result.inbound.data[0].id,
+      }).expect(201)
+    ).body.booking;
+    expect(held.segments).toHaveLength(2);
+    expect(held.totalAmountMinor).toBe(20_000);
+  });
+  it('search: paginates distinct flights with stable boundaries rather than cabin rows', async () => {
+    for (let index = 1; index <= 10; index++)
+      await createFlight({
+        flightNumber: 'PAGE' + index,
+        cabins: [cabin, { ...cabin, category: 'Business', price: 20_000 }],
+      }).expect(201);
+    const first = (await publicSearch().expect(200)).body.outbound;
+    const second = (await publicSearch({ page: 2 }).expect(200)).body.outbound;
+    expect(first.meta).toEqual({
+      page: 1,
+      limit: 10,
+      total: 11,
+      totalPages: 2,
+    });
+    expect(first.data).toHaveLength(10);
+    expect(second.data).toHaveLength(1);
+    const ids = [...first.data, ...second.data].map(
+      (f: { id: string }) => f.id,
+    );
+    expect(new Set(ids).size).toBe(11);
+  });
+  it.each([
+    { departureAirportCode: 'ZZ$' },
+    { arrivalAirportCode: 'CAI' },
+    { departureDate: '2099-02-30' },
+    { departureDate: '2020-01-01' },
+    { returnDate: '2099-01-14' },
+    { passengers: 0 },
+    { passengers: 1, children: 1 },
+    { passengers: 3, infants: 2 },
+    { cabinCategory: 'Unknown' },
+    { minPriceMinor: 100, maxPriceMinor: 99 },
+    { page: 0 },
+    { returnPage: Number.MAX_SAFE_INTEGER },
+    { sortBy: 'secret' },
+    { unknown: 'value' },
+  ])('search: rejects invalid/operator/unsupported input %j', async (query) => {
+    await publicSearch(query).expect(400);
+  });
+  it('search: validates unknown official airports and detail identifiers without exposing private records', async () => {
+    await publicSearch({ arrivalAirportCode: 'ZZZ' }).expect(404);
+    await request(app.getHttpServer()).get('/api/flights/invalid').expect(400);
+    await request(app.getHttpServer())
+      .get('/api/flights/' + new Types.ObjectId())
+      .expect(404);
+    await request(app.getHttpServer())
+      .get(
+        '/api/flights/search?departureAirportCode=CAI&arrivalAirportCode=JFK&departureDate=2099-01-15&page[$gt]=1',
+      )
+      .expect(400);
+  });
+  it('itinerary search: defaults to current first city/start/last day and reuses shared round-trip options', async () => {
+    const returnFlightId = await returnFlight();
+    const trip = await itinerary(Array.from({ length: 10 }, () => 'new_york'));
+    const result = (
+      await traveler
+        .get('/api/itineraries/' + trip.id + '/flights')
+        .query({ originAirportCode: 'CAI', roundTrip: true })
+        .expect(200)
+    ).body;
+    expect(result.selection).toEqual({
+      cityId: 'new_york',
+      destinationAirportCodes: ['JFK'],
+      departureDate: '2099-01-15',
+      returnDate: '2099-01-24',
+    });
+    expect(result.outbound.data.map((f: { id: string }) => f.id)).toEqual([
+      flightId,
+    ]);
+    expect(result.inbound.data.map((f: { id: string }) => f.id)).toEqual([
+      returnFlightId,
+    ]);
+    expect(await bookings.countDocuments()).toBe(0);
+  });
+  it('itinerary search: recomputes destination after day reordering and accepts explicit date/filter overrides', async () => {
+    const paris = (
+      await createFlight({
+        flightNumber: 'PARIS',
+        arrivalAirportCode: 'CDG',
+        arrivalLocalDateTime: '2099-01-15T16:00',
+      }).expect(201)
+    ).body.id;
+    const trip = await itinerary(['new_york', 'paris']);
+    await traveler
+      .patch('/api/itineraries/' + trip.id + '/days/reorder')
+      .send({ dayIds: [trip.days[1].id, trip.days[0].id] })
+      .expect(200);
+    await traveler
+      .patch('/api/itineraries/' + trip.id)
+      .send({ startDate: '2099-01-16' })
+      .expect(200);
+    const url = '/api/itineraries/' + trip.id + '/flights';
+    const defaults = (
+      await traveler.get(url).query({ originAirportCode: 'CAI' }).expect(200)
+    ).body;
+    expect(defaults.selection.cityId).toBe('paris');
+    expect(defaults.outbound.meta.total).toBe(0);
+    const overridden = (
+      await traveler
+        .get(url)
+        .query({
+          originAirportCode: 'CAI',
+          departureDate: '2099-01-15',
+          minPriceMinor: 10_000,
+          maxPriceMinor: 10_000,
+        })
+        .expect(200)
+    ).body;
+    expect(overridden.outbound.data.map((f: { id: string }) => f.id)).toEqual([
+      paris,
+    ]);
+  });
+  it('itinerary search: requires owner traveler access and rejects empty/overridden destinations', async () => {
+    const trip = await itinerary();
+    const url = '/api/itineraries/' + trip.id + '/flights';
+    await request(app.getHttpServer())
+      .get(url)
+      .query({ originAirportCode: 'CAI' })
+      .expect(401);
+    await moderator.get(url).query({ originAirportCode: 'CAI' }).expect(403);
+    await traveler
+      .patch('/api/itineraries/' + trip.id)
+      .send({ visibility: 'public' })
+      .expect(200);
+    await other.get(url).query({ originAirportCode: 'CAI' }).expect(404);
+    await traveler
+      .get(url)
+      .query({ originAirportCode: 'CAI', arrivalAirportCode: 'CDG' })
+      .expect(400);
+    await traveler
+      .get(url)
+      .query({ originAirportCode: 'CAI', roundTrip: 'not-boolean' })
+      .expect(400);
+    const empty = await itinerary([]);
+    await traveler
+      .get('/api/itineraries/' + empty.id + '/flights')
+      .query({ originAirportCode: 'CAI' })
+      .expect(400);
+  });
+  it('search: documents anonymous public routes and numeric defaults alongside owned itinerary searches', async () => {
+    const document = (
+      await request(app.getHttpServer()).get('/api/docs-json').expect(200)
+    ).body;
+    expect(document.paths['/api/flights/search'].get.security ?? []).toEqual(
+      [],
+    );
+    expect(document.paths['/api/flights/{id}'].get.security ?? []).toEqual([]);
+    const privateOperation =
+      document.paths['/api/itineraries/{id}/flights'].get;
+    expect(privateOperation.security).toContainEqual({ giu_session: [] });
+    expect(
+      privateOperation.parameters.find(
+        (p: { name: string }) => p.name === 'passengers',
+      ).schema,
+    ).toMatchObject({ type: 'number', default: 1 });
   });
 });
