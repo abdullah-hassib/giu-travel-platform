@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { CURRENCIES } from '../../itineraries/reference-data';
+import { CURRENCIES } from '../../reference-data/official-reference';
 import { SummaryCategory } from '../budgeting.constants';
 import { NativeBudgetSummaryDto } from './budget-summary.dto';
 

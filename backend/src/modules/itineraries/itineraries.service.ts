@@ -25,7 +25,7 @@ import {
   UpdateTransportDto,
 } from '../budgeting/dto/budget.dto';
 import { NativeBudgetSummaryDto } from '../budgeting/dto/budget-summary.dto';
-import { CITIES, COUNTRIES } from './reference-data';
+import { CITIES, COUNTRIES } from '../reference-data/official-reference';
 import {
   CreateActivityDto,
   CreateDayDto,

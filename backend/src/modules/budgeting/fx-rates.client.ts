@@ -1,6 +1,6 @@
 import { Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { CURRENCIES } from '../itineraries/reference-data';
+import { CURRENCIES } from '../reference-data/official-reference';
 
 export interface DailyFxRates {
   rateDate: string;

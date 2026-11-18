@@ -1,5 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
-import { CURRENCIES } from '../itineraries/reference-data';
+import { CURRENCIES } from '../reference-data/official-reference';
 import { SummaryCategory } from './budgeting.constants';
 import { NativeBudgetSummaryDto } from './dto/budget-summary.dto';
 import { ConvertedBudgetSummaryDto } from './dto/converted-budget-summary.dto';
