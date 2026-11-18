@@ -1,3 +1,10 @@
+# November 18 team event-delivery integration
+
+- Both Adham #31/b269bd1 and Omar #36/7f359e7 are present. Integrated Omar with current develop, preserving author history and current reference/hotel/auth contracts. Reconciled the duplicate audit controller with the existing guarded ten-row API and durable event-ID archive fallback.
+- Actual committed account, hotel/provider/moderation and refund events now feed real notifications/audit. Transactional acknowledgment, rollback, recipient deduplication and concurrent consumers are exercised against disposable MongoDB replica sets. No producer schema or shared database migration was performed.
+- Typecheck, build, lint and all 185 unit tests passed. The six targeted suites passed 59 HTTP/database cases; the fresh remaining-suite run passed 499 cases. Together with the 22-case hotel/payment/delivery suite, all 521 HTTP/database tests in 22 suites passed. No private configuration, shared database or live Stripe resource was used.
+- Hassib approved the concrete FLIGHT_INTEGRATION_PLAN.md: canonical IATA reference identifiers, provider-first moderator assignment and existing payment contracts. Adham's missing mandatory flight interfaces/APIs will be implemented in separate verified slices. Live Stripe acceptance remains blocked by private test setup.
+
 # November 14, 2026 — Implementation status
 
 ## November 18 available-work completion and complete application smoke

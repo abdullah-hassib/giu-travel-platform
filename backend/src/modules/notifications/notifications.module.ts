@@ -1,4 +1,14 @@
 import { Module } from '@nestjs/common';
-/** Deliberately empty Milestone 1 feature boundary; no business logic yet. */
-@Module({})
+import { MongooseModule } from '@nestjs/mongoose';
+import { AuthModule } from '../auth/auth.module';
+import { Notification, NotificationSchema } from './schemas/notification.schema';
+import { NotificationsController } from './notifications.controller';
+import { NotificationsService } from './notifications.service';
+
+@Module({
+  imports: [AuthModule, MongooseModule.forFeature([{ name: Notification.name, schema: NotificationSchema }])],
+  controllers: [NotificationsController],
+  providers: [NotificationsService],
+  exports: [NotificationsService],
+})
 export class NotificationsModule {}

@@ -22,7 +22,7 @@ export class AdminHistoryController {
     summary:
       'GEN-07: read retained committed administrative actions, ten per page',
     description:
-      'Combines real account/provider/moderation action envelopes with actor/action/inclusive UTC-date filters. Newest occurredAt first, stable event-ID tie-breaker. Read-only and positively projected. outcome=committed describes the action; deliveryStatus separately shows consumer acknowledgment. Omar notification/audit delivery remains pending.',
+      'Combines retained account/provider/moderation envelopes and durable audit copies, deduplicated by event ID, with actor/action/inclusive UTC-date filters. Ten per page, newest first. outcome=committed describes the action; deliveryStatus separately shows acknowledgment. No raw payload or metadata is exposed.',
   })
   @ApiOkResponse({ type: AdminHistoryPageDto })
   @ApiBadRequestResponse({
