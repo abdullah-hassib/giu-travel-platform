@@ -6,6 +6,8 @@
 
 > **Audit scope:** The live private GitHub repository `abdullah-hassib/giu-travel-platform` is empty as of this audit: zero commits/remote branches. An earlier local `giu-travel-backend-foundation.zip` exists with scaffolding but is not pushed or verified. Thus all mandatory business requirements below remain **not done in GitHub**.
 
+> **Current-state note - November 18:** The dated audit and unchecked boxes describe the earlier November 15 snapshot. Requirement statements below are preserved. Use the [current Hassib coverage](../backend/docs/M1_BACKEND_COVERAGE.md) and [completed-slice handoff](../backend/docs/M1_INDEPENDENT_HANDOFF.md) for actual merged work, verification and dependencies.
+
 ## Status key
 
 - `[ ]` not implemented/verified in the live repository
