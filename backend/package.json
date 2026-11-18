@@ -15,7 +15,8 @@
     "test:cov": "jest --coverage",
     "test:e2e": "jest --config ./test/jest-e2e.json --runInBand",
     "typecheck": "tsc --noEmit",
-    "seed:admin": "ts-node src/scripts/seed-admin.ts"
+    "seed:admin": "ts-node src/scripts/seed-admin.ts",
+    "seed:airports": "ts-node src/scripts/seed-airports.ts"
   },
   "dependencies": {
     "@nestjs/common": "^10.4.0",
@@ -27,6 +28,7 @@
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
     "joi": "^17.13.0",
+    "luxon": "^3.7.2",
     "mongoose": "^8.9.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
@@ -37,6 +39,7 @@
     "@nestjs/testing": "^10.4.0",
     "@types/express": "^4.17.21",
     "@types/jest": "^29.5.14",
+    "@types/luxon": "^3.7.6",
     "@types/node": "^20.17.0",
     "@types/supertest": "^6.0.2",
     "@typescript-eslint/eslint-plugin": "^7.18.0",
