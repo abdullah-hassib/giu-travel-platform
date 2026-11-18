@@ -4,6 +4,8 @@ November 18, 2026. Hassib approved the provider/assignment/outbox design and sub
 
 ## Implemented APIs
 
+GEN-07 history reads: `GET /api/admin/audit-logs` combines retained committed account, hotel-status and moderation envelopes with actor/action/UTC-date filters and ten-row pagination. A positive projection exposes safe IDs/time/targets and separate outcome/delivery acknowledgment, without raw payloads. See [ADMIN_AUDIT_HISTORY.md](ADMIN_AUDIT_HISTORY.md) for producer coverage, retention and Omar handoff.
+
 ACC-17 hotel reads: `GET /api/admin/bookings?type=hotel` supports status, inclusive booking-start `from`/`to` and page filters. It returns a sanitized, read-only ten-row projection and derives effective expiry/completion without mutating bookings. Flight or omitted type returns 503 pending compatible flight code. See [ADMIN_BOOKINGS.md](ADMIN_BOOKINGS.md); combined ACC-17 remains incomplete.
 
 ACC-15 hotel actions: `PATCH /api/admin/providers/hotel/:id/deactivate` and `/reactivate` accept an empty body and return 204 with no-store. Administrator/session/forced-password guards and strict type/ID/body validation apply. They delegate to MK's existing transaction and event producer; repeated commands produce no duplicate event. Existing Confirmed bookings stay valid; inactive hotels reject new holds. Invalid type/ID/body is 400, missing hotel 404 and unavailable airline integration 503. These routes do not claim Omar delivered their events.
@@ -32,7 +34,7 @@ Register one ProviderAdministrationAdapter per kind under ADMINISTRATION_PROVIDE
 
 The separate ModeratorAssignmentsModule has no Auth or provider imports. Adham/MK may import it without creating a module cycle and call ModeratorAssignmentsService.getForModerator(authenticatedUserId). The result contains only providerType and providerId, or null. Their routes must independently enforce the appropriate moderator role and compare this assignment with the resource's owning provider. Never treat a client provider ID as authorization or grant access to a legacy moderator lacking an assignment. Existing users are preserved without fabricated assignments.
 
-MK's PATCH /api/hotels/:id/status implements hotel deactivation/reactivation, search/new-hold restrictions and preservation of Confirmed bookings. Its real payment/refund interaction is covered by the hotel integration tests. Canonical admin provider-route aliases and airline behavior remain unfinished. MK's CommunityModule provides reports/content moderation, including persistent itinerary hiding. Admin booking and audit-read APIs remain unfinished.
+MK's PATCH /api/hotels/:id/status implements hotel deactivation/reactivation, search/new-hold restrictions and preservation of Confirmed bookings. The required admin hotel provider routes delegate to that same service. MK's CommunityModule provides reports/content moderation, including persistent itinerary hiding. Hotel booking administration and committed-action history reads are implemented; airline behavior and combined booking reads remain integration dependencies.
 
 ## Omar's pending event handoff
 
