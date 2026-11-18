@@ -6,6 +6,7 @@ import {
 } from '../../common/events/outbox-event.schema';
 import { AuthModule } from '../auth/auth.module';
 import { HotelsModule } from '../hotels/hotels.module';
+import { RefundsModule } from '../refunds/refunds.module';
 import { Hotel, HotelSchema } from '../hotels/schemas/hotel.schema';
 import { HotelRoom, HotelRoomSchema } from '../hotels/schemas/room.schema';
 import { HotelBookingsController } from './hotel-bookings.controller';
@@ -21,6 +22,7 @@ import {
   imports: [
     AuthModule,
     HotelsModule,
+    RefundsModule,
     MongooseModule.forFeature([
       { name: HotelBooking.name, schema: HotelBookingSchema },
       { name: Hotel.name, schema: HotelSchema },
