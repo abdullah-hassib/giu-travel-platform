@@ -196,7 +196,7 @@ describe('Complete AppModule with disposable configuration and no environment-fi
     expect(result.data).toEqual([]);
   });
 
-  it('runs real admin actions, hotel booking reads and committed history with missing flight integration explicit', async () => {
+  it('runs real admin actions, both booking-domain reads and committed history', async () => {
     const admin = request.agent(app.getHttpServer());
     await admin
       .post('/api/auth/login')
@@ -208,7 +208,13 @@ describe('Complete AppModule with disposable configuration and no environment-fi
     expect(
       (await admin.get('/api/admin/bookings?type=hotel').expect(200)).body.data,
     ).toEqual([]);
-    await admin.get('/api/admin/bookings?type=flight').expect(503);
+    expect(
+      (await admin.get('/api/admin/bookings?type=flight').expect(200)).body
+        .data,
+    ).toEqual([]);
+    expect(
+      (await admin.get('/api/admin/bookings').expect(200)).body.data,
+    ).toEqual([]);
     await admin
       .patch(`/api/admin/accounts/${targetId}/suspend`)
       .send({})

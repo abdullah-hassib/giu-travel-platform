@@ -1,3 +1,10 @@
+# November 19 combined administration booking reads
+
+- Completed ACC-17 hotel, flight and omitted-type combined lists over actual schemas. One global newest/type/ID order, ten-row page and total follows the union, with inclusive booking-start date and effective-status filters. Preserved hotel identity/date behavior; added flight owner display-name projection, outbound/final dates, hidden hold references and no private passenger/payment/policy fields.
+- The read service never mutates booking lifecycle, inventory or payments. Tests cover mixed pages, collection ID ties, unknown owners, local-date boundaries, round-trip final arrival, privacy, empty domains and both moderator-role denials. Full-AppModule smoke verifies explicit flight and combined reads instead of the superseded 503 gate.
+- Typecheck, build, lint and 209 unit tests passed. Four targeted suites passed all 99 HTTP/database cases; the fresh remaining run passed 488 cases: 587 total across 23 suites. Uses actual schemas/guards, full-AppModule smoke and disposable databases/configuration, with no private .env, shared database or live payment resource.
+- Remaining team backend work is flight schedule/capacity operations, whole-flight cancellation/refunds, assigned-moderator booking/passenger reads, e-ticket/CSV/logo uploads and further admin profile audit producers. Live Stripe test acceptance still needs private setup. See ADMIN_BOOKINGS.md.
+
 # November 19 flight search and itinerary reuse
 
 - Added public GET /api/flights/search and /api/flights/:id with official airport-local calendar dates, active/Scheduled/future filtering, actual booked/held inventory, grouped eligible cabins, matching infant rounding, inclusive party-fare/cabin filters, sorting and stable ten-flight pages with independent return options. Privileged creation retains method-level role/assignment/forced-password checks.

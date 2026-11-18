@@ -19,6 +19,7 @@ import { HttpErrorFilter } from '../src/common/filters/http-error.filter';
 import { AdministrationModule } from '../src/modules/administration/administration.module';
 import { hashPassword } from '../src/modules/auth/security/password';
 import { HotelBooking } from '../src/modules/hotel-bookings/schemas/hotel-booking.schema';
+import { FlightBooking } from '../src/modules/flight-bookings/schemas/flight-booking.schema';
 import { addDays, todayUtc } from '../src/modules/hotels/stay-rules';
 import { User } from '../src/modules/users/schemas/user.schema';
 
@@ -36,13 +37,14 @@ class TestConfigurationModule {}
 type Agent = ReturnType<typeof request.agent>;
 const day = (offset: number) => addDays(todayUtc(), offset);
 
-describe('ACC-17 explicit hotel administration read projection', () => {
+describe('ACC-17 hotel, flight and globally combined administration read projection', () => {
   jest.setTimeout(180_000);
   let app: INestApplication;
   let server: MongoMemoryServer;
   let connection: Connection;
   let users: Model<User>;
   let bookings: Model<HotelBooking>;
+  let flights: Model<FlightBooking>;
   let admin: Agent;
   let traveler: Agent;
   let moderator: Agent;
@@ -80,6 +82,7 @@ describe('ACC-17 explicit hotel administration read projection', () => {
     connection = app.get(getConnectionToken());
     users = app.get(getModelToken(User.name));
     bookings = app.get(getModelToken(HotelBooking.name));
+    flights = app.get(getModelToken(FlightBooking.name));
     await Promise.all(
       connection.modelNames().map((name) => connection.model(name).init()),
     );
@@ -159,6 +162,59 @@ describe('ACC-17 explicit hotel administration read projection', () => {
   }
   function list(query: Record<string, unknown> = {}, agent = admin) {
     return agent.get('/api/admin/bookings').query({ type: 'hotel', ...query });
+  }
+
+  function flight(overrides: Partial<FlightBooking> = {}) {
+    return flights.create({
+      userId: ownerId,
+      bookingReference: 'FLT-' + new Types.ObjectId(),
+      status: 'Confirmed',
+      segments: [
+        {
+          flightId: new Types.ObjectId(),
+          airlineId: new Types.ObjectId(),
+          airlineName: 'Booked Airline',
+          flightNumber: 'GIU101',
+          departureAirportCode: 'CAI',
+          arrivalAirportCode: 'JFK',
+          departureLocalDate: day(5),
+          departureAt: new Date(day(5) + 'T12:00:00Z'),
+          arrivalAt: new Date(day(5) + 'T20:00:00Z'),
+          cabinCategory: 'Economy',
+          seatsReserved: 1,
+          baseFareMinor: 10_000,
+          segmentTotalMinor: 10_000,
+        },
+      ],
+      passengers: [
+        {
+          fullName: 'Private Passenger',
+          dateOfBirth: new Date('1990-01-01'),
+          passengerType: 'Adult',
+          identityDocumentNumber: 'PRIVATE-PASSPORT',
+          extraBags: 0,
+          extraBaggageFeeMinor: 0,
+        },
+      ],
+      totalAmountMinor: 10_000,
+      currency: 'USD',
+      holdExpiresAt: new Date(Date.now() + 600_000),
+      policySnapshot: {
+        type: 'flight',
+        cancellation: [{ daysBefore: 0, refundPercent: 50 }],
+        baggage: [
+          {
+            segmentId: 'outbound',
+            cabin: 'Economy',
+            freeBagCount: 1,
+            maxWeightKg: 23,
+            extraBagPriceMinor: 2500,
+            maxExtraBags: 2,
+          },
+        ],
+      },
+      ...overrides,
+    });
   }
 
   it('requires an active unrestricted administrator', async () => {
@@ -279,10 +335,14 @@ describe('ACC-17 explicit hotel administration read projection', () => {
     expect(await bookings.find().sort({ _id: 1 }).lean()).toEqual(before);
   });
 
-  it('refuses unavailable flight/combined lists instead of presenting a partial list as complete', async () => {
+  it('returns available flight/combined lists when a domain is empty', async () => {
     await booking();
-    await admin.get('/api/admin/bookings').expect(503);
-    await list({ type: 'flight' }).expect(503);
+    expect(
+      (await admin.get('/api/admin/bookings').expect(200)).body.meta.total,
+    ).toBe(1);
+    expect((await list({ type: 'flight' }).expect(200)).body.meta.total).toBe(
+      0,
+    );
     expect((await list().expect(200)).body.meta.total).toBe(1);
   });
 
@@ -318,12 +378,238 @@ describe('ACC-17 explicit hotel administration read projection', () => {
       operation.parameters.map((entry: { name: string }) => entry.name),
     ).toEqual(expect.arrayContaining(['type', 'status', 'from', 'to', 'page']));
     expect(operation.security).toBeDefined();
-    expect(operation.responses['503']).toBeDefined();
+    expect(operation.responses['200']).toBeDefined();
+    expect(
+      doc.components.schemas.AdminBookingViewDto.properties.type.enum,
+    ).toEqual(['hotel', 'flight']);
     expect(
       doc.components.schemas.AdminBookingViewDto.properties,
     ).toHaveProperty('provider');
     expect(
       doc.components.schemas.AdminBookingViewDto.properties,
     ).not.toHaveProperty('paymentId');
+  });
+  it('combines domains before a single global order, page and count', async () => {
+    const rows: { id: string; type: string; timestamp: number }[] = [];
+    for (let index = 0; index < 6; index++) {
+      const hotelDate = new Date(Date.UTC(2030, 0, 1, 0, index * 2));
+      const flightDate = new Date(hotelDate.getTime() + 60_000);
+      const hotel = await booking({ createdAt: hotelDate });
+      const air = await flight({ createdAt: flightDate });
+      rows.push(
+        {
+          id: hotel._id.toString(),
+          type: 'hotel',
+          timestamp: hotelDate.getTime(),
+        },
+        {
+          id: air._id.toString(),
+          type: 'flight',
+          timestamp: flightDate.getTime(),
+        },
+      );
+    }
+    const first = (await admin.get('/api/admin/bookings').expect(200)).body;
+    const second = (await admin.get('/api/admin/bookings?page=2').expect(200))
+      .body;
+    expect(first.meta).toEqual({
+      page: 1,
+      limit: 10,
+      total: 12,
+      totalPages: 2,
+    });
+    expect(first.data).toHaveLength(10);
+    expect(second.data).toHaveLength(2);
+    expect(
+      [...first.data, ...second.data].map(
+        (row: { id: string; type: string }) => row.type + ':' + row.id,
+      ),
+    ).toEqual(
+      rows
+        .sort((a, b) => b.timestamp - a.timestamp)
+        .map((row) => row.type + ':' + row.id),
+    );
+    expect((await list().expect(200)).body.meta.total).toBe(6);
+    expect((await list({ type: 'flight' }).expect(200)).body.meta.total).toBe(
+      6,
+    );
+  });
+  it('uses type as a stable tie-breaker even when distinct collections share the same ID', async () => {
+    const createdAt = new Date('2030-01-01T00:00:00Z');
+    const hotel = await booking({ createdAt });
+    await flight({ _id: hotel._id, createdAt });
+    const result = (await admin.get('/api/admin/bookings').expect(200)).body;
+    expect(result.meta.total).toBe(2);
+    expect(result.data.map((row: { type: string }) => row.type)).toEqual([
+      'flight',
+      'hotel',
+    ]);
+  });
+  it('positively projects flight data, current owner name and saved provider while hiding hold/payment/passenger data', async () => {
+    const air = await flight({
+      status: 'Pending Payment',
+      bookingReference: 'HOLD-PRIVATE',
+      paymentId: 'PRIVATE-PAYMENT',
+    });
+    const result = await list({ type: 'flight' })
+      .expect(200)
+      .expect('Cache-Control', 'no-store');
+    expect(result.body.data).toEqual([
+      {
+        id: air._id.toString(),
+        type: 'flight',
+        reference: null,
+        user: { id: ownerId.toString(), name: 'Current Name' },
+        provider: {
+          id: air.segments[0].airlineId.toString(),
+          name: 'Booked Airline',
+        },
+        dates: { from: day(5), to: day(5) },
+        amountMinor: 10_000,
+        currency: 'USD',
+        status: 'Pending Payment',
+        createdAt: air.createdAt.toISOString(),
+      },
+    ]);
+    expect(JSON.stringify(result.body)).not.toMatch(
+      /PRIVATE|password|passengers|policy|payment|holdExpiresAt|dateOfBirth|email|roles/,
+    );
+    await flights.updateOne(
+      { _id: air._id },
+      { $set: { userId: new Types.ObjectId() } },
+    );
+    expect(
+      (await list({ type: 'flight' }).expect(200)).body.data[0].user.name,
+    ).toBe('Deleted user');
+  });
+  it('applies combined status/start-date filters to flight local dates and hotel check-in dates inclusively', async () => {
+    const hotel = await booking();
+    const air = await flight();
+    const segments = air
+      .toObject()
+      .segments.map((segment) => ({
+        ...segment,
+        departureLocalDate: day(15),
+        departureAt: new Date(day(15) + 'T12:00:00Z'),
+        arrivalAt: new Date(day(15) + 'T20:00:00Z'),
+      }));
+    const later = await flight({ segments });
+    await booking({ status: 'Cancelled', checkIn: day(10), checkOut: day(12) });
+    const result = (
+      await admin
+        .get('/api/admin/bookings')
+        .query({ status: 'Confirmed', from: day(5), to: day(15) })
+        .expect(200)
+    ).body;
+    expect(result.meta.total).toBe(3);
+    expect(new Set(result.data.map((row: { id: string }) => row.id))).toEqual(
+      new Set([hotel._id.toString(), air._id.toString(), later._id.toString()]),
+    );
+    expect(
+      (
+        await admin
+          .get('/api/admin/bookings')
+          .query({ from: day(5), to: day(5) })
+          .expect(200)
+      ).body.meta.total,
+    ).toBe(2);
+  });
+  it('derives flight expiry/completion without modifying either collection or releasing counters', async () => {
+    const expired = await flight({
+      status: 'Pending Payment',
+      holdExpiresAt: new Date(Date.now() - 1000),
+    });
+    const completed = await flight();
+    await flights.updateOne(
+      { _id: completed._id },
+      {
+        $set: {
+          'segments.0.departureAt': new Date(Date.now() - 86_400_000),
+          'segments.0.arrivalAt': new Date(Date.now() - 1000),
+        },
+      },
+    );
+    const beforeFlights = await flights.find().sort({ _id: 1 }).lean();
+    const beforeHotels = await bookings.find().lean();
+    expect(
+      (await admin.get('/api/admin/bookings?status=Expired').expect(200)).body
+        .data[0].id,
+    ).toBe(expired._id.toString());
+    expect(
+      (await admin.get('/api/admin/bookings?status=Completed').expect(200)).body
+        .data[0].id,
+    ).toBe(completed._id.toString());
+    expect(await flights.find().sort({ _id: 1 }).lean()).toEqual(beforeFlights);
+    expect(await bookings.find().lean()).toEqual(beforeHotels);
+  });
+  it('denies non-admin access to the newly combined and flight views', async () => {
+    await users.create({
+      email: 'airline@example.com',
+      fullName: 'Airline Mod',
+      roles: ['airline_moderator'],
+      passwordHash,
+    });
+    const airlineMod = await signIn('airline@example.com');
+    for (const agent of [traveler, moderator, airlineMod]) {
+      await agent.get('/api/admin/bookings').expect(403);
+      await agent.get('/api/admin/bookings?type=flight').expect(403);
+    }
+    await request(app.getHttpServer()).get('/api/admin/bookings').expect(401);
+  });
+
+  it('uses the outbound local date and waits for final round-trip arrival before displaying Completed', async () => {
+    const air = await flight();
+    const outbound = air.toObject().segments[0];
+    await flights.updateOne(
+      { _id: air._id },
+      {
+        $set: {
+          totalAmountMinor: 20_000,
+          segments: [
+            {
+              ...outbound,
+              departureAt: new Date(day(4) + 'T22:30:00Z'),
+              departureLocalDate: day(5),
+            },
+            {
+              ...outbound,
+              flightId: new Types.ObjectId(),
+              flightNumber: 'GIU102',
+              departureAirportCode: 'JFK',
+              arrivalAirportCode: 'CAI',
+              departureLocalDate: day(10),
+              departureAt: new Date(day(10) + 'T17:00:00Z'),
+              arrivalAt: new Date(day(11) + 'T00:30:00Z'),
+            },
+          ],
+        },
+      },
+    );
+    const result = (
+      await list({ type: 'flight', from: day(5), to: day(5) }).expect(200)
+    ).body;
+    expect(result.data[0]).toMatchObject({
+      id: air._id.toString(),
+      dates: { from: day(5), to: day(11) },
+      amountMinor: 20_000,
+      status: 'Confirmed',
+    });
+    await flights.updateOne(
+      { _id: air._id },
+      {
+        $set: {
+          'segments.0.departureAt': new Date(Date.now() - 2 * 86_400_000),
+          'segments.0.arrivalAt': new Date(Date.now() - 86_400_000),
+        },
+      },
+    );
+    expect(
+      (await list({ type: 'flight', status: 'Completed' }).expect(200)).body
+        .meta.total,
+    ).toBe(0);
+    expect(
+      (await list({ type: 'flight', status: 'Confirmed' }).expect(200)).body
+        .meta.total,
+    ).toBe(1);
   });
 });

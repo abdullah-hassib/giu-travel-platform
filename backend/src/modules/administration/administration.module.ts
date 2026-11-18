@@ -13,11 +13,21 @@ import { User, UserSchema } from '../users/schemas/user.schema';
 import { AdministrationController } from './administration.controller';
 import { ProviderActionsController } from './provider-actions.controller';
 import { AdminBookingsController } from './admin-bookings.controller';
-import { HotelAdminBookingsService } from './hotel-admin-bookings.service';
+import { AdminBookingsService } from './admin-bookings.service';
+import {
+  FlightBooking,
+  FlightBookingSchema,
+} from '../flight-bookings/schemas/flight-booking.schema';
 import { AdminHistoryController } from './admin-history.controller';
 import { AdminHistoryService } from './admin-history.service';
-import { AuditLog, AuditLogSchema } from '../audit-logging/schemas/audit-log.schema';
-import { DomainEventOutbox, DomainEventOutboxSchema } from '../domain-events/schemas/domain-event-outbox.schema';
+import {
+  AuditLog,
+  AuditLogSchema,
+} from '../audit-logging/schemas/audit-log.schema';
+import {
+  DomainEventOutbox,
+  DomainEventOutboxSchema,
+} from '../domain-events/schemas/domain-event-outbox.schema';
 import {
   OutboxEvent,
   OutboxEventSchema,
@@ -47,6 +57,7 @@ import {
     MongooseModule.forFeature([
       { name: User.name, schema: UserSchema },
       { name: HotelBooking.name, schema: HotelBookingSchema },
+      { name: FlightBooking.name, schema: FlightBookingSchema },
       { name: UserSession.name, schema: UserSessionSchema },
       { name: AdminOutboxEvent.name, schema: AdminOutboxEventSchema },
       { name: OutboxEvent.name, schema: OutboxEventSchema },
@@ -62,7 +73,7 @@ import {
   ],
   providers: [
     AdministrationService,
-    HotelAdminBookingsService,
+    AdminBookingsService,
     AdminHistoryService,
     ModeratorProvisioningService,
     AdministrationProviderAdapters,
@@ -73,7 +84,10 @@ import {
           kind: 'hotel' as const,
           lockExisting: hotels.lockExisting.bind(hotels),
         },
-        { kind: 'airline' as const, lockExisting: airlines.lockExisting.bind(airlines) },
+        {
+          kind: 'airline' as const,
+          lockExisting: airlines.lockExisting.bind(airlines),
+        },
       ],
       inject: [HotelsService, AirlinesService],
     },

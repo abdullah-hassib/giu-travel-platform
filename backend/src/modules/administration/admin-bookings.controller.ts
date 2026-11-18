@@ -1,14 +1,8 @@
-import {
-  Controller,
-  Get,
-  Query,
-  ServiceUnavailableException,
-} from '@nestjs/common';
+import { Controller, Get, Query } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiOkResponse,
   ApiOperation,
-  ApiServiceUnavailableResponse,
   ApiTags,
 } from '@nestjs/swagger';
 import { Authenticated } from '../../common/auth/authenticated.decorator';
@@ -16,34 +10,26 @@ import {
   AdminBookingsPageDto,
   AdminBookingsQueryDto,
 } from './dto/admin-bookings.dto';
-import { HotelAdminBookingsService } from './hotel-admin-bookings.service';
+import { AdminBookingsService } from './admin-bookings.service';
 
 @ApiTags('Administration')
 @Controller('admin')
 export class AdminBookingsController {
-  constructor(private readonly hotels: HotelAdminBookingsService) {}
+  constructor(private readonly bookings: AdminBookingsService) {}
   @Get('bookings')
   @Authenticated('admin')
   @ApiOperation({
     summary:
-      'ACC-17: read hotel bookings with type=hotel, status and start-date filters',
+      'ACC-17: read hotel, flight or globally combined bookings with status and start-date filters',
     description:
-      'Ten per page, newest created first with ID tie-breaker. Effective expiry/completion is calculated without writing booking state. Flight and combined results are unavailable until Adham supplies the flight integration; omitted type or type=flight returns 503 rather than a misleading partial list.',
+      'Omitted type combines both domains before one global sort/page/count. Ten per page, newest created first with type/ID tie-breakers. Expiry/completion is calculated read-only. Inclusive date filters use hotel check-in or outbound flight departure local date; flight date-to is final arrival UTC calendar date. Only identifiers, names, dates, amount/currency, reference and status are returned.',
   })
   @ApiOkResponse({ type: AdminBookingsPageDto })
   @ApiBadRequestResponse({
     description:
       'Invalid page/type/status/date, reversed range or unknown fields',
   })
-  @ApiServiceUnavailableResponse({
-    description:
-      'Flight/combined booking integration unavailable; use type=hotel for the available hotel list',
-  })
   list(@Query() query: AdminBookingsQueryDto): Promise<AdminBookingsPageDto> {
-    if (query.type !== 'hotel')
-      throw new ServiceUnavailableException(
-        'Flight and combined booking lists are unavailable; use type=hotel for hotel bookings',
-      );
-    return this.hotels.list(query);
+    return this.bookings.list(query);
   }
 }
