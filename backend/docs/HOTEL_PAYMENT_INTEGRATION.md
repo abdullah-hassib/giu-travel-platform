@@ -8,14 +8,14 @@ November 18, 2026. Integrates MK's PR #23, the moderation/media consistency repa
 - `PaymentsModule` registers the real `HotelPaymentAdapter`. Policy acceptance and the authoritative held quote feed payment creation. Only signed, reconciled payment success may confirm the actual hotel booking and create its reference (PAY-01/02, HTL-17).
 - Hotel cancellation calls the real `RefundsService.enqueueCancellation` inside its transaction, using the saved booking policy. Reservation failure rolls back cancellation and its event. Repeated cancellation returns 409 and cannot create another refund (PAY-03/04).
 - Success received after a released hold keeps that booking Expired and reserves a full refund; a replacement booking keeps the room. No expired hold is restored.
-- MK's hotel status operation preserves Confirmed bookings and allows their normal cancellation after deactivation. New holds against that provider are rejected. Canonical `/api/admin/providers/...` aliases remain to be added.
+- MK's hotel status operation preserves Confirmed bookings and allows normal cancellation after deactivation. New holds against that provider are rejected. Required `/api/admin/providers/hotel/:id/deactivate` and `/reactivate` commands delegate to that same transaction.
 - Report/content moderation includes the reviewed persistent itinerary hide flag, owner republish prevention, and post-image cleanup after commit. No duplicate report engine was introduced.
 
 ## Repeatable verification
 
 `test/hotel-payment-integration.e2e-spec.ts` loads the actual administration, hotel, booking, payment, policy and refund modules without replacing either adapter registry or `RefundsService`. It uses a disposable local MongoDB replica set. Only external Stripe requests are controlled; webhook signatures use the official Stripe SDK. No private `.env`, shared Atlas data or live Stripe resources are used.
 
-Seven cases cover real moderator provisioning/password restrictions/assignment isolation, missing provider rollback, policy acceptance requirements, owner privacy, invalid signatures, confirmation/replay/inventory, saved-policy cancellation/refunds, cancellation rollback, late payment compensation and provider deactivation. The existing contract-fixture suites remain useful for flight and failure cases; they are not evidence of an actual flight implementation.
+Nineteen cases cover real moderator/provider assignment, policies/privacy/signatures, confirmation/replay/inventory, saved-policy cancellation/refunds, rollback, late compensation, required provider commands and atomic account-deactivation/payment races. Existing contract-fixture suites remain useful for unavailable flight/failure cases; they do not establish an actual flight implementation.
 
 Run the standard backend checks and `npm run test:e2e`; on this Windows machine the disposable MongoDB harness uses the installed `mongod.exe` through `MONGOMS_SYSTEM_BINARY`, with runtime downloads disabled. Test setup never starts the shared application against Atlas.
 
@@ -29,4 +29,4 @@ Run the standard backend checks and `npm run test:e2e`; on this Windows machine 
 6. With private Stripe test configuration, initiate through `POST /api/payments`; complete the test payment and deliver Stripe's genuine signed event. Swagger cannot manufacture verified success.
 7. Read booking/payment status, then cancel through `POST /api/hotel-bookings/:id/cancel` and inspect the refund as its owner.
 
-Live Stripe verification remains pending because credentials are unconfigured. Missing flight adapters fail safely with 503. Omar's notification/audit consumer has not been supplied; committed outbox events are pending delivery, not delivered notifications. Activity image integration, itinerary provider searches, remaining admin read operations and the account-deactivation booking guard are separate unfinished work.
+Live Stripe verification remains pending because credentials are unconfigured. Missing compatible flight adapters fail safely with 503. Omar's consumer has not been supplied; pending delivery is separate from committed action history. Activity images, itinerary hotel search, explicit hotel admin reads, action history and the hotel account-deactivation guard are now implemented. See M1_INDEPENDENT_HANDOFF.md for merged slices and exact remaining dependencies.

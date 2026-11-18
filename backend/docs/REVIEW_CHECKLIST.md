@@ -1,12 +1,16 @@
-# Human review / blockers
+# Milestone 1 verification and remaining review - November 18
 
-- [x] Review official GIU 14-page project PDF (copy at `docs/requirements/official-giu-project-description.pdf`).
-- [ ] Provide and inspect the Excel requirements workbook and reference CSV datasets (not available).
-- [ ] Agree on proposed cross-module contracts and role/state semantics.
-- [ ] `npm install` succeeds with network access; commit generated `package-lock.json` after review.
-- [ ] `npm run build`, `npm run typecheck`, `npm run lint`, `npm test`, `npm run test:e2e` all pass.
-- [ ] Supply private Atlas URI in local `.env` (not in Git), grant Atlas network access, start server and verify live database readiness.
-- [ ] Start server and check `http://localhost:3000/api/docs` and `.../api/docs-json`.
-- [ ] Review any required security controls and missing Milestone 1 entities against specification before feature work.
+- [x] Inspect the official project PDF, linked requirements workbook and four authoritative reference datasets.
+- [x] Preserve the approved payment/provider/assignment boundaries; integrate MK's actual supplied adapters and preserve his commit history.
+- [x] Keep reproducible package/lock files; current installed dependencies pass typecheck/build/lint.
+- [x] Pass 185 unit tests and all 493 HTTP/database cases in fresh sequential processes, including actual AppModule/Swagger/auth/admin smoke.
+- [x] Use disposable test databases/configuration and explicitly owned temporary image directories; never load private .env files in verification.
+- [x] Keep .env ignored and absent from tracked files; maintain accurate AI disclosure and requirement/demo docs.
+- [x] Apply the separately approved shared reference seed and verify source records (earlier reference slice).
+- [x] Commit and merge the available verified slices into develop under the user's explicit authorization.
+- [ ] Integrate compatible flight searches/provider/settlement/read interfaces and preserve the official reference service (initial PR #31 is unmerged).
+- [ ] Integrate Omar delivery/archive and other owners' reviewed administrative producers while retaining history.
+- [ ] Configure private Stripe test credentials and verify actual external payment/refund/webhook behavior.
+- [ ] Complete live HTTPS/browser and shared Atlas payment demonstration; then review full M1 acceptance before a main release.
 
-Do **not** treat the current authentication slice or other module skeletons as a complete Milestone 1 submission or merge them to `main` without approval.
+See [M1_INDEPENDENT_HANDOFF.md](M1_INDEPENDENT_HANDOFF.md) and [M1_BACKEND_COVERAGE.md](M1_BACKEND_COVERAGE.md) for current behavior and limits. Earlier dated implementation sections are historical snapshots. The full team milestone is incomplete and main is unchanged.

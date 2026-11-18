@@ -4,6 +4,8 @@ See [root README](../README.md), [implementation status](docs/IMPLEMENTATION_STA
 
 Current Hassib-owned mandatory coverage and remaining work are tracked in [Milestone 1 backend coverage](docs/M1_BACKEND_COVERAGE.md).
 
+The [November 18 completed-slice handoff](docs/M1_INDEPENDENT_HANDOFF.md) lists merged PRs, exact validation and remaining flight/Omar/Stripe dependencies. Available admin, itinerary image/search and hotel deactivation work is implemented and verified.
+
 ## Quick start
 
 ```bash
@@ -56,7 +58,7 @@ Never put credentials into Git, AI chats, or the project ZIP. Run only once afte
 Kuwaity's reference-data slice provides public countries, cities, airports, attractions and currency lookup/search APIs, a reusable ReferenceDataService and the four official CSV exports. Run `npm run seed:reference` for offline integrity validation. Database writes require `--apply` and private process configuration; use the shared database only after the required team approval. See [reference API, seed commands and team handoff](docs/REFERENCE_DATA.md). Until this edition is seeded, reference lookups return 503. Existing user/itinerary/FX validation retains the same source identifiers through the shared snapshot.
 ## Administration services
 
-This branch adds administrator-only moderator creation with exactly one provider assignment and forced first-login password change, plus the suspension/reactivation commands reused from draft PR #9. Creation requires an actual provider adapter and returns 503 when it is absent. Account status, session revocation and pending events commit atomically; audit/notification delivery awaits Omar. See [administration API, demo and integration handoff](docs/ADMINISTRATION.md). Hassib explicitly authorized merging these tested services on November 18. Concrete integrations remain necessary for full requirement acceptance.
+Merged administration includes account listing/reset/status, real hotel moderator assignment/password enforcement, required hotel provider commands, an explicit hotel booking list and retained committed action history. Account status/session/event mutations are transactional. Hotel adapters are concrete; compatible airline adapters and Omar delivery remain pending. See [administration routes and handoff](docs/ADMINISTRATION.md), [hotel booking reads](docs/ADMIN_BOOKINGS.md) and [action history](docs/ADMIN_AUDIT_HISTORY.md).
 
 ## Hotels, bookings, reviews, blog and moderation
 
@@ -64,14 +66,14 @@ Hotel inventory, search, concurrency-safe bookings, reviews, the blog, content r
 
 ## Important
 
-Policy review/acceptance routes are implemented against the approved flight/hotel adapter boundary. Actual booking adapters remain pending and an unconfigured integration returns 503. See [policy API and transaction contract](docs/PAYMENT_POLICIES.md).
+Policy review/acceptance and payment/refund services are connected to MK's real hotel booking adapter. Missing compatible flight integration returns 503. See [policy contract](docs/PAYMENT_POLICIES.md) and [hotel integration](docs/HOTEL_PAYMENT_INTEGRATION.md).
 
-USD is selected as the flight/hotel/payment/refund platform currency. The internal test-mode Stripe gateway provides validated intent/refund operations and signed raw-event verification. The settlement service adds payment create/retry/status, raw signed webhook processing, expiry reconciliation and refund status, with durable cancellation/late-payment refund reservations. Private Stripe setup, actual booking adapters and notification delivery remain pending. See [settlement API, team contracts and demo](docs/PAYMENT_SETTLEMENT.md) and [gateway setup](docs/STRIPE_GATEWAY.md).
+USD is the platform currency. Payment create/retry/status, signed raw webhooks, durable event recovery, expiry and policy-derived cancellation/late refunds are implemented with actual hotel transactions. Private live Stripe test verification, compatible flight settlement and notification delivery remain pending. See [settlement API and demo](docs/PAYMENT_SETTLEMENT.md) and [private gateway setup](docs/STRIPE_GATEWAY.md).
 
 ACC-09 profile editing supports name, international phone and the official supported preferred currencies through `PATCH /api/users/me`. All fields validate before an atomic save. Existing accounts return null phone/currency until set. See [profile inputs and Swagger demo](docs/API_CONVENTIONS.md#own-profile-acc-09).
 
 Budget and intercity transport CRUD include native day/category/group totals and preferred-currency summary conversion with daily database rates and fallback. Public daily FXRatesAPI access has been verified without a key. An optional private `FXRATES_API_KEY` can be configured for authenticated quota. See [budgeting API contract and demo](docs/BUDGETING.md).
 
-The itinerary core now supports private CRUD, ordered days/activities, public discovery and private cloning. See [itinerary API contract and demo](docs/ITINERARIES.md) for requests, reference provenance, ownership, concurrency and remaining budgeting/media integration work.
+Itineraries support private CRUD, ordered days/activities, public discovery, budgets/FX, owned city-group hotel search and activity images with private/public access and independent clone files. Flight search remains pending. See [itinerary API/demo](docs/ITINERARIES.md), [hotel search](docs/ITINERARY_HOTEL_SEARCH.md) and [images](docs/ACTIVITY_IMAGES.md). [Self-deactivation](docs/ACCOUNT_DEACTIVATION.md) atomically revokes sessions, blocks upcoming Confirmed hotel stays and protects against payment races; flight checks await compatible code.
 
-The official workbook is readable through its linked Drive file. Authentication has been checked with compilation, lint, unit tests, HTTP tests and an isolated real MongoDB process. Production cookie flags are tested; local HTTP development uses non-Secure cookies. Live Atlas and HTTPS browser verification remain pending. Other required features remain incomplete, and reference data/integration contracts still need coordination. See the dated implementation status for requirement coverage and remaining work.
+The official workbook and reference CSVs have been inspected. Typecheck/build/lint, 185 unit and 493 HTTP/database tests passed, including complete AppModule/Swagger/auth/admin smoke with validated disposable configuration and no .env loading. Production cookie flags are tested; local HTTP uses non-Secure cookies. Live Stripe, shared Atlas payment transactions and HTTPS/browser demonstration remain unverified; shared reference seeding was separately verified. See the current handoff for cross-team dependencies and documented cleanup/retention limits.
