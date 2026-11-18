@@ -21,6 +21,7 @@ import {
   todayUtc,
 } from '../hotels/stay-rules';
 import { PLATFORM_CURRENCY } from '../payments/platform-money';
+import { RefundsService } from '../refunds/refunds.service';
 import { PublicUser } from '../users/users.service';
 import { bookingView } from './booking-view';
 import {
@@ -59,6 +60,7 @@ export class HotelBookingsService {
     @InjectModel(OutboxEvent.name) private readonly outbox: Model<OutboxEvent>,
     @InjectConnection() private readonly connection: Connection,
     private readonly hotelAccess: HotelsService,
+    private readonly refunds: RefundsService,
   ) {}
 
   /**
@@ -254,7 +256,21 @@ export class HotelBookingsService {
         throw new ConflictException(
           'The reservation changed; reload and try again',
         );
-      // The payment service issues the Stripe refund (PAY-03) for refundMinor.
+      // Reserve the authorized refund atomically with cancellation. If payment
+      // linkage or refund authorization fails, the entire cancellation rolls back.
+      if (!updated.paymentId) {
+        throw new ConflictException('Confirmed booking has no linked payment');
+      }
+      await this.refunds.enqueueCancellation(
+        {
+          paymentId: updated.paymentId,
+          bookingId: updated._id.toString(),
+          userId: updated.userId.toString(),
+          amountMinor: refund.refundMinor,
+          reason: 'user_cancellation',
+        },
+        session,
+      );
       await this.outbox.create(
         [
           outboxEvent('hotel_booking.cancelled', user.id, {
