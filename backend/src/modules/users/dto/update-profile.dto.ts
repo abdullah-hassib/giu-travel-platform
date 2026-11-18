@@ -1,7 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { IsIn, IsPhoneNumber, IsString, Length, ValidateIf } from 'class-validator';
-import { CURRENCIES } from '../../itineraries/reference-data';
+import { CURRENCIES } from '../../reference-data/official-reference';
 
 export class UpdateProfileDto {
   @ApiPropertyOptional({ minLength: 2, maxLength: 100 })

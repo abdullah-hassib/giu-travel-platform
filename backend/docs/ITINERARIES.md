@@ -19,7 +19,7 @@ This is a working itinerary core. Budget entries and transport costs are impleme
 
 The read-only `reference-data.ts` snapshot contains the eight country and eight city records from the official reference workbook linked in the project PDF, last modified November 1, 2026. The source workbook is titled “Mock Data”; the records were supplied by GIU, and were not fabricated for this implementation. All source country codes, city IDs, names, country relationships and supported currency codes are preserved. [Official reference workbook](https://drive.google.com/file/d/1SlKUTRqlHuBJAMC-Z-QOZzSrzKpGHT_TgQUI5gVm-BA/view)
 
-This snapshot is used only for itinerary validation, display labels and keyword matching. Kuwaity's reference-data module, database seeding and APIs remain separate work. Future integration must retain the same identifiers and reconcile snapshot updates with his authoritative service. This slice does not claim GEN-12 seeding completion.
+The reference-data feature now owns the single shared snapshot and validates it against the four official CSVs. Itinerary validation, display labels and keyword matching consume that shared snapshot directly; the old itinerary import path remains compatible. Kuwaity's seeding/APIs and reusable database lookups are documented in REFERENCE_DATA.md. Existing itinerary records retain their original identifiers. Shared Atlas application and Adham/MK service integration remain separate verification steps.
 
 ## Routes and access
 

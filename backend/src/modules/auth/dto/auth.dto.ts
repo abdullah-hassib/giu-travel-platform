@@ -2,7 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { Equals, IsBoolean, IsEmail, IsString, Length, Matches, MaxLength, MinLength } from 'class-validator';
 import { USER_ROLES, USER_STATUSES, UserRole, UserStatus } from '../../users/schemas/user.schema';
-import { CURRENCIES } from '../../itineraries/reference-data';
+import { CURRENCIES } from '../../reference-data/official-reference';
 
 export class AuthUserDto {
   @ApiPropertyOptional({ default: false, description: 'Restricted session: identity, refresh, logout and password change only' })

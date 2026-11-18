@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Schema as MongoSchema, Types } from 'mongoose';
-import { CITY_IDS, COUNTRY_CODES, CURRENCIES } from '../reference-data';
+import { CITY_IDS, COUNTRY_CODES, CURRENCIES } from '../../reference-data/official-reference';
 import {
   BUDGET_CATEGORIES,
   BudgetCategory,

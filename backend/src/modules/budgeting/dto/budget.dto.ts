@@ -2,7 +2,7 @@ import { ApiProperty, PartialType } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { IsIn, IsMongoId, IsString, MinLength } from 'class-validator';
 import { ActivityCostDto } from '../../itineraries/dto/itinerary.dto';
-import { CITY_IDS } from '../../itineraries/reference-data';
+import { CITY_IDS } from '../../reference-data/official-reference';
 import { BUDGET_CATEGORIES, BudgetCategory } from '../budgeting.constants';
 
 export class CreateBudgetDto extends ActivityCostDto {

@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
-import { CURRENCIES } from '../../itineraries/reference-data';
+import { CURRENCIES } from '../../reference-data/official-reference';
 
 export const USER_ROLES = ['traveler', 'admin', 'airline_moderator', 'hotel_moderator'] as const;
 export type UserRole = (typeof USER_ROLES)[number];

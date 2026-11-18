@@ -20,7 +20,7 @@ import {
   ValidateIf,
   ValidateNested,
 } from 'class-validator';
-import { CITY_IDS, COUNTRY_CODES, CURRENCIES } from '../reference-data';
+import { CITY_IDS, COUNTRY_CODES, CURRENCIES } from '../../reference-data/official-reference';
 
 const trim = ({ value }: { value: unknown }) =>
   typeof value === 'string' ? value.trim() : value;
