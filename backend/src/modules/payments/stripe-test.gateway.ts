@@ -8,7 +8,15 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Stripe from 'stripe';
-import { assertPlatformMoney, PLATFORM_CURRENCY } from './platform-money';
+import {
+  isStripeIntentStatus,
+  StripeIntentStatus,
+} from './stripe-intent-status';
+import {
+  assertPlatformMoney,
+  assertStripePayableMoney,
+  PLATFORM_CURRENCY,
+} from './platform-money';
 
 export const STRIPE_TEST_CLIENT_FACTORY = Symbol('STRIPE_TEST_CLIENT_FACTORY');
 export type StripeTestClientFactory = (key: string) => Stripe;
@@ -35,7 +43,7 @@ export interface GatewayIntent {
   paymentId: string;
   amountMinor: number;
   currency: typeof PLATFORM_CURRENCY;
-  status: Stripe.PaymentIntent.Status;
+  status: StripeIntentStatus;
   // Sensitive, transient output for an authorized Elements/retry response only.
   // The consuming payment service must never persist or log it.
   clientSecret: string | null;
@@ -55,6 +63,8 @@ export interface VerifiedGatewayEvent {
   createdAt: string;
   resourceType: 'payment_intent' | 'refund' | null;
   resourceId: string | null;
+  paymentId: string | null;
+  refundId: string | null;
 }
 
 function recordId(value: string): string {
@@ -73,6 +83,14 @@ function stripeId(value: string, prefix: 'pi' | 're'): void {
   ) {
     throw new BadRequestException('Invalid Stripe resource identifier');
   }
+}
+
+function metadataRecordId(metadata: unknown, key: string): string | null {
+  if (!metadata || typeof metadata !== 'object') return null;
+  const value = (metadata as Record<string, unknown>)[key];
+  return typeof value === 'string' && /^[a-f\d]{24}$/i.test(value)
+    ? value.toLowerCase()
+    : null;
 }
 
 @Injectable()
@@ -100,13 +118,7 @@ export class StripeTestGateway {
 
   private validatePayment(input: PaymentIntentInput): string {
     const paymentId = recordId(input.paymentId);
-    assertPlatformMoney(input.amountMinor, input.currency);
-    // Stripe's USD limits are distinct from the project's positive-price rule.
-    if (input.amountMinor < 50 || input.amountMinor > 99_999_999) {
-      throw new BadRequestException(
-        'Stripe USD payment amounts must be between 50 and 99999999 cents',
-      );
-    }
+    assertStripePayableMoney(input.amountMinor, input.currency);
     return paymentId;
   }
 
@@ -133,15 +145,6 @@ export class StripeTestGateway {
     intentId?: string,
   ): GatewayIntent {
     const paymentId = recordId(input.paymentId);
-    const statuses: Stripe.PaymentIntent.Status[] = [
-      'requires_payment_method',
-      'requires_confirmation',
-      'requires_action',
-      'processing',
-      'requires_capture',
-      'canceled',
-      'succeeded',
-    ];
     if (
       !intent ||
       !/^pi_[A-Za-z0-9]+$/.test(intent.id) ||
@@ -151,7 +154,7 @@ export class StripeTestGateway {
       intent.amount !== input.amountMinor ||
       intent.metadata?.payment_id !== paymentId ||
       intent.capture_method !== 'automatic' ||
-      !statuses.includes(intent.status) ||
+      !isStripeIntentStatus(intent.status) ||
       (intent.client_secret !== null &&
         typeof intent.client_secret !== 'string') ||
       (intent.status === 'succeeded' &&
@@ -375,6 +378,8 @@ export class StripeTestGateway {
     ) {
       throw new BadRequestException('Invalid Stripe event resource');
     }
+    const metadata = object && 'metadata' in object ? object.metadata : null;
+    const paymentId = metadataRecordId(metadata, 'payment_id');
     return {
       eventId: event.id,
       type: event.type,
@@ -382,6 +387,8 @@ export class StripeTestGateway {
       resourceType,
       resourceId:
         resourceType && object && 'id' in object ? String(object.id) : null,
+      paymentId,
+      refundId: metadataRecordId(metadata, 'refund_id'),
     };
   }
 }
