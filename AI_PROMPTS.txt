@@ -283,3 +283,13 @@ How the output was used: Rechecked develop c831891 and all remote branches. Comb
 Reported verification: Typecheck, build and lint passed. Fourteen unit suites / 177 tests and eleven HTTP/database suites / 387 tests passed together. The CSV fixture was fixed before the final passing run. Gateway/booking contract-fixture limits remain explicit. No shared database or real Stripe mutation was made in this integration slice.
 Scope limits: User's explicit merge direction supersedes the earlier draft-only decision. Concrete team adapters and notification delivery remain pending and fail safely with 503 when absent. Stripe credentials remain unconfigured according to the user. Merging services does not establish end-to-end completion. Further provider administration, audit history and report/content work continues in separate feature branches.
 ================================================
+
+================================================
+Date: 2026-11-18
+Student: Hassib (human review required)
+Tool: ChatGPT
+Related requirements: GEN-10 moderation; ITN-20 itinerary visibility; BLG-04 post deletion; GEN-08 media storage
+Prompt / request (summary): Review the newly opened team pull requests, fix suitable review findings and explain why payments/administration integration is blocked.
+How the output was used: Created a separate repair branch based on MK's hotel/community PR #23 and a draft review PR. Added an independent moderator-hidden itinerary flag, set it during admin hide, prevented republishing through owner updates, and excluded hidden itineraries from public discovery/author listings. Moved blog-post filesystem deletion after successful MongoDB transaction commit for both author deletion and admin moderation. Added a real HTTP regression scenario for admin hide followed by owner republish attempt.
+Verification and limits: Changes are source-level proposals for teammate review; ChatGPT could inspect GitHub code but could not clone the private repository or execute typecheck, build, lint, Jest or e2e tests in this environment. Integration with the stacked payments/refunds PRs, moderator provider adapters, and notification/audit consumer remains unresolved. Best-effort post-commit file cleanup may leave orphan media if the process stops after commit; a durable cleanup queue is a later hardening option. No credentials were used or changed; nothing was merged into develop.
+================================================

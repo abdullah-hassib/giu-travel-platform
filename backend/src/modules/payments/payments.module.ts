@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { AuthModule } from '../auth/auth.module';
+import { HotelBookingsModule } from '../hotel-bookings/hotel-bookings.module';
+import { HotelPaymentAdapter } from '../hotel-bookings/hotel-payment.adapter';
 import {
   BOOKING_PAYMENT_ADAPTERS,
   BookingPaymentAdapters,
@@ -30,6 +32,7 @@ import { PaymentReconciliationWorker } from './payment-reconciliation.worker';
     StripeGatewayModule,
     AuthModule,
     RefundsModule,
+    HotelBookingsModule,
     MongooseModule.forFeature([
       { name: PolicyAcceptance.name, schema: PolicyAcceptanceSchema },
       { name: Payment.name, schema: PaymentSchema },
@@ -46,7 +49,11 @@ import { PaymentReconciliationWorker } from './payment-reconciliation.worker';
     BookingPoliciesService,
     PaymentsService,
     PaymentReconciliationWorker,
-    { provide: BOOKING_PAYMENT_ADAPTERS, useValue: [] },
+    {
+      provide: BOOKING_PAYMENT_ADAPTERS,
+      useFactory: (hotel: HotelPaymentAdapter) => [hotel],
+      inject: [HotelPaymentAdapter],
+    },
   ],
   exports: [StripeGatewayModule],
 })
