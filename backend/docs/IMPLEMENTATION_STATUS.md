@@ -1,5 +1,11 @@
 # November 14, 2026 — Implementation status
 
+## November 18 administrative action history (GEN-07 read API)
+
+- Added GET /api/admin/audit-logs over actual retained account/hotel-status/moderation envelopes. Requires active administrator access, validates actor/action/inclusive UTC date/page filters, combines ten-row pagination/counts in one aggregation, and positively projects identifiers/time/target. Committed action outcome is separated from delivery acknowledgment; raw payloads and private fields are excluded.
+- The existing source schemas have no TTL and the current handoff acknowledges delivery in place. The read API therefore works with the committed records already available, without implementing Omar's consumer or changing shared schemas/events. ADMIN_AUDIT_HISTORY.md documents retention before any future queue purge, archive/consumer integration and the currently supported producers; additional owners' provider-profile actions still need reviewed producer coverage.
+- Typecheck/build/lint and 185 unit tests passed. Fresh sequential HTTP/database runs passed 19 payment integration and 470 other cases (489 total). Eight new actual-module cases cover real committed actions, all nine known mappings, system-event exclusion, delivery acknowledgment retention, combined pagination/filters, projection/read-only behavior, rollback, guards, invalid input and Swagger. Removed one unused test import before the passing lint run. No private configuration, shared Atlas or external API was used.
+
 ## November 18 atomic deactivation and hotel booking guard (ACC-12 partial)
 
 - Moved the existing self-deactivation route to an account lifecycle transaction: status/version and owner session deletion commit together. An upcoming/ongoing Confirmed hotel stay returns 409 with the account/session preserved; ended/cancelled stays do not block. No hotel booking record is mutated by this guard.

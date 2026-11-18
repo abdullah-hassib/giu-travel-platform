@@ -12,6 +12,12 @@ import { AdministrationController } from './administration.controller';
 import { ProviderActionsController } from './provider-actions.controller';
 import { AdminBookingsController } from './admin-bookings.controller';
 import { HotelAdminBookingsService } from './hotel-admin-bookings.service';
+import { AdminHistoryController } from './admin-history.controller';
+import { AdminHistoryService } from './admin-history.service';
+import {
+  OutboxEvent,
+  OutboxEventSchema,
+} from '../../common/events/outbox-event.schema';
 import {
   HotelBooking,
   HotelBookingSchema,
@@ -38,16 +44,19 @@ import {
       { name: HotelBooking.name, schema: HotelBookingSchema },
       { name: UserSession.name, schema: UserSessionSchema },
       { name: AdminOutboxEvent.name, schema: AdminOutboxEventSchema },
+      { name: OutboxEvent.name, schema: OutboxEventSchema },
     ]),
   ],
   controllers: [
     AdministrationController,
     ProviderActionsController,
     AdminBookingsController,
+    AdminHistoryController,
   ],
   providers: [
     AdministrationService,
     HotelAdminBookingsService,
+    AdminHistoryService,
     ModeratorProvisioningService,
     AdministrationProviderAdapters,
     {
