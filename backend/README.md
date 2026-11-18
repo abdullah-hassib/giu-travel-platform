@@ -54,15 +54,15 @@ Never put credentials into Git, AI chats, or the project ZIP. Run only once afte
 ## Official reference data
 
 Kuwaity's reference-data slice provides public countries, cities, airports, attractions and currency lookup/search APIs, a reusable ReferenceDataService and the four official CSV exports. Run `npm run seed:reference` for offline integrity validation. Database writes require `--apply` and private process configuration; use the shared database only after the required team approval. See [reference API, seed commands and team handoff](docs/REFERENCE_DATA.md). Until this edition is seeded, reference lookups return 503. Existing user/itinerary/FX validation retains the same source identifiers through the shared snapshot.
-## Administration candidate
+## Administration services
 
-This branch adds administrator-only moderator creation with exactly one provider assignment and forced first-login password change, plus the suspension/reactivation commands reused from draft PR #9. Creation requires an actual provider adapter and returns 503 when it is absent. Account status, session revocation and pending events commit atomically; audit/notification delivery awaits Omar. See [administration API, demo and integration handoff](docs/ADMINISTRATION.md). Keep this candidate draft until the concrete integrations pass.
+This branch adds administrator-only moderator creation with exactly one provider assignment and forced first-login password change, plus the suspension/reactivation commands reused from draft PR #9. Creation requires an actual provider adapter and returns 503 when it is absent. Account status, session revocation and pending events commit atomically; audit/notification delivery awaits Omar. See [administration API, demo and integration handoff](docs/ADMINISTRATION.md). Hassib explicitly authorized merging these tested services on November 18. Concrete integrations remain necessary for full requirement acceptance.
 
 ## Important
 
 Policy review/acceptance routes are implemented against the approved flight/hotel adapter boundary. Actual booking adapters remain pending and an unconfigured integration returns 503. See [policy API and transaction contract](docs/PAYMENT_POLICIES.md).
 
-USD is selected as the flight/hotel/payment/refund platform currency. The internal test-mode Stripe gateway provides validated intent/refund operations and signed raw-event verification. The draft settlement candidate adds payment create/retry/status, raw signed webhook processing, expiry reconciliation and refund status, with durable cancellation/late-payment refund reservations. Private Stripe setup, actual booking adapters and notification delivery remain pending. See [settlement API, team contracts and demo](docs/PAYMENT_SETTLEMENT.md) and [gateway setup](docs/STRIPE_GATEWAY.md).
+USD is selected as the flight/hotel/payment/refund platform currency. The internal test-mode Stripe gateway provides validated intent/refund operations and signed raw-event verification. The settlement service adds payment create/retry/status, raw signed webhook processing, expiry reconciliation and refund status, with durable cancellation/late-payment refund reservations. Private Stripe setup, actual booking adapters and notification delivery remain pending. See [settlement API, team contracts and demo](docs/PAYMENT_SETTLEMENT.md) and [gateway setup](docs/STRIPE_GATEWAY.md).
 
 ACC-09 profile editing supports name, international phone and the official supported preferred currencies through `PATCH /api/users/me`. All fields validate before an atomic save. Existing accounts return null phone/currency until set. See [profile inputs and Swagger demo](docs/API_CONVENTIONS.md#own-profile-acc-09).
 

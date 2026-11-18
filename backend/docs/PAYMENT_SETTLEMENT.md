@@ -1,6 +1,6 @@
 # Payment settlement and refunds
 
-November 17, 2026. Candidate for PAY-01/02/03/04 and GEN-11, built on the approved payment/booking design and policy-service candidate. This work stays in draft until concrete booking adapters and Stripe test configuration are verified. It does not implement the flight/hotel modules or Omar's delivery consumer.
+November 17, 2026. Candidate for PAY-01/02/03/04 and GEN-11, built on the approved payment/booking design and policy-service candidate. Hassib explicitly authorized merging the tested services on November 18. Concrete booking adapters and Stripe test configuration still require verification. It does not implement the flight/hotel modules or Omar's delivery consumer.
 
 ## Routes and demo
 

@@ -1,6 +1,6 @@
 # Administration candidate and team handoff
 
-November 18, 2026. Hassib approved the provider/assignment/outbox design before this slice. This branch starts from develop 4723ecb and retains the existing account list and temporary-password reset. It adds moderator provisioning and reuses the suspension/reactivation implementation from draft PR #9 (68628b8). Actual provider implementations and Omar's notification/audit consumer are not available yet, so the candidate remains draft.
+November 18, 2026. Hassib approved the provider/assignment/outbox design before this slice. This branch starts from develop 4723ecb and retains the existing account list and temporary-password reset. It adds moderator provisioning and reuses the suspension/reactivation implementation from draft PR #9 (68628b8). Hassib explicitly authorized merging the tested services on November 18. Actual provider implementations and Omar's notification/audit consumer are still pending.
 
 ## Implemented APIs
 
@@ -40,4 +40,4 @@ Consume only committed envelopes, deduplicate by id, persist the required notifi
 
 With a concrete provider adapter registered: seed/log in as an administrator privately, create a moderator for an existing provider, log in with its temporary password, observe protected-action denial, change the password, then log in again. Suspend/reactivate that account from the administrator session and verify its previous cookies cannot revive. Without adapters, creation intentionally returns 503. The status commands can be exercised on isolated test accounts once the candidate branch is selected; their event delivery is still pending.
 
-Tests load real Administration/Auth modules, guards, DTOs and Swagger with disposable MongoDB replica sets. Provider fixtures make real transactional writes. They cover both roles/kinds, normalized duplicates and races, one-provider uniqueness, missing integration/providers, role/privilege-field denial, temporary-password restrictions, assignment/event rollback and status/session/concurrency behavior. No private .env, shared Atlas or teammate module is accessed. Concrete team integration must be verified before merging this candidate.
+Tests load real Administration/Auth modules, guards, DTOs and Swagger with disposable MongoDB replica sets. Provider fixtures make real transactional writes. They cover both roles/kinds, normalized duplicates and races, one-provider uniqueness, missing integration/providers, role/privilege-field denial, temporary-password restrictions, assignment/event rollback and status/session/concurrency behavior. No private .env, shared Atlas or teammate module is accessed. Concrete team integration must be verified before claiming complete end-to-end acceptance.
