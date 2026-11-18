@@ -6,7 +6,6 @@ import {
   Param,
   Patch,
   Req,
-  ServiceUnavailableException,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -17,7 +16,6 @@ import {
   ApiNotFoundResponse,
   ApiOperation,
   ApiProperty,
-  ApiServiceUnavailableResponse,
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
@@ -30,6 +28,7 @@ import {
 } from '../auth/security/session.guard';
 import { SESSION_COOKIE_NAME } from '../auth/security/session-cookie';
 import { HotelsService } from '../hotels/hotels.service';
+import { AirlinesService } from '../airlines/airlines.service';
 import { AccountStatusActionDto } from './dto/account-status.dto';
 
 export class ProviderActionParamsDto extends IdParamDto {
@@ -49,14 +48,11 @@ export class ProviderActionParamsDto extends IdParamDto {
   description: 'Invalid provider type/ID or unsupported body fields',
 })
 @ApiNotFoundResponse({ description: 'Provider does not exist' })
-@ApiServiceUnavailableResponse({
-  description: 'Airline provider integration has not been supplied',
-})
 @UseGuards(SessionGuard, RolesGuard)
 @Roles('admin')
 @Controller('admin/providers')
 export class ProviderActionsController {
-  constructor(private readonly hotels: HotelsService) {}
+  constructor(private readonly hotels: HotelsService, private readonly airlines: AirlinesService) {}
 
   @Patch(':type/:id/deactivate')
   @HttpCode(204)
@@ -67,7 +63,7 @@ export class ProviderActionsController {
   })
   @ApiNoContentResponse({
     description:
-      'Hotel state and its durable event committed; repeated commands are harmless. Notification delivery remains pending.',
+      'Provider state and durable notification/audit event committed; repeated commands are harmless.',
   })
   async deactivate(
     @Body() _body: AccountStatusActionDto,
@@ -85,7 +81,7 @@ export class ProviderActionsController {
   })
   @ApiNoContentResponse({
     description:
-      'Hotel state and its durable event committed; repeated commands are harmless',
+      'Provider state and durable event committed; repeated commands are harmless',
   })
   async reactivate(
     @Body() _body: AccountStatusActionDto,
@@ -100,10 +96,7 @@ export class ProviderActionsController {
     params: ProviderActionParamsDto,
     active: boolean,
   ): Promise<void> {
-    if (params.type !== 'hotel')
-      throw new ServiceUnavailableException(
-        'Airline provider integration is not configured',
-      );
+    if (params.type === 'airline') return this.airlines.setActive(actorId, params.id, active);
     // The supplied domain service owns the transaction, room fences and outbox.
     await this.hotels.setActive(actorId, params.id, active);
   }

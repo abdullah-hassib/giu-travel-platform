@@ -2,7 +2,7 @@ import { Global, Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getModelToken, MongooseModule } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { MongoMemoryReplSet } from 'mongodb-memory-server-core';
 import { DomainEvent } from '../src/common/contracts/domain-events.contract';
 import { AuditLoggingService } from '../src/modules/audit-logging/audit-logging.service';
@@ -12,6 +12,7 @@ import { DomainEventPublisherService as Publisher } from '../src/modules/domain-
 import { DomainEventOutbox } from '../src/modules/domain-events/schemas/domain-event-outbox.schema';
 import { Notification } from '../src/modules/notifications/schemas/notification.schema';
 import { DomainEventsModule } from '../src/modules/domain-events/domain-events.module';
+import { publishEffects } from '../src/modules/domain-events/publish-effects';
 
 @Global()
 @Module({
@@ -130,5 +131,21 @@ describe('Domain event outbox delivery', () => {
     expect((await outbox.findOne({ id: domainEvent.id }).orFail()).status).toBe('delivered');
     expect(await notifications.countDocuments({ eventId: domainEvent.id })).toBe(2);
     expect(await auditLogs.countDocuments({ eventId: domainEvent.id })).toBe(1);
+  });
+
+  it('delivers a provider action to more than one hundred recipients with exactly one audit action', async () => {
+    const providerId = new Types.ObjectId().toString();
+    await outbox.db.transaction(async (session) => {
+      await publishEffects(publisher, session, 'provider.deactivated', new Types.ObjectId().toString(), {
+        action: 'provider.deactivated', resourceType: 'airline', resourceId: providerId, outcome: 'success',
+      }, Array.from({ length: 101 }, () => ({ recipientId: new Types.ObjectId().toString(), eventType: 'provider.deactivated' as const,
+        resourceType: 'airline', resourceId: providerId, message: 'Provider deactivated; existing Confirmed bookings remain valid.',
+      })));
+    });
+    expect(await consumer.consumePending()).toBe(2);
+    expect(await notifications.countDocuments({ resourceId: providerId })).toBe(101);
+    expect(await auditLogs.countDocuments({ resourceId: providerId })).toBe(1);
+    expect(await consumer.consumePending()).toBe(0);
+    expect(await notifications.countDocuments({ resourceId: providerId })).toBe(101);
   });
 });

@@ -5,6 +5,8 @@ import { AuthModule } from '../auth/auth.module';
 import { User, UserSchema } from '../users/schemas/user.schema';
 import { HotelBookingsModule } from '../hotel-bookings/hotel-bookings.module';
 import { HotelPaymentAdapter } from '../hotel-bookings/hotel-payment.adapter';
+import { FlightBookingsModule } from '../flight-bookings/flight-bookings.module';
+import { FlightPaymentAdapter } from '../flight-bookings/flight-payment.adapter';
 import {
   BOOKING_PAYMENT_ADAPTERS,
   BookingPaymentAdapters,
@@ -34,6 +36,7 @@ import { PaymentReconciliationWorker } from './payment-reconciliation.worker';
     AuthModule,
     RefundsModule,
     HotelBookingsModule,
+    FlightBookingsModule,
     MongooseModule.forFeature([
       { name: User.name, schema: UserSchema },
       { name: PolicyAcceptance.name, schema: PolicyAcceptanceSchema },
@@ -53,8 +56,8 @@ import { PaymentReconciliationWorker } from './payment-reconciliation.worker';
     PaymentReconciliationWorker,
     {
       provide: BOOKING_PAYMENT_ADAPTERS,
-      useFactory: (hotel: HotelPaymentAdapter) => [hotel],
-      inject: [HotelPaymentAdapter],
+      useFactory: (hotel: HotelPaymentAdapter, flight: FlightPaymentAdapter) => [hotel, flight],
+      inject: [HotelPaymentAdapter, FlightPaymentAdapter],
     },
   ],
   exports: [StripeGatewayModule],

@@ -13,6 +13,7 @@ import {
   HotelBookingSchema,
 } from '../hotel-bookings/schemas/hotel-booking.schema';
 import { AccountLifecycleService } from './account-lifecycle.service';
+import { FlightBooking, FlightBookingSchema } from '../flight-bookings/schemas/flight-booking.schema';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { AccountLifecycleService } from './account-lifecycle.service';
       { name: UserSession.name, schema: UserSessionSchema },
       { name: User.name, schema: UserSchema },
       { name: HotelBooking.name, schema: HotelBookingSchema },
+      { name: FlightBooking.name, schema: FlightBookingSchema },
     ]),
   ],
   controllers: [AuthController, UsersController],

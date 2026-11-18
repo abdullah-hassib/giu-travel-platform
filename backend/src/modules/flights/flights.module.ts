@@ -1,4 +1,31 @@
 import { Module } from '@nestjs/common';
-/** Deliberately empty Milestone 1 feature boundary; no business logic yet. */
-@Module({})
+import { MongooseModule } from '@nestjs/mongoose';
+
+import { AuthModule } from '../auth/auth.module';
+import { Airline, AirlineSchema } from '../airlines/schemas/airline.schema';
+import { ReferenceDataModule } from '../reference-data/reference-data.module';
+import { ModeratorAssignmentsModule } from '../administration/moderator-assignments.module';
+import { AirlinesModule } from '../airlines/airlines.module';
+import { DomainEventsModule } from '../domain-events/domain-events.module';
+
+import { Flight, FlightSchema } from './schemas/flight.schema';
+import { FlightsController } from './flights.controller';
+import { FlightsService } from './flights.service';
+
+@Module({
+  imports: [
+    AuthModule,
+    ReferenceDataModule,
+    ModeratorAssignmentsModule,
+    AirlinesModule,
+    DomainEventsModule,
+    MongooseModule.forFeature([
+      { name: Flight.name, schema: FlightSchema },
+      { name: Airline.name, schema: AirlineSchema },
+    ]),
+  ],
+  controllers: [FlightsController],
+  providers: [FlightsService],
+  exports: [FlightsService],
+})
 export class FlightsModule {}

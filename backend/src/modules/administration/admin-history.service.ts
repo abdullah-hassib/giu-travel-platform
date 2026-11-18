@@ -4,6 +4,7 @@ import { Model } from 'mongoose';
 import { OutboxEvent } from '../../common/events/outbox-event.schema';
 import { AdminOutboxEvent } from './schemas/admin-outbox.schema';
 import { AuditLog } from '../audit-logging/schemas/audit-log.schema';
+import { DomainEventOutbox } from '../domain-events/schemas/domain-event-outbox.schema';
 import {
   ACCOUNT_HISTORY_ACTIONS,
   DOMAIN_HISTORY_ACTIONS,
@@ -21,6 +22,7 @@ export class AdminHistoryService {
     private readonly accounts: Model<AdminOutboxEvent>,
     @InjectModel(OutboxEvent.name) private readonly domain: Model<OutboxEvent>,
     @InjectModel(AuditLog.name) private readonly archive: Model<AuditLog>,
+    @InjectModel(DomainEventOutbox.name) private readonly effects: Model<DomainEventOutbox>,
   ) {}
   async list(query: AdminHistoryQueryDto): Promise<AdminHistoryPageDto> {
     if (query.from && query.to && query.from > query.to)
@@ -121,6 +123,18 @@ export class AdminHistoryService {
                   },
                 },
               },
+            ],
+          },
+        },
+        {
+          $unionWith: {
+            coll: this.effects.collection.name,
+            pipeline: [
+              { $match: { version: 1, actorId: { $type: 'string', $ne: '' }, 'payload.audit.action': { $in: [...ADMIN_HISTORY_ACTIONS] }, 'payload.audit.outcome': 'success' } },
+              { $project: {
+                ...common, action: '$payload.audit.action',
+                target: { type: '$payload.audit.resourceType', id: '$payload.audit.resourceId' },
+              } },
             ],
           },
         },

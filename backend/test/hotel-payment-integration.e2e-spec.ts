@@ -688,7 +688,7 @@ describe('MK hotels with Hassib administration, payments and refunds', () => {
     await admin
       .patch(`/api/admin/providers/airline/${hotelId}/deactivate`)
       .send({})
-      .expect(503);
+      .expect(404);
     expect(await outbox.countDocuments({ type: 'hotel.deactivated' })).toBe(0);
     await hold().expect(201);
   });

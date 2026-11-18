@@ -1,3 +1,5 @@
+> Flight integration update: the read aggregation also projects actual successful audit intents in Omar's domain_event_outbox. Airline creation/profile/policies/provider state and flight creation appear immediately, then deduplicate with their delivered audit copy. The existing response, filters, event IDs, positive projection and ten-row page contract remain preserved. Actual flight booking events remain private system history rather than admin actions. See FLIGHT_PAYMENT_INTEGRATION.md.
+
 # Administrative action history (GEN-07 read API)
 
 `GET /api/admin/audit-logs` requires an active administrator session with any mandatory password change completed. It reads retained, actually committed account and domain action envelopes already written by the supplied services. It does not wait for Omar's consumer to display a committed action and does not claim a notification or downstream audit was delivered.

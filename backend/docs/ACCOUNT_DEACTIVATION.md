@@ -1,3 +1,5 @@
+> Flight integration update: the account lifecycle transaction now also checks actual Confirmed flight segments whose arrival is still current/upcoming. The same user/payment write fence serializes flight confirmation and account closure. Real HTTP tests cover blocked closure, post-cancellation closure and concurrent confirmation/closure. See FLIGHT_PAYMENT_INTEGRATION.md. Earlier hotel-only limits below describe the original slice.
+
 # Account deactivation and hotel booking guard (ACC-12)
 
 `DELETE /api/users/me` retains its existing 204/cookie-clearing contract and requires an active session with no mandatory password change pending. `AccountLifecycleService` now commits account status, session-version invalidation and deletion of current owner sessions in one MongoDB transaction. Session cleanup failure rolls back the status change.
