@@ -5,21 +5,23 @@ Scope follows Hassib's personal task allocation and the official GIU PDF/workboo
 | Requirements | Implemented service behavior | Remaining acceptance work |
 | --- | --- | --- |
 | ACC-01/04/05/06/07a/08/09/14/19 | Registration/consent, secure-cookie access/refresh rotation/expiry, lockout, profile, admin list/reset and forced password change. | Live HTTPS browser verification; preserve these working flows during integration. |
-| ACC-11 | Owner checks on itineraries, policy/payment/refund routes; moderator assignment read service. | Concrete booking/provider ownership and admin booking reads. |
-| ACC-12 | Soft deactivation/session revocation and public-itinerary author hiding. | Upcoming Confirmed booking guard and deleted-user rendering in other modules. |
-| ACC-13 | Admin moderator creation, exactly one provider assignment, temporary-password restrictions and atomic event. | Actual airline/hotel existence adapters. Missing configuration returns 503. |
-| ACC-15/16 | Admin suspension/reactivation, session invalidation, idempotency, transaction rollback and durable events. | Provider activation service/callbacks and required notification integration. |
+| ACC-11 | Owner checks on itineraries, policy/payment/refund and actual hotel bookings; real moderator assignments restrict hotel management. | Flight ownership integration and admin booking reads. |
+| ACC-12 | Soft deactivation/session revocation, public-itinerary/blog hiding and deleted-author rendering in MK's comments/reviews. | Upcoming Confirmed booking guard and flight-side integration. |
+| ACC-13 | Admin moderator creation, exactly one provider assignment, temporary-password restrictions and atomic event; real hotel existence adapter connected. | Airline existence adapter. Missing flight configuration returns 503. |
+| ACC-15/16 | Admin suspension/reactivation, session invalidation and events; MK's hotel status operation hides deactivated hotels and prevents new holds while preserving paid reservations. | Canonical admin provider-route aliases, airline state integration and required notification delivery. |
 | ACC-17 | Approved read-only booking projection boundary is documented. | Concrete flight/hotel projections, combined pagination and filters. |
 | ITN-01/03/05/07/08/09/10/14/16/18/20/21 | Private CRUD, ordered days/activities, dates/groups, all cost types, native/preferred-currency summaries, visibility/search and independent cloning. | Preserve current behavior; media and provider searches are separate requirements below. |
-| ITN-12 | Activity CRUD is implemented. | Shared media validation/storage and image attachment/removal. |
-| ITN-25/26 | Itinerary dates/city groups and authoritative reference locations are available. | Reuse MK's hotel and Adham's flight search services once their code is supplied. |
-| PAY-01/02 | Policy review/acceptance and immutable quote binding, owned create/retry/status, signed raw webhook settlement, expiry/recovery and duplicate protection. | Concrete booking/inventory adapters and privately configured Stripe test verification. |
-| PAY-03/04 | Bounded cancellation/late-payment refund reservations, gateway reconciliation, durable notification events and USD enforcement. | Booking cancellation callbacks, provider/booking USD pricing and actual notification delivery. |
+| ITN-12 | Activity CRUD and MK's shared image validation/storage are available. | Activity image attachment/removal and private/clone lifecycle integration. |
+| ITN-25/26 | Itinerary dates/city groups, authoritative reference locations and MK's hotel search are available. | Connect itinerary hotel searches; await Adham's flight search integration. |
+| PAY-01/02 | Policy acceptance, immutable quotes, owned create/retry/status, signed raw webhook settlement, expiry/recovery and duplicate protection; actual hotel bookings/inventory connected. | Flight booking adapter and privately configured live Stripe test verification. |
+| PAY-03/04 | Bounded cancellation/late-payment refunds, reconciliation and USD enforcement; hotel cancellation reserves the real refund atomically using saved policies. | Flight cancellation/pricing integration, live Stripe verification and actual notification delivery. |
 | GEN-07 | Administrative actions produce durable, sanitized transactional records. | Admin history read API and retention/consumer handoff. |
-| GEN-10 | Required administration APIs and ownership boundaries are documented. | Report workflow and content moderation, including actual itinerary integration. |
+| GEN-10 | MK's report workflow and admin content moderation are included; hidden itineraries cannot be republished by their owner. | Preserve verified report/content behavior; admin booking and audit-read APIs remain tracked above. |
 
-The previous 21/36 count described completed integrated requirement rows. Further policy/payment/refund/moderator/status services are implemented and tested, and are being merged at the user's explicit direction. Do not use that old count to suggest the additional implementation is absent; equally, do not mark missing team integrations complete merely because their service interfaces exist.
+The previous 21/36 count described an older set of completed integrated requirement rows. The additional policy/payment/refund/moderator/status services are merged through PR #26. MK's real hotel/community code and reviewed moderation fixes are now composed with those services and independently exercised in the hotel integration tests. Do not reuse the old percentage as a current estimate or count missing team/live integrations as complete.
 
 Kuwaity's separately authorized GEN-12/FLT-02 reference implementation is merged, shared Atlas seeding succeeded and all source records were independently verified. It does not add rows to Hassib's original 36-row allocation. All current synchronous location/currency consumers share the reviewed source; flight/hotel owners must reuse the exported database lookup service.
 
-Priority after merging: provider administration and administrative history, then report/content moderation for owned itinerary content, followed by concrete team adapters, media/search and live payment verification. Optional features and teammate domain implementation remain outside this task.
+Verified together: typecheck/build/lint, 185 unit tests and 434 HTTP/database tests. Seven new cases exercise the real hotel/provider/payment/refund wiring with only external Stripe responses controlled.
+
+Next priorities: remaining admin booking/audit reads and canonical provider routes, itinerary images/hotel searches, the account-deactivation booking guard, then flight and Omar integrations when supplied and live Stripe verification when privately configured. Optional features and teammate domain implementation remain outside this task. See [HOTEL_PAYMENT_INTEGRATION.md](HOTEL_PAYMENT_INTEGRATION.md) for the real hotel wiring and verification limits.

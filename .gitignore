@@ -8,3 +8,6 @@ coverage/
 .DS_Store
 .idea/
 .vscode/
+
+# Uploaded images (GEN-08) are stored on the server, not in Git
+uploads/

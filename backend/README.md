@@ -58,6 +58,10 @@ Kuwaity's reference-data slice provides public countries, cities, airports, attr
 
 This branch adds administrator-only moderator creation with exactly one provider assignment and forced first-login password change, plus the suspension/reactivation commands reused from draft PR #9. Creation requires an actual provider adapter and returns 503 when it is absent. Account status, session revocation and pending events commit atomically; audit/notification delivery awaits Omar. See [administration API, demo and integration handoff](docs/ADMINISTRATION.md). Hassib explicitly authorized merging these tested services on November 18. Concrete integrations remain necessary for full requirement acceptance.
 
+## Hotels, bookings, reviews, blog and moderation
+
+Hotel inventory, search, concurrency-safe bookings, reviews, the blog, content reports and admin moderation are described in [docs/HOTELS_AND_COMMUNITY.md](docs/HOTELS_AND_COMMUNITY.md), with a Swagger demo order and the integration handoffs for payments, administration and notifications. Uploaded JPG/PNG images are stored in `MEDIA_UPLOAD_DIR` (default `./uploads`, ignored by Git) and served from `/api/media/:imageId`.
+
 ## Important
 
 Policy review/acceptance routes are implemented against the approved flight/hotel adapter boundary. Actual booking adapters remain pending and an unconfigured integration returns 503. See [policy API and transaction contract](docs/PAYMENT_POLICIES.md).
