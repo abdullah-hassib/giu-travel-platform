@@ -472,6 +472,31 @@ describe('Blog, community reports and moderation (real HTTP and MongoDB)', () =>
     await author.delete(`/api/posts/${postId}/images/${image.id}`).expect(404);
   });
 
+  it('keeps post images if a moderation transaction rolls back', async () => {
+    const postId = await publish('Keep file on rollback');
+    const uploaded = await author
+      .post(`/api/posts/${postId}/images`)
+      .attach('file', JPG, 'rollback.jpg')
+      .expect(201);
+    const imageUrl = uploaded.body.images[0].url as string;
+    await guest().get(imageUrl).expect(200);
+
+    const failingOutbox = jest
+      .spyOn(outbox, 'create')
+      .mockRejectedValueOnce(new Error('Simulated outbox failure'));
+    try {
+      await admin.delete(`/api/admin/content/post/${postId}`).expect(500);
+    } finally {
+      failingOutbox.mockRestore();
+    }
+
+    // The DB deletion rolled back, so media must still be reachable.
+    await guest().get(`/api/posts/${postId}`).expect(200);
+    await guest().get(imageUrl).expect(200);
+    await admin.delete(`/api/admin/content/post/${postId}`).expect(204);
+    await guest().get(imageUrl).expect(404);
+  });
+
   describe('reports and moderation (GEN-09, GEN-10)', () => {
     it('lets a user report visible content once, with a reason', async () => {
       const postId = await publish('Spam');
