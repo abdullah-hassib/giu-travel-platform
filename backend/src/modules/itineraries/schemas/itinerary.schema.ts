@@ -115,6 +115,10 @@ export class Itinerary {
   @Prop({ type: String, enum: ['private', 'public'], default: 'private' })
   visibility!: 'private' | 'public';
 
+  // Independent from owner-controlled visibility: only administration can hide content.
+  @Prop({ type: Boolean, default: false })
+  moderationHidden!: boolean;
+
   @Prop({
     type: [SchemaFactory.createForClass(ItineraryDay)],
     default: [],
