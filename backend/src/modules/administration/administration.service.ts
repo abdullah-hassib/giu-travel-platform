@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, FilterQuery, Model } from 'mongoose';
 import { randomUUID } from 'node:crypto';
@@ -18,6 +18,29 @@ export class AdministrationService {
     @InjectModel(AdminOutboxEvent.name) private readonly outbox: Model<AdminOutboxEvent>,
     @InjectConnection() private readonly connection: Connection,
   ) {}
+
+  async changeAccountStatus(actorId: string, targetId: string, status: 'active' | 'suspended'): Promise<void> {
+    const id = randomUUID();
+    await this.connection.transaction(async (session) => {
+      const target = await this.users.findById(targetId).session(session).exec();
+      if (!target) throw new NotFoundException('Account not found');
+      if (target.roles.includes('admin')) throw new ForbiddenException('Only travelers and moderators can be suspended or reactivated');
+      if (target.status === 'deactivated') throw new ConflictException('Self-deactivated accounts require a separate recovery policy');
+      if (target.status === status) return;
+
+      const result = await this.users.updateOne({ _id: target._id, status: target.status }, {
+        $set: { status }, $inc: { sessionVersion: 1 },
+      }, { session }).exec();
+      if (result.matchedCount !== 1) throw new ConflictException('Account state changed; retry the operation');
+      await this.sessions.deleteMany({ userId: target._id }).session(session).exec();
+      await this.outbox.create([{
+        id, type: status === 'suspended' ? 'account.suspended' : 'account.reactivated', version: 1,
+        occurredAt: new Date().toISOString(), correlationId: id, actorId,
+        payload: { targetUserId: target._id.toString(), previousStatus: target.status, newStatus: status },
+        status: 'pending',
+      }], { session });
+    });
+  }
 
   async resetPassword(actorId: string, targetId: string, temporaryPassword: string): Promise<void> {
     const passwordHash = await hashPassword(temporaryPassword);

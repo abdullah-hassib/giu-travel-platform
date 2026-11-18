@@ -243,4 +243,165 @@ describe('Administration account list (real HTTP and MongoDB)', () => {
     await member.get('/api/users/me').expect(200);
     expect(await outbox.countDocuments()).toBe(0);
   });
+
+  it.each(['traveler', 'airline_moderator', 'hotel_moderator'])('suspends/reactivates a %s and never revives old sessions', async (role) => {
+    const target = await users.create({ email: 'member@example.com', fullName: 'Member', roles: [role], passwordHash });
+    const member = await signIn(target.email);
+    const admin = await signIn();
+    await admin.patch(`/api/admin/accounts/${target._id}/suspend`).expect(204);
+    expect((await users.findById(target._id).orFail()).status).toBe('suspended');
+    expect(await sessions.countDocuments({ userId: target._id })).toBe(0);
+    await member.get('/api/auth/me').expect(401);
+    await member.post('/api/auth/refresh').expect(401);
+    await member.post('/api/auth/login').send({ email: target.email, password: 'test-password1' }).expect(401);
+    await admin.patch(`/api/admin/accounts/${target._id}/reactivate`).expect(204);
+    expect((await users.findById(target._id).orFail()).status).toBe('active');
+    await member.get('/api/auth/me').expect(401);
+    await member.post('/api/auth/refresh').expect(401);
+    await member.post('/api/auth/login').send({ email: target.email, password: 'test-password1' }).expect(200);
+    const events = await outbox.find().sort({ createdAt: 1 }).lean();
+    expect(events.map((event) => event.type)).toEqual(['account.suspended', 'account.reactivated']);
+    expect(events[0].payload).toEqual({ targetUserId: target._id.toString(), previousStatus: 'active', newStatus: 'suspended' });
+    expect(events[1].payload).toEqual({ targetUserId: target._id.toString(), previousStatus: 'suspended', newStatus: 'active' });
+    expect(events.every((event) => event.status === 'pending')).toBe(true);
+  });
+
+  it.each(['suspend', 'reactivate'])('makes repeated/concurrent %s commands idempotent', async (action) => {
+    const initial = action === 'suspend' ? 'active' : 'suspended';
+    const target = await users.create({ email: 'member@example.com', fullName: 'Member', passwordHash, status: initial });
+    const admin = await signIn();
+    const path = `/api/admin/accounts/${target._id}/${action}`;
+    await Promise.all([admin.patch(path).expect(204), admin.patch(path).expect(204)]);
+    await admin.patch(path).expect(204);
+    expect(await outbox.countDocuments({ 'payload.targetUserId': target._id.toString() })).toBe(1);
+    expect((await users.findById(target._id).orFail()).sessionVersion).toBe(1);
+  });
+
+  it.each(['traveler', 'airline_moderator', 'hotel_moderator'])('prevents a %s from changing account status', async (role) => {
+    await users.create({ email: 'member@example.com', fullName: 'Member', passwordHash, roles: [role] });
+    const target = await users.create({ email: 'target@example.com', fullName: 'Target', passwordHash });
+    const member = await signIn('member@example.com');
+    for (const action of ['suspend', 'reactivate']) {
+      await member.patch(`/api/admin/accounts/${target._id}/${action}`).expect(403);
+    }
+    expect((await users.findById(target._id).orFail()).status).toBe('active');
+    expect(await outbox.countDocuments()).toBe(0);
+  });
+
+  it.each(['suspend', 'reactivate'])('rejects guests, administrator targets and bad IDs for %s', async (action) => {
+    const adminUser = await users.findOne({ email: 'admin@example.com' }).orFail();
+    await request(app.getHttpServer()).patch(`/api/admin/accounts/${adminUser._id}/${action}`).expect(401);
+    const admin = await signIn();
+    await admin.patch(`/api/admin/accounts/${adminUser._id}/${action}`).expect(403);
+    await admin.patch(`/api/admin/accounts/not-an-id/${action}`).expect(400);
+    await admin.patch(`/api/admin/accounts/000000000000000000000000/${action}`).expect(404);
+    expect(await outbox.countDocuments()).toBe(0);
+  });
+
+  it.each(['suspend', 'reactivate'])('preserves self-deactivation on %s', async (action) => {
+    const target = await users.create({ email: 'member@example.com', fullName: 'Member', passwordHash, status: 'deactivated' });
+    const admin = await signIn();
+    await admin.patch(`/api/admin/accounts/${target._id}/${action}`).expect(409);
+    expect((await users.findById(target._id).orFail()).status).toBe('deactivated');
+    expect(await outbox.countDocuments()).toBe(0);
+  });
+
+  it.each(['suspend', 'reactivate'])('rejects status/role injection through a %s request body', async (action) => {
+    const target = await users.create({ email: 'member@example.com', fullName: 'Member', passwordHash });
+    const admin = await signIn();
+    await admin.patch(`/api/admin/accounts/${target._id}/${action}`).send({ status: 'active', roles: ['admin'] }).expect(400);
+    expect(await outbox.countDocuments()).toBe(0);
+    expect((await users.findById(target._id).orFail()).roles).toEqual(['traveler']);
+  });
+
+  it.each(['suspend', 'reactivate'])('rolls back %s if its administrative event cannot be recorded', async (action) => {
+    const initial = action === 'suspend' ? 'active' : 'suspended';
+    const target = await users.create({ email: 'member@example.com', fullName: 'Member', passwordHash, status: initial });
+    const admin = await signIn();
+    jest.spyOn(outbox, 'create').mockRejectedValueOnce(new Error('outbox unavailable'));
+    await admin.patch(`/api/admin/accounts/${target._id}/${action}`).expect(500);
+    const unchanged = await users.findById(target._id).orFail();
+    expect(unchanged.status).toBe(initial);
+    expect(unchanged.sessionVersion).toBe(0);
+    expect(await outbox.countDocuments()).toBe(0);
+  });
+
+  it('keeps temporary-password restrictions after suspension/reactivation', async () => {
+    const target = await users.create({ email: 'member@example.com', fullName: 'Member', passwordHash });
+    const admin = await signIn();
+    await admin.post(`/api/admin/users/${target._id}/reset-password`).send({ password: 'Temporary123' }).expect(204);
+    await admin.patch(`/api/admin/accounts/${target._id}/suspend`).expect(204);
+    await admin.patch(`/api/admin/accounts/${target._id}/reactivate`).expect(204);
+    const member = request.agent(app.getHttpServer());
+    const login = await member.post('/api/auth/login').send({ email: target.email, password: 'Temporary123' }).expect(200);
+    expect(login.body.user.mustChangePassword).toBe(true);
+    await member.get('/api/users/me').expect(403);
+  });
+
+  it('preserves independent login lockout state', async () => {
+    const lockedUntil = new Date(Date.now() + 15 * 60_000);
+    const target = await users.create({ email: 'member@example.com', fullName: 'Member', passwordHash, failedLoginAttempts: 5, lockedUntil });
+    const admin = await signIn();
+    await admin.patch(`/api/admin/accounts/${target._id}/suspend`).expect(204);
+    await admin.patch(`/api/admin/accounts/${target._id}/reactivate`).expect(204);
+    const result = await users.findById(target._id).orFail();
+    expect(result.failedLoginAttempts).toBe(5);
+    expect(result.lockedUntil).toEqual(lockedUntil);
+    await request(app.getHttpServer()).post('/api/auth/login').send({ email: target.email, password: 'test-password1' }).expect(429);
+  });
+
+  it('revokes only the target account sessions', async () => {
+    const target = await users.create({ email: 'member@example.com', fullName: 'Member', passwordHash });
+    await users.create({ email: 'other@example.com', fullName: 'Other', passwordHash });
+    const other = await signIn('other@example.com');
+    const member = await signIn(target.email);
+    const admin = await signIn();
+    await admin.patch(`/api/admin/accounts/${target._id}/suspend`).expect(204);
+    await member.get('/api/auth/me').expect(401);
+    await other.get('/api/users/me').expect(200);
+    await admin.get('/api/admin/accounts').expect(200);
+  });
+
+  it('restores valid sessions and status when suspension cleanup fails', async () => {
+    const target = await users.create({ email: 'member@example.com', fullName: 'Member', passwordHash });
+    const member = await signIn(target.email);
+    const admin = await signIn();
+    jest.spyOn(sessions, 'deleteMany').mockImplementationOnce(() => { throw new Error('cleanup unavailable'); });
+    await admin.patch(`/api/admin/accounts/${target._id}/suspend`).expect(500);
+    await member.get('/api/users/me').expect(200);
+    expect((await users.findById(target._id).orFail()).status).toBe('active');
+    expect(await outbox.countDocuments()).toBe(0);
+  });
+
+  it.each(['suspended', 'deactivated'])('denies status changes from an administrator who becomes %s', async (status) => {
+    const target = await users.create({ email: 'member@example.com', fullName: 'Member', passwordHash });
+    const admin = await signIn();
+    await users.updateOne({ email: 'admin@example.com' }, { $set: { status } });
+    await admin.patch(`/api/admin/accounts/${target._id}/suspend`).expect(401);
+    await admin.patch(`/api/admin/accounts/${target._id}/reactivate`).expect(401);
+    expect(await outbox.countDocuments()).toBe(0);
+  });
+
+  it('keeps concurrent password resets and suspension changes consistent', async () => {
+    const target = await users.create({ email: 'member@example.com', fullName: 'Member', passwordHash });
+    const admin = await signIn();
+    await Promise.all([
+      admin.patch(`/api/admin/accounts/${target._id}/suspend`).expect(204),
+      admin.post(`/api/admin/users/${target._id}/reset-password`).send({ password: 'Temporary123' }).expect(204),
+    ]);
+    const updated = await users.findById(target._id).orFail();
+    expect(updated.status).toBe('suspended');
+    expect(updated.mustChangePassword).toBe(true);
+    expect(updated.sessionVersion).toBe(2);
+    expect(await outbox.countDocuments()).toBe(2);
+  });
+
+  it('documents status commands and their authorization/conflict responses', async () => {
+    const response = await request(app.getHttpServer()).get('/api/docs-json').expect(200);
+    for (const action of ['suspend', 'reactivate']) {
+      const operation = response.body.paths[`/api/admin/accounts/{id}/${action}`].patch;
+      expect(operation.security).toEqual([{ giu_session: [] }]);
+      for (const code of ['204', '400', '401', '403', '404', '409']) expect(operation.responses[code]).toBeDefined();
+    }
+  });
 });

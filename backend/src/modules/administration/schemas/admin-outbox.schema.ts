@@ -4,6 +4,11 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 class AccountEventPayload {
   @Prop({ type: String, required: true })
   targetUserId!: string;
+  @Prop({ type: String, enum: ['airline', 'hotel'] }) providerType?: string;
+  @Prop({ type: String }) providerId?: string;
+  @Prop({ type: String }) assignmentId?: string;
+  @Prop({ type: String, enum: ['active', 'suspended'] }) previousStatus?: 'active' | 'suspended';
+  @Prop({ type: String, enum: ['active', 'suspended'] }) newStatus?: 'active' | 'suspended';
 }
 
 @Schema({ collection: 'admin_outbox', timestamps: true })
@@ -11,8 +16,8 @@ export class AdminOutboxEvent {
   @Prop({ type: String, required: true, unique: true })
   id!: string;
 
-  @Prop({ type: String, required: true, enum: ['account.password_reset'] })
-  type!: 'account.password_reset';
+  @Prop({ type: String, required: true, enum: ['account.password_reset', 'moderator.created', 'account.suspended', 'account.reactivated'] })
+  type!: 'account.password_reset' | 'moderator.created' | 'account.suspended' | 'account.reactivated';
 
   @Prop({ type: Number, required: true, enum: [1] })
   version!: 1;
