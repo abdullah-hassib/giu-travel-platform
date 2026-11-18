@@ -6,6 +6,7 @@ import { HotelsModule } from '../hotels/hotels.module';
 import { HotelsService } from '../hotels/hotels.service';
 import { User, UserSchema } from '../users/schemas/user.schema';
 import { AdministrationController } from './administration.controller';
+import { ProviderActionsController } from './provider-actions.controller';
 import { AdministrationService } from './administration.service';
 import {
   AdminOutboxEvent,
@@ -29,7 +30,7 @@ import {
       { name: AdminOutboxEvent.name, schema: AdminOutboxEventSchema },
     ]),
   ],
-  controllers: [AdministrationController],
+  controllers: [AdministrationController, ProviderActionsController],
   providers: [
     AdministrationService,
     ModeratorProvisioningService,

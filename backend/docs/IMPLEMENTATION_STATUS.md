@@ -1,5 +1,11 @@
 # November 14, 2026 — Implementation status
 
+## November 18 required hotel provider administration routes
+
+- Added the official PATCH /api/admin/providers/:type/:id/deactivate and /reactivate commands for hotels. Reuses MK's existing atomic state/inventory/event service with administrator authorization, strict DTO validation, no-store, idempotent 204 responses and documented errors. No teammate service or shared event contract changed. Missing airline integration returns 503.
+- Typecheck/build/lint, 185 unit and 437 HTTP/database tests passed. Three new HTTP cases cover duplicate event prevention/reactivation, permission/input/unavailable integration rejection and outbox-failure rollback. The existing real paid-booking test now exercises the required admin route and verifies the reservation and cancellation remain valid.
+- Airline activation and Omar event delivery remain integration dependencies. Hotel status can be demonstrated in Swagger with an admin and an existing hotel ID, an empty JSON body, then search/new-hold attempts before and after reactivation.
+
 ## November 18 real MK hotel integration
 
 - Hassib's tested administration/policy/payment/refund/recovery services are merged into develop through PR #26 (e1fd1f8). MK subsequently supplied PR #23. Composed its original commits and the reviewed moderation/media fixes from #24 with develop, preserving author histories and the full AI log. Reused the supplied #25 hotel/provider/refund wiring rather than merging its duplicate service overlay.
