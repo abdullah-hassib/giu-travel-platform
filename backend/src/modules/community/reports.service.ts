@@ -182,7 +182,11 @@ export class ReportsService {
     action: ModerationAction,
     session: ClientSession,
   ): Promise<string[]> {
-    const { authorId, imageIdsToDelete } = await this.content[type].moderate(id, action, session);
+    const { authorId, imageIdsToDelete } = await this.content[type].moderate(
+      id,
+      action,
+      session,
+    );
     await this.reports.updateMany(
       { targetType: type, targetId: id, status: 'open' },
       {
@@ -214,14 +218,18 @@ export class ReportsService {
   }
 
   /**
-   * Itineraries belong to the itinerary module. Hiding uses its existing visibility:
-   * a private itinerary is visible only to its owner, as ITN-20 defines.
+   * Itinerary moderation is independent of the owner-controlled public/private flag.
+   * A hidden itinerary remains accessible to its owner but cannot be republished.
    */
   private itineraryContent(): ModeratedContent {
     return {
       findReportable: async (id) => {
         const itinerary = await this.itineraries
-          .findOne({ _id: id, visibility: 'public', moderationHidden: { $ne: true } })
+          .findOne({
+            _id: id,
+            visibility: 'public',
+            moderationHidden: { $ne: true },
+          })
           .lean();
         if (!itinerary) throw new NotFoundException('Itinerary not found');
         return {
@@ -236,7 +244,10 @@ export class ReportsService {
             ? await this.itineraries
                 .findOneAndUpdate(
                   { _id: id },
-                  { $set: { visibility: 'private', moderationHidden: true }, $inc: { __v: 1 } },
+                  {
+                    $set: { visibility: 'private', moderationHidden: true },
+                    $inc: { __v: 1 },
+                  },
                   { session },
                 )
                 .lean()
