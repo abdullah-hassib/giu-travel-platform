@@ -2,11 +2,13 @@ import {
   BadGatewayException,
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
-import { Connection, Model, Types } from 'mongoose';
+import { ClientSession, Connection, Model, Types } from 'mongoose';
+import { User } from '../users/schemas/user.schema';
 import { createHash, randomUUID } from 'node:crypto';
 import { BookingKind, BookingPaymentAdapters } from './booking-payment.adapter';
 import { BookingPoliciesService } from './booking-policies.service';
@@ -36,6 +38,7 @@ export class PaymentsService {
     private readonly policies: BookingPoliciesService,
     private readonly gateway: StripeTestGateway,
     private readonly refunds: RefundsService,
+    @InjectModel(User.name) private readonly users: Model<User>,
   ) {}
 
   private async view(payment: PaymentDocument): Promise<PaymentViewDto> {
@@ -62,6 +65,25 @@ export class PaymentsService {
 
   async getOwned(userId: string, id: string): Promise<PaymentViewDto> {
     return this.view(await this.owned(userId, id));
+  }
+
+  private async bookingAccount(
+    userId: string,
+    session: ClientSession,
+    requireActive = false,
+  ): Promise<User['status']> {
+    const account = await this.users
+      .findOneAndUpdate(
+        { _id: userId, ...(requireActive && { status: 'active' }) },
+        { $inc: { bookingFence: 1 } },
+        { session, new: true },
+      )
+      .select('status')
+      .lean()
+      .exec();
+    if (requireActive && !account)
+      throw new ForbiddenException('An active account is required for payment');
+    return account?.status ?? 'deactivated';
   }
 
   private reference(
@@ -97,6 +119,7 @@ export class PaymentsService {
       )
         throw new ConflictException('Payment requires an active booking hold');
       assertStripePayableMoney(snapshot.amountMinor, snapshot.currency);
+      await this.bookingAccount(userId, session, true);
       const acceptance = await this.policies.requireAccepted(snapshot, session);
       const existing = await this.payments
         .findOne({ kind, bookingId })
@@ -335,6 +358,23 @@ export class PaymentsService {
         payment.fulfillment === 'expired' ||
         snapshot.state === 'Expired' ||
         payment.holdExpiresAt.getTime() <= Date.now();
+      if (payment.fulfillment === 'pending') {
+        const status = await this.bookingAccount(
+          payment.userId.toString(),
+          session,
+        );
+        if (
+          !expired &&
+          status === 'deactivated' &&
+          intent.status === 'succeeded'
+        ) {
+          // Preserve the approved hold deadline/adapter contract. The verified
+          // event remains durable and the existing worker refunds at expiry.
+          throw new ConflictException(
+            'Account deactivated; payment awaits booking hold expiry and reconciliation',
+          );
+        }
+      }
       if (payment.fulfillment !== 'confirmed' && expired) {
         if (snapshot.state === 'Pending Payment')
           await adapter.expirePayment(

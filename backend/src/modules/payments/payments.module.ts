@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { AuthModule } from '../auth/auth.module';
+import { User, UserSchema } from '../users/schemas/user.schema';
 import { HotelBookingsModule } from '../hotel-bookings/hotel-bookings.module';
 import { HotelPaymentAdapter } from '../hotel-bookings/hotel-payment.adapter';
 import {
@@ -34,6 +35,7 @@ import { PaymentReconciliationWorker } from './payment-reconciliation.worker';
     RefundsModule,
     HotelBookingsModule,
     MongooseModule.forFeature([
+      { name: User.name, schema: UserSchema },
       { name: PolicyAcceptance.name, schema: PolicyAcceptanceSchema },
       { name: Payment.name, schema: PaymentSchema },
       { name: PaymentEvent.name, schema: PaymentEventSchema },

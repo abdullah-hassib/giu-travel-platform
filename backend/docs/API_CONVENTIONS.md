@@ -15,6 +15,8 @@ The implemented itinerary-specific contract, including fixed ten-row pagination,
 
 ## Own profile (ACC-09)
 
+Self-deactivation retains `DELETE /api/users/me` with 204 and cookie clearing. Account status/version and current session deletion now commit atomically; upcoming Confirmed hotel bookings produce 409 and preserve the account/session. Payment settlement uses an internal account fence so deactivation cannot race into a new confirmation; paid pending holds reconcile/refund at normal expiry. Flight checks remain an integration dependency. See [ACCOUNT_DEACTIVATION.md](ACCOUNT_DEACTIVATION.md) for exact boundaries and demo.
+
 `GET /api/users/me` and `PATCH /api/users/me` require an active session for any account role. Sessions requiring a password change receive 403 until that change is complete. Responses use `Cache-Control: no-store` and the sanitized identity schema, including `phone` and `preferredCurrency`.
 
 PATCH accepts any subset of `fullName`, `phone` and `preferredCurrency`. Name keeps the existing trimmed 2–100 character rule. Phone is validated as an international phone number with a country code, for example `+201001234567`. This format is an implementation choice because ACC-09 does not prescribe a regional format. Set phone to null to clear it. Preferred currency is one of EGP, AED, GBP, USD, EUR, JPY and SAR, reusing the official country-workbook snapshot used by itineraries. Surrounding whitespace is removed and currency codes are uppercased. Null name/currency, invalid phones and unknown fields return 400 before any field is saved.

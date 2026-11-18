@@ -24,6 +24,8 @@ import { OutboxEvent } from '../src/common/events/outbox-event.schema';
 import { HttpErrorFilter } from '../src/common/filters/http-error.filter';
 import { AdministrationModule } from '../src/modules/administration/administration.module';
 import { hashPassword } from '../src/modules/auth/security/password';
+import { UserSession } from '../src/modules/auth/schemas/user-session.schema';
+import { PaymentsService } from '../src/modules/payments/payments.service';
 import { HotelBooking } from '../src/modules/hotel-bookings/schemas/hotel-booking.schema';
 import { addDays, todayUtc } from '../src/modules/hotels/stay-rules';
 import { configurePaymentBodyParsers } from '../src/modules/payments/payment-body-parsers';
@@ -88,6 +90,7 @@ describe('MK hotels with Hassib administration, payments and refunds', () => {
   let app: INestApplication;
   let connection: Connection;
   let users: Model<User>;
+  let sessions: Model<UserSession>;
   let bookings: Model<HotelBooking>;
   let payments: Model<Payment>;
   let refunds: Model<Refund>;
@@ -132,6 +135,7 @@ describe('MK hotels with Hassib administration, payments and refunds', () => {
     await app.init();
     connection = app.get(getConnectionToken());
     users = app.get(getModelToken(User.name));
+    sessions = app.get(getModelToken(UserSession.name));
     bookings = app.get(getModelToken(HotelBooking.name));
     payments = app.get(getModelToken(Payment.name));
     refunds = app.get(getModelToken(Refund.name));
@@ -356,6 +360,24 @@ describe('MK hotels with Hassib administration, payments and refunds', () => {
     const message = event(payment);
     await deliver(message).expect(200);
     return message;
+  }
+
+  function advanceTime(milliseconds: number) {
+    jest.useFakeTimers({
+      doNotFake: [
+        'nextTick',
+        'setImmediate',
+        'clearImmediate',
+        'setTimeout',
+        'clearTimeout',
+        'setInterval',
+        'clearInterval',
+        'performance',
+        'hrtime',
+        'queueMicrotask',
+      ],
+    });
+    jest.setSystemTime(Date.now() + milliseconds);
   }
 
   it('creates a real provider assignment and enforces its boundary after the password change', async () => {
@@ -616,5 +638,175 @@ describe('MK hotels with Hassib administration, payments and refunds', () => {
       .expect(503);
     expect(await outbox.countDocuments({ type: 'hotel.deactivated' })).toBe(0);
     await hold().expect(201);
+  });
+
+  it('blocks self-deactivation with an upcoming Confirmed hotel booking and preserves the session', async () => {
+    const { bookingId, payment } = await initiate();
+    await settle(payment);
+    const account = await users
+      .findOne({ email: 'owner@example.com' })
+      .orFail();
+    await traveler.delete('/api/users/me').expect(409);
+    await traveler.get('/api/auth/me').expect(200);
+    expect(await users.findById(account._id).lean()).toMatchObject({
+      status: 'active',
+      sessionVersion: account.sessionVersion,
+    });
+    expect((await bookings.findById(bookingId).orFail()).status).toBe(
+      'Confirmed',
+    );
+  });
+
+  it('allows deactivation after cancellation and atomically revokes all owner sessions', async () => {
+    const { bookingId, payment } = await initiate();
+    await settle(payment);
+    await traveler.post(`/api/hotel-bookings/${bookingId}/cancel`).expect(200);
+    const account = await users
+      .findOne({ email: 'owner@example.com' })
+      .orFail();
+    const secondSession = await signIn('owner@example.com');
+    expect(await sessions.countDocuments({ userId: account._id })).toBe(2);
+    await traveler
+      .delete('/api/users/me')
+      .expect(204)
+      .expect('Cache-Control', 'no-store');
+    expect(await sessions.countDocuments({ userId: account._id })).toBe(0);
+    expect(await users.findById(account._id).lean()).toMatchObject({
+      status: 'deactivated',
+      sessionVersion: account.sessionVersion + 1,
+    });
+    await secondSession.get('/api/auth/me').expect(401);
+    await traveler.get('/api/auth/me').expect(401);
+    await request(app.getHttpServer())
+      .post('/api/auth/login')
+      .send({ email: 'owner@example.com', password: 'test-password1' })
+      .expect(401);
+    expect(await refunds.countDocuments()).toBe(1);
+  });
+
+  it('ignores an ended stay even if its lazy Completed transition has not yet been persisted', async () => {
+    const { bookingId, payment } = await initiate();
+    await settle(payment);
+    advanceTime(10 * 24 * 60 * 60_000);
+    traveler = await signIn('owner@example.com');
+    await traveler.delete('/api/users/me').expect(204);
+    expect((await bookings.findById(bookingId).orFail()).status).toBe(
+      'Confirmed',
+    );
+  });
+
+  it('keeps a post-deactivation signed success pending until normal expiry, then refunds without confirmation', async () => {
+    const { bookingId, payment } = await initiate();
+    await traveler.delete('/api/users/me').expect(204);
+    intents.set(payment.stripePaymentId, {
+      ...intents.get(payment.stripePaymentId)!,
+      status: 'succeeded',
+    });
+    await deliver(event(payment)).expect(409);
+    expect((await bookings.findById(bookingId).orFail()).status).toBe(
+      'Pending Payment',
+    );
+    expect(
+      await outbox.countDocuments({ type: 'hotel_booking.confirmed' }),
+    ).toBe(0);
+    advanceTime(11 * 60_000);
+    await app.get(PaymentsService).runDue();
+    expect((await bookings.findById(bookingId).orFail()).status).toBe(
+      'Expired',
+    );
+    expect(
+      await refunds.findOne({ paymentId: payment.id }).lean(),
+    ).toMatchObject({ amountMinor: 30_000, reason: 'late_payment' });
+    await app.get(RefundsService).runDue();
+    expect(
+      await refunds.findOne({ paymentId: payment.id }).lean(),
+    ).toMatchObject({ status: 'Refunded' });
+    expect(
+      await outbox.countDocuments({ type: 'hotel_booking.confirmed' }),
+    ).toBe(0);
+  });
+
+  it('rejects an internal stale payment initiation after deactivation', async () => {
+    const { bookingId } = await initiate();
+    const account = await users
+      .findOne({ email: 'owner@example.com' })
+      .orFail();
+    await traveler.delete('/api/users/me').expect(204);
+    await expect(
+      app
+        .get(PaymentsService)
+        .create(account._id.toString(), 'hotel', bookingId),
+    ).rejects.toMatchObject({ status: 403 });
+    expect(gateway.createIntent).toHaveBeenCalledTimes(1);
+  });
+
+  it('serializes racing deactivation and verified confirmation so a closed account never gets a Confirmed stay', async () => {
+    const { bookingId, payment } = await initiate();
+    intents.set(payment.stripePaymentId, {
+      ...intents.get(payment.stripePaymentId)!,
+      status: 'succeeded',
+    });
+    const [deactivation, settlement] = await Promise.all([
+      traveler.delete('/api/users/me'),
+      deliver(event(payment)),
+    ]);
+    const account = await users
+      .findOne({ email: 'owner@example.com' })
+      .orFail();
+    const booking = await bookings.findById(bookingId).orFail();
+    if (account.status === 'deactivated') {
+      expect(deactivation.status).toBe(204);
+      expect(settlement.status).toBe(409);
+      expect(booking.status).toBe('Pending Payment');
+    } else {
+      expect(account.status).toBe('active');
+      expect(deactivation.status).toBe(409);
+      expect(settlement.status).toBe(200);
+      expect(booking.status).toBe('Confirmed');
+    }
+  });
+
+  it('rolls account deactivation back if session cleanup fails', async () => {
+    const account = await users
+      .findOne({ email: 'owner@example.com' })
+      .orFail();
+    jest.spyOn(sessions, 'deleteMany').mockReturnValueOnce({
+      exec: async () => {
+        throw new ServiceUnavailableException(
+          'Injected session cleanup failure',
+        );
+      },
+    } as unknown as ReturnType<typeof sessions.deleteMany>);
+    await traveler.delete('/api/users/me').expect(503);
+    expect(await users.findById(account._id).lean()).toMatchObject({
+      status: 'active',
+      sessionVersion: account.sessionVersion,
+    });
+    expect(await sessions.countDocuments({ userId: account._id })).toBe(1);
+    await traveler.get('/api/auth/me').expect(200);
+  });
+
+  it('denies guests and forced-password sessions before account deactivation', async () => {
+    await request(app.getHttpServer()).delete('/api/users/me').expect(401);
+    await users.updateOne(
+      { email: 'owner@example.com' },
+      { $set: { mustChangePassword: true } },
+    );
+    await traveler.delete('/api/users/me').expect(403);
+    expect(
+      (await users.findOne({ email: 'owner@example.com' }).orFail()).status,
+    ).toBe('active');
+  });
+
+  it('preserves valid payment fulfillment after suspension of an existing booking owner', async () => {
+    const { bookingId, payment } = await initiate();
+    await users.updateOne(
+      { email: 'owner@example.com' },
+      { $set: { status: 'suspended' } },
+    );
+    await settle(payment);
+    expect((await bookings.findById(bookingId).orFail()).status).toBe(
+      'Confirmed',
+    );
   });
 });
