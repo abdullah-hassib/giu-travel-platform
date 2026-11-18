@@ -56,12 +56,13 @@ describe('Official reference CSV ingestion', () => {
   });
   it('handles BOM/CRLF and proper quoted CSV without corrupting Unicode or commas', () => {
     const csv = sources();
+    // Git may have checked out CRLF already; normalize before constructing
+    // the deliberately BOM-prefixed CRLF fixture.
     csv.Attractions =
       '\uFEFF' +
-      csv.Attractions.replace(
-        'Giza Pyramids and Sphinx',
-        '"Giza, Pyramids and ""Sphinx"""',
-      ).replace(/\n/g, '\r\n');
+      csv.Attractions.replace(/\r\n?/g, '\n')
+        .replace('Giza Pyramids and Sphinx', '"Giza, Pyramids and ""Sphinx"""')
+        .replace(/\n/g, '\r\n');
     const data = parseReferenceCsv(csv);
     expect(data.attractions[0].name).toBe('Giza, Pyramids and "Sphinx"');
     expect(data.attractions[7].name).toBe('Römerberg');
