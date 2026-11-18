@@ -448,7 +448,7 @@ describe('Official reference data (HTTP, real MongoDB and seed CLI)', () => {
       NODE_ENV: 'test',
       MONGODB_URI: server.getUri('giu_reference_cli'),
     };
-    const dry = await execute(process.execPath, [script], { env });
+    const dry = await execute(process.execPath, [script], { env, timeout: 30_000 });
     expect(JSON.parse(dry.stdout).mode).toBe('validate-only');
     const isolated = createConnection(env.MONGODB_URI);
     try {
@@ -458,6 +458,7 @@ describe('Official reference data (HTTP, real MongoDB and seed CLI)', () => {
       for (let attempt = 0; attempt < 2; attempt++) {
         const applied = await execute(process.execPath, [script, '--apply'], {
           env,
+          timeout: 30_000,
         });
         expect(JSON.parse(applied.stdout)).toMatchObject({
           mode: 'applied',
@@ -467,7 +468,7 @@ describe('Official reference data (HTTP, real MongoDB and seed CLI)', () => {
       expect(await isolatedModels.airports.countDocuments()).toBe(8);
       expect(await isolatedModels.currencies.countDocuments()).toBe(7);
       await expect(
-        execute(process.execPath, [script, '--unsupported'], { env }),
+        execute(process.execPath, [script, '--unsupported'], { env, timeout: 30_000 }),
       ).rejects.toMatchObject({ code: 1 });
     } finally {
       await isolated.close();

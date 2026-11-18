@@ -31,7 +31,11 @@ describe('Administration account list (real HTTP and MongoDB)', () => {
   let outbox: Model<AdminOutboxEvent>;
 
   beforeAll(async () => {
-    server = await MongoMemoryReplSet.create({ replSet: { count: 1, storageEngine: 'wiredTiger' } });
+    server = await MongoMemoryReplSet.create({
+      replSet: { count: 1, storageEngine: 'wiredTiger' },
+      // Windows process startup can exceed the library's 10-second default.
+      instanceOpts: [{ launchTimeout: 30_000 }],
+    });
     const module = await Test.createTestingModule({
       imports: [
         TestConfigurationModule,
