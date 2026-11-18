@@ -85,9 +85,10 @@ export class PostsService implements ModeratedContent {
   /** BLG-04: deleting a post also removes its comments, likes and images. */
   async remove(user: PublicUser, postId: string): Promise<void> {
     const post = await this.findOwn(user, postId);
-    await this.connection.transaction((session) =>
+    const imageIds = await this.connection.transaction((session) =>
       this.deleteWithContent(post, session),
     );
+    await this.removeImagesAfterCommit(imageIds);
   }
 
   /** BLG-02/BLG-09: published posts, optionally by tag or keyword. */
@@ -149,7 +150,7 @@ export class PostsService implements ModeratedContent {
       .lean<{ _id: Types.ObjectId; fullName: string; createdAt?: Date }>();
     if (!author) throw new NotFoundException('Author not found');
 
-    const itineraryFilter = { ownerId: author._id, visibility: 'public' };
+    const itineraryFilter = { ownerId: author._id, visibility: 'public', moderationHidden: { $ne: true } };
     const [posts, itineraries, itineraryTotal] = await Promise.all([
       this.list({ page: query.postsPage }, { authorId: author._id }),
       this.itineraries
@@ -293,7 +294,10 @@ export class PostsService implements ModeratedContent {
             .lean()
         : await this.posts.findById(id).session(session).lean();
     if (!post) throw new NotFoundException('Post not found');
-    if (action === 'delete') await this.deleteWithContent(post, session);
+    if (action === 'delete') {
+      const imageIdsToDelete = await this.deleteWithContent(post, session);
+      return { authorId: post.authorId.toString(), imageIdsToDelete };
+    }
     return { authorId: post.authorId.toString() };
   }
 
@@ -308,14 +312,17 @@ export class PostsService implements ModeratedContent {
   private async deleteWithContent(
     post: StoredPost,
     session: ClientSession,
-  ): Promise<void> {
+  ): Promise<string[]> {
     await this.posts.deleteOne({ _id: post._id }, { session });
     await this.comments.deleteMany({ postId: post._id }, { session });
     await this.likes.deleteMany({ postId: post._id }, { session });
-    // Files are not part of the transaction; removing them is best effort.
-    await Promise.all(
-      post.images.map((image) => this.media.removeImage(image.id)),
-    );
+    // Never delete filesystem objects inside a DB transaction that can roll back.
+    return post.images.map((image) => image.id);
+  }
+
+  /** Called only after the owning transaction commits; cleanup is best effort. */
+  async removeImagesAfterCommit(ids: string[]): Promise<void> {
+    await Promise.all(ids.map((id) => this.media.removeImage(id)));
   }
 
   /** Published, not hidden, and (ACC-12) not written by a deactivated account. */
