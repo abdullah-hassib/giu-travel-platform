@@ -47,12 +47,12 @@ export class ReportsService {
     @InjectModel(Itinerary.name) private readonly itineraries: Model<Itinerary>,
     @InjectModel(User.name) private readonly users: Model<User>,
     @InjectConnection() private readonly connection: Connection,
-    posts: PostsService,
+    private readonly postsService: PostsService,
     comments: CommentsService,
     reviews: ReviewsService,
   ) {
     this.content = {
-      post: posts,
+      post: this.postsService,
       comment: comments,
       review: reviews,
       itinerary: this.itineraryContent(),
@@ -112,6 +112,7 @@ export class ReportsService {
     reportId: string,
     action: 'dismiss' | ModerationAction,
   ) {
+    let imageIdsToDelete: string[] = [];
     const resolved = await this.connection.transaction(async (session) => {
       const report = await this.reports
         .findById(reportId)
@@ -143,7 +144,7 @@ export class ReportsService {
           { session },
         );
       } else {
-        await this.applyModeration(
+        imageIdsToDelete = await this.applyModeration(
           admin,
           report.targetType,
           report.targetId.toString(),
@@ -153,6 +154,7 @@ export class ReportsService {
       }
       return (await this.reports.findById(report._id).session(session).lean())!;
     });
+    await this.postsService.removeImagesAfterCommit(imageIdsToDelete);
     const names = await displayNames(this.users, [resolved.reporterId]);
     return reportView(
       resolved,
@@ -167,9 +169,10 @@ export class ReportsService {
     id: string,
     action: ModerationAction,
   ) {
-    await this.connection.transaction((session) =>
+    const imageIdsToDelete = await this.connection.transaction((session) =>
       this.applyModeration(admin, type, id, action, session),
     );
+    await this.postsService.removeImagesAfterCommit(imageIdsToDelete);
   }
 
   private async applyModeration(
@@ -178,8 +181,8 @@ export class ReportsService {
     id: string,
     action: ModerationAction,
     session: ClientSession,
-  ): Promise<void> {
-    const { authorId } = await this.content[type].moderate(id, action, session);
+  ): Promise<string[]> {
+    const { authorId, imageIdsToDelete } = await this.content[type].moderate(id, action, session);
     await this.reports.updateMany(
       { targetType: type, targetId: id, status: 'open' },
       {
@@ -207,6 +210,7 @@ export class ReportsService {
       ],
       { session },
     );
+    return imageIdsToDelete ?? [];
   }
 
   /**
@@ -217,7 +221,7 @@ export class ReportsService {
     return {
       findReportable: async (id) => {
         const itinerary = await this.itineraries
-          .findOne({ _id: id, visibility: 'public' })
+          .findOne({ _id: id, visibility: 'public', moderationHidden: { $ne: true } })
           .lean();
         if (!itinerary) throw new NotFoundException('Itinerary not found');
         return {
@@ -232,7 +236,7 @@ export class ReportsService {
             ? await this.itineraries
                 .findOneAndUpdate(
                   { _id: id },
-                  { $set: { visibility: 'private' }, $inc: { __v: 1 } },
+                  { $set: { visibility: 'private', moderationHidden: true }, $inc: { __v: 1 } },
                   { session },
                 )
                 .lean()
