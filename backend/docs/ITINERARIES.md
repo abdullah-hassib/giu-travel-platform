@@ -13,7 +13,7 @@
 | ITN-21 core | Public search/read and independent private cloning of current days/activities/costs with attribution. Budget and transport copying is now included; image integration remains pending. |
 | ACC-11, GEN-05, GEN-13 | Ownership, server validation, role guards and fixed ten-row pagination |
 
-This is a working itinerary core. Budget entries and transport costs are implemented in the native-budgeting slice. FX conversion, activity images and flight/hotel search integration remain separate slices. Administration status PR #9 remains deferred and unmerged.
+Budget entries, transport costs and daily cached FX conversion are implemented. ITN-25 now reuses MK's actual hotel search for owned city groups; see [ITINERARY_HOTEL_SEARCH.md](ITINERARY_HOTEL_SEARCH.md). Activity images and flight search remain separate unfinished slices. Administration status is merged through PR #26.
 
 ## Reference-data provenance
 
@@ -38,6 +38,7 @@ The reference-data feature now owns the single shared snapshot and validates it 
 | GET | /api/itineraries/public/search | 200 paginated public views |
 | GET | /api/itineraries/public/:id | 200 public view with author |
 | POST | /api/itineraries/:id/clone | 201 new private view |
+| GET | /api/itineraries/:id/hotels | 200 derived group selection and paginated hotel search |
 
 Authoring, own reads and cloning require an active traveler-role session. A multi-role account with traveler access can author its own data. Staff-only roles receive 403; guests receive 401. Private itinerary access remains owner-only, including for administrator accounts. Foreign and missing resources both return 404. Mandatory-password-change sessions receive 403 for protected itinerary operations.
 

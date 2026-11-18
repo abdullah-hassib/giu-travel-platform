@@ -1,5 +1,11 @@
 # November 14, 2026 — Implementation status
 
+## November 18 itinerary hotel search (ITN-25)
+
+- Added GET /api/itineraries/:id/hotels for the owner traveler. A selected day identifies its current consecutive city group; city, check-in and exclusive check-out derive from the itinerary, including after edits/reordering. Calls MK's existing real hotel search and preserves its availability, capacity, filters/sort and ten-row pagination. Unknown location/date overrides are rejected. No teammate module changed.
+- Typecheck/build/lint, 185 unit and 446 HTTP/database tests passed. Nine new real-module cases cover derived groups/dates, edited/reordered/deleted days, holds/expiry/capacity/inactive providers, filters/sorting/pagination, ownership/roles, invalid overrides, past/overflow dates and Swagger. The response exposes a typed selection plus actual hotel data/meta; explicit numeric Swagger metadata fixes inherited page/room fields being omitted.
+- Swagger demo and exact contract are in ITINERARY_HOTEL_SEARCH.md. This search does not create a hold or booking. Activity images and flight search remain unfinished; no external service, credential or shared database was needed.
+
 ## November 18 required hotel provider administration routes
 
 - Added the official PATCH /api/admin/providers/:type/:id/deactivate and /reactivate commands for hotels. Reuses MK's existing atomic state/inventory/event service with administrator authorization, strict DTO validation, no-store, idempotent 204 responses and documented errors. No teammate service or shared event contract changed. Missing airline integration returns 503.
