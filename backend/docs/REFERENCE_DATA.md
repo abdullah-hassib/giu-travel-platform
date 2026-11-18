@@ -64,6 +64,8 @@ Existing itinerary, user-schema and FX code still needs synchronous validation d
 
 ## Verification
 
+The implementation is merged into develop through PR #20 (82b9537). Hassib subsequently approved the shared-database seed. The application attempt failed; a read-only diagnostic could not connect and reported ReplicaSetNoPrimary with MongoNetworkError / ERR_SSL_TLSV1_ALERT_INTERNAL_ERROR. Shared application is therefore not confirmed. Cluster availability, the connecting machine's IP access entry and the TLS/network path need checking before retry. No URI, credentials, hostname or raw diagnostic message was displayed. The existing approval covers retry after connection access is restored.
+
 The unit suite checks exact source/snapshot compatibility, all currencies/time zones/relationships, BOM/CRLF/quoted Unicode CSV and invalid/duplicate/broken input. HTTP/database tests load the actual module/validation/Swagger on disposable MongoDB replica sets, test seeding/reseeding/concurrency/rollback, read-only access, filtering/search/pagination, unsupported input, source-only visibility and shared-service lookup. They also run the compiled CLI in validation-only mode and apply it twice to a fresh disposable database.
 
 The new dependency is pinned csv-parse 7.0.3 with CommonJS exports verified before installation. The dependency audit reports 71 findings in the existing graph (3 low, 15 moderate, 53 high), with no csv-parse advisory. No unrelated dependency upgrades or forced audit fixes were applied in this requirement slice.
