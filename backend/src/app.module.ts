@@ -10,7 +10,6 @@ import { AirlinesModule } from './modules/airlines/airlines.module';
 import { FlightsModule } from './modules/flights/flights.module';
 import { FlightBookingsModule } from './modules/flight-bookings/flight-bookings.module';
 import { HotelsModule } from './modules/hotels/hotels.module';
-import { RoomsModule } from './modules/rooms/rooms.module';
 import { HotelBookingsModule } from './modules/hotel-bookings/hotel-bookings.module';
 import { ReviewsModule } from './modules/reviews/reviews.module';
 import { PaymentsModule } from './modules/payments/payments.module';
@@ -29,7 +28,7 @@ import { ReferenceDataModule } from './modules/reference-data/reference-data.mod
     ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env', validationSchema: environmentSchema, validationOptions: { abortEarly: false } }),
     MongooseModule.forRootAsync({ inject: [ConfigService], useFactory: (config: ConfigService) => ({ uri: config.getOrThrow<string>('MONGODB_URI'), serverSelectionTimeoutMS: 5000, maxPoolSize: 10 }) }),
     HealthModule, AuthModule, UsersModule, AdministrationModule, AirlinesModule, FlightsModule,
-    FlightBookingsModule, HotelsModule, RoomsModule, HotelBookingsModule, ReviewsModule,
+    FlightBookingsModule, HotelsModule, HotelBookingsModule, ReviewsModule,
     PaymentsModule, RefundsModule, ItinerariesModule, BudgetingModule, BlogModule,
     CommunityModule, NotificationsModule, MediaUploadsModule, AuditLoggingModule, ReferenceDataModule,
   ],
