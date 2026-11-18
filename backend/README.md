@@ -54,6 +54,10 @@ Never put credentials into Git, AI chats, or the project ZIP. Run only once afte
 
 Kuwaity's reference-data slice provides public countries, cities, airports, attractions and currency lookup/search APIs, a reusable ReferenceDataService and the four official CSV exports. Run `npm run seed:reference` for offline integrity validation. Database writes require `--apply` and private process configuration; use the shared database only after the required team approval. See [reference API, seed commands and team handoff](docs/REFERENCE_DATA.md). Until this edition is seeded, reference lookups return 503. Existing user/itinerary/FX validation retains the same source identifiers through the shared snapshot.
 
+## Hotels, bookings, reviews, blog and moderation
+
+Hotel inventory, search, concurrency-safe bookings, reviews, the blog, content reports and admin moderation are described in [docs/HOTELS_AND_COMMUNITY.md](docs/HOTELS_AND_COMMUNITY.md), with a Swagger demo order and the integration handoffs for payments, administration and notifications. Uploaded JPG/PNG images are stored in `MEDIA_UPLOAD_DIR` (default `./uploads`, ignored by Git) and served from `/api/media/:imageId`.
+
 ## Important
 
 USD is selected as the flight/hotel/payment/refund platform currency. The internal test-mode Stripe gateway provides validated intent/refund operations and signed raw-event verification. Private Stripe setup and booking/service integration are pending. See [gateway contracts and setup](docs/STRIPE_GATEWAY.md).

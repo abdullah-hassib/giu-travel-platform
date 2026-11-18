@@ -60,6 +60,11 @@ export class ItinerariesService {
   ) {}
 
   private validate(itinerary: Itinerary): void {
+    if (itinerary.moderationHidden && itinerary.visibility === 'public') {
+      throw new ConflictException(
+        'An itinerary hidden by moderation cannot be republished',
+      );
+    }
     if (itinerary.days.length > 60)
       throw new BadRequestException('An itinerary has at most sixty days');
     if (itinerary.days.length)
@@ -408,7 +413,13 @@ export class ItinerariesService {
 
   private publicPipeline(filter: FilterQuery<Itinerary>): PipelineStage[] {
     return [
-      { $match: { ...filter, visibility: 'public' } },
+      {
+        $match: {
+          ...filter,
+          visibility: 'public',
+          moderationHidden: { $ne: true },
+        },
+      },
       {
         $lookup: {
           from: this.users.collection.name,
