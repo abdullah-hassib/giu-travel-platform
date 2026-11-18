@@ -18,7 +18,7 @@ export class AdminBookingsQueryDto extends PickType(AccountsQueryDto, [
   @ApiPropertyOptional({
     enum: ['hotel', 'flight'],
     description:
-      'Specify hotel for the available integration. Flight/combined results return 503 until supplied.',
+      'Omit to combine both domains with one global count/order/page',
   })
   @IsOptional()
   @IsIn(['hotel', 'flight'])
@@ -42,16 +42,22 @@ export class AdminBookingsQueryDto extends PickType(AccountsQueryDto, [
 }
 class BookingIdentityDto {
   @ApiProperty() id!: string;
-  @ApiProperty({ description: 'Name saved with the booking' }) name!: string;
+  @ApiProperty({
+    description:
+      'Booked provider/guest name; flight owner uses the current profile display name',
+  })
+  name!: string;
 }
 class BookingDatesDto {
   @ApiProperty() from!: string;
-  @ApiProperty({ description: 'Exclusive checkout date for hotels' })
+  @ApiProperty({
+    description: 'Exclusive hotel checkout, or final flight arrival UTC date',
+  })
   to!: string;
 }
 export class AdminBookingViewDto {
   @ApiProperty() id!: string;
-  @ApiProperty({ enum: ['hotel'] }) type!: 'hotel';
+  @ApiProperty({ enum: ['hotel', 'flight'] }) type!: 'hotel' | 'flight';
   @ApiProperty({ type: String, nullable: true }) reference!: string | null;
   @ApiProperty({ type: BookingIdentityDto }) user!: BookingIdentityDto;
   @ApiProperty({ type: BookingIdentityDto }) provider!: BookingIdentityDto;
