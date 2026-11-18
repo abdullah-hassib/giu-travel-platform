@@ -1,6 +1,6 @@
 # Hotels, bookings, reviews, blog and moderation (MK, Milestone 1)
 
-Branch `feature/mk-hotels-bookings-community`. Requirement IDs follow the official workbook.
+Original implementation: MK's `feature/mk-hotels-bookings-community` (PR #23). Requirement IDs follow the official workbook. November 18 integration connects Hassib's real provider/payment/refund services and includes the reviewed moderation/media repairs; see [HOTEL_PAYMENT_INTEGRATION.md](HOTEL_PAYMENT_INTEGRATION.md).
 
 ## What is implemented
 
@@ -31,7 +31,7 @@ All lists return 10 rows per page as `{ data, meta }`. Every route is in Swagger
 ## Swagger demo
 
 1. Log in as an admin and `POST /api/hotels` (city must belong to the country).
-2. Assign a hotel moderator to it with Hassib's `POST /api/admin/moderators` (ACC-13). On a branch without that endpoint, insert `{ userId, providerType: 'hotel', providerId }` into `moderator_assignments`.
+2. Assign a hotel moderator to it with Hassib's `POST /api/admin/moderators` (ACC-13); complete the temporary-password change and log in again.
 3. As the moderator: `POST /api/hotels/:id/rooms`, `POST .../rooms/:roomId/availability`, `PUT /api/hotels/:id/policies`.
 4. As a traveler: `GET /api/hotels/search?cityId=cairo&checkIn=...&checkOut=...&guests=2`, then `POST /api/hotel-bookings`. The booking is `Pending Payment` for 10 minutes.
 5. The moderator sees it in `GET /api/hotels/:id/reservations` and `GET /api/hotels/:id/availability`.
@@ -40,8 +40,8 @@ All lists return 10 rows per page as `{ data, meta }`. Every route is in Swagger
 ## Team handoffs
 
 **Hassib (payments, administration)**
-- `HotelPaymentAdapter` (exported by `HotelBookingsModule`) implements the approved `BookingSettlementAdapter` shape: `getOwned`, `getOwnedForUpdate`, `linkPayment`, `confirmPayment`, `expirePayment`, with `kind = 'hotel'`. Once the payment branch is merged, import `HotelBookingsModule` in `PaymentsModule` and add the adapter to `BOOKING_PAYMENT_ADAPTERS`. Bookings are confirmed only through it (HTL-17); there is no client confirm route.
-- Cancellation currently records `refundPercent`/`refundMinor` on the booking and in a `hotel_booking.cancelled` event. After the refunds branch is merged, call `RefundsService.enqueueCancellation({ paymentId, bookingId, userId, amountMinor: refundMinor, reason: 'user_cancellation' }, session)` inside `HotelBookingsService.cancel`'s transaction.
+- `HotelPaymentAdapter` (exported by `HotelBookingsModule`) implements the approved `BookingSettlementAdapter` shape: `getOwned`, `getOwnedForUpdate`, `linkPayment`, `confirmPayment`, `expirePayment`, with `kind = 'hotel'`. `PaymentsModule` now registers it under `BOOKING_PAYMENT_ADAPTERS`. Bookings are confirmed only through it (HTL-17); there is no client confirm route.
+- Cancellation records `refundPercent`/`refundMinor` on the booking and in a `hotel_booking.cancelled` event. It now calls the real `RefundsService.enqueueCancellation({ paymentId, bookingId, userId, amountMinor: refundMinor, reason: 'user_cancellation' }, session)` inside `HotelBookingsService.cancel`'s transaction; refund failure rolls back the cancellation.
 - ACC-13 hotel provider adapter: `HotelsService.lockExisting(hotelId, session)` returns `{ id, kind: 'hotel' }` or throws 404.
 - ACC-15: `HotelsService.setActive(adminId, hotelId, active)` (also exposed as `PATCH /api/hotels/:id/status`).
 - ACC-12 / ACC-17: hotel bookings live in `hotel_bookings`; upcoming Confirmed ones are `{ userId, status: 'Confirmed', checkOut: { $gte: today } }`.
@@ -61,6 +61,6 @@ All lists return 10 rows per page as `{ data, meta }`. Every route is in Swagger
 
 ## Known limits
 
-- Hiding a reported itinerary makes it private (only its owner sees it, ITN-20). A dedicated hidden flag would need a field in the itinerary module.
+- Hiding a reported itinerary sets its persistent `moderationHidden` flag and makes it private (only its owner sees it, ITN-20). Owner updates cannot republish it while hidden. Post-image deletion occurs after transaction commit so rollback retains files.
 - HTL-08 reports nights outside every bookable range as `Unavailable`, next to Available/Booked/Blocked.
 - Hotel search filters in memory per city/country, which is fine for this project's data size.

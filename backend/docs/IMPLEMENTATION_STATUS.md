@@ -1,5 +1,13 @@
 # November 14, 2026 — Implementation status
 
+## November 18 real MK hotel integration
+
+- Hassib's tested administration/policy/payment/refund/recovery services are merged into develop through PR #26 (e1fd1f8). MK subsequently supplied PR #23. Composed its original commits and the reviewed moderation/media fixes from #24 with develop, preserving author histories and the full AI log. Reused the supplied #25 hotel/provider/refund wiring rather than merging its duplicate service overlay.
+- Registered the real hotel provider and booking adapters. Actual moderator provisioning creates the assignment consumed by MK's routes; password-change restrictions and hotel ownership remain enforced. Hotel cancellation now reserves the real policy-derived refund in the same transaction as cancellation and its event. Hotel status changes preserve existing paid reservations.
+- Independently verified the combined source: typecheck/build/lint, 15 unit suites / 185 tests and 14 HTTP/database suites / 434 tests passed. Seven new cases load the actual administration/hotel/booking/payment/refund modules without adapter or refund-service substitutes. Only external Stripe calls are controlled; webhook signatures use the official SDK. Coverage includes policy requirements, ownership, duplicate settlement, saved-policy refund amounts, rollback, late-payment/replacement-inventory safety and provider deactivation. Test assumptions were corrected to preserve existing 204 password-change and 409 repeated-cancellation contracts; expiry advances the clock without mutating the immutable quote.
+- MK's report/content moderation and shared media are present. Reviewed fixes prevent an owner republishing an admin-hidden itinerary and defer post-image deletion until the database transaction commits. Existing unit/HTTP regression coverage remains passing.
+- Live Stripe verification is pending because credentials are unconfigured. Flight/provider adapters and Omar's notification/audit consumer have not been supplied remotely. Admin booking/audit reads, canonical admin provider routes, itinerary images/searches and the account-deactivation booking guard remain unfinished. No private .env, shared Atlas data or live payment resources were used in this integration. See HOTEL_PAYMENT_INTEGRATION.md and the updated delivery checklist.
+
 ## November 18 combined Hassib services
 
 - The user explicitly authorized merging the previously tested policy/payment/refund/recovery and moderator/status services. Their original commits are combined with latest develop/reference data in one integration branch.
