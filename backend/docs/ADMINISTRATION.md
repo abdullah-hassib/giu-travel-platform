@@ -4,6 +4,8 @@ November 18, 2026. Hassib approved the provider/assignment/outbox design and sub
 
 ## Implemented APIs
 
+ACC-15 hotel actions: `PATCH /api/admin/providers/hotel/:id/deactivate` and `/reactivate` accept an empty body and return 204 with no-store. Administrator/session/forced-password guards and strict type/ID/body validation apply. They delegate to MK's existing transaction and event producer; repeated commands produce no duplicate event. Existing Confirmed bookings stay valid; inactive hotels reject new holds. Invalid type/ID/body is 400, missing hotel 404 and unavailable airline integration 503. These routes do not claim Omar delivered their events.
+
 All routes use the existing opaque-cookie SessionGuard and administrator RolesGuard, DTO allowlists, no-store responses and Swagger at http://localhost:3000/api/docs. Guests receive 401, other roles or mandatory-password-change sessions 403. An inactive administrator cannot act.
 
 | Route | Behavior |

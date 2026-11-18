@@ -548,9 +548,9 @@ describe('MK hotels with Hassib administration, payments and refunds', () => {
     const { bookingId, payment } = await initiate();
     await settle(payment);
     await admin
-      .patch(`/api/hotels/${hotelId}/status`)
-      .send({ active: false })
-      .expect(200);
+      .patch(`/api/admin/providers/hotel/${hotelId}/deactivate`)
+      .send({})
+      .expect(204);
     expect(
       (await traveler.get(`/api/hotel-bookings/${bookingId}`).expect(200)).body
         .status,
@@ -558,5 +558,63 @@ describe('MK hotels with Hassib administration, payments and refunds', () => {
     await hold(otherTraveler).expect(404);
     await traveler.post(`/api/hotel-bookings/${bookingId}/cancel`).expect(200);
     expect(await refunds.countDocuments()).toBe(1);
+  });
+
+  it('makes admin hotel status commands idempotent with one event per transition', async () => {
+    const path = `/api/admin/providers/hotel/${hotelId}`;
+    for (let index = 0; index < 2; index++) {
+      await admin
+        .patch(`${path}/deactivate`)
+        .send({})
+        .expect(204)
+        .expect('Cache-Control', 'no-store');
+    }
+    expect(await outbox.countDocuments({ type: 'hotel.deactivated' })).toBe(1);
+    await hold().expect(404);
+    for (let index = 0; index < 2; index++) {
+      await admin.patch(`${path}/reactivate`).send({}).expect(204);
+    }
+    expect(await outbox.countDocuments({ type: 'hotel.reactivated' })).toBe(1);
+    await hold().expect(201);
+    await admin
+      .patch(`/api/admin/providers/hotel/${new Types.ObjectId()}/deactivate`)
+      .send({})
+      .expect(404);
+  });
+
+  it('rejects guest/staff actions and malformed or unavailable provider integrations', async () => {
+    const path = `/api/admin/providers/hotel/${hotelId}/deactivate`;
+    await request(app.getHttpServer()).patch(path).send({}).expect(401);
+    await traveler.patch(path).send({}).expect(403);
+    await moderator.patch(path).send({}).expect(403);
+    await admin.patch(path).send({ active: false }).expect(400);
+    await admin
+      .patch(`/api/admin/providers/unknown/${hotelId}/deactivate`)
+      .send({})
+      .expect(400);
+    await admin
+      .patch('/api/admin/providers/hotel/invalid/deactivate')
+      .send({})
+      .expect(400);
+    await admin
+      .patch(`/api/admin/providers/airline/${hotelId}/deactivate`)
+      .send({})
+      .expect(503);
+    expect(await outbox.countDocuments({ type: 'hotel.deactivated' })).toBe(0);
+    await hold().expect(201);
+  });
+
+  it('rolls provider state back when its transactional event fails', async () => {
+    jest
+      .spyOn(outbox, 'create')
+      .mockRejectedValueOnce(
+        new ServiceUnavailableException('Injected outbox failure'),
+      );
+    await admin
+      .patch(`/api/admin/providers/hotel/${hotelId}/deactivate`)
+      .send({})
+      .expect(503);
+    expect(await outbox.countDocuments({ type: 'hotel.deactivated' })).toBe(0);
+    await hold().expect(201);
   });
 });
