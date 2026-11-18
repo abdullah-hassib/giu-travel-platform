@@ -6,7 +6,17 @@ import {
 } from '../../budgeting/dto/budget.dto';
 import { NativeBudgetSummaryDto } from '../../budgeting/dto/budget-summary.dto';
 
+export class ActivityImageViewDto {
+  @ApiProperty() id!: string;
+  @ApiProperty({
+    description: 'Access-checked owner or public-itinerary image URL',
+  })
+  url!: string;
+}
+
 export class ActivityViewDto {
+  @ApiProperty({ type: [ActivityImageViewDto] })
+  images!: ActivityImageViewDto[];
   @ApiProperty() id!: string;
   @ApiProperty() name!: string;
   @ApiProperty() description!: string;

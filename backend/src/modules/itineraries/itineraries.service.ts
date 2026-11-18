@@ -13,6 +13,14 @@ import {
   Types,
 } from 'mongoose';
 import { User } from '../users/schemas/user.schema';
+import {
+  MAX_IMAGES_PER_ITEM,
+  UploadedImage,
+} from '../media-uploads/media.service';
+import {
+  ActivityMediaStorage,
+  activityImageUrl,
+} from './activity-media.storage';
 import { itineraryDate } from './calendar';
 import {
   addCurrencyTotal,
@@ -57,6 +65,7 @@ export class ItinerariesService {
   constructor(
     @InjectModel(Itinerary.name) private readonly itineraries: Model<Itinerary>,
     @InjectModel(User.name) private readonly users: Model<User>,
+    private readonly media: ActivityMediaStorage,
   ) {}
 
   private validate(itinerary: Itinerary): void {
@@ -147,11 +156,11 @@ export class ItinerariesService {
   }
 
   async remove(ownerId: string, id: string): Promise<void> {
-    const result = await this.itineraries
-      .deleteOne({ _id: id, ownerId })
+    const removed = await this.itineraries
+      .findOneAndDelete({ _id: id, ownerId })
       .exec();
-    if (result.deletedCount !== 1)
-      throw new NotFoundException('Itinerary not found');
+    if (!removed) throw new NotFoundException('Itinerary not found');
+    await this.media.remove(this.dayImages(removed.days));
   }
 
   async addDay(
@@ -190,9 +199,11 @@ export class ItinerariesService {
     dayId: string,
   ): Promise<ItineraryViewDto> {
     const itinerary = await this.owned(ownerId, id);
-    this.day(itinerary, dayId);
+    const removed = this.day(itinerary, dayId);
     itinerary.days = itinerary.days.filter((day) => !day._id.equals(dayId));
-    return this.save(itinerary);
+    const view = await this.save(itinerary);
+    await this.media.remove(this.dayImages([removed]));
+    return view;
   }
 
   async reorder(
@@ -265,11 +276,78 @@ export class ItinerariesService {
   }
 
   async deleteActivity(ownerId: string, id: string): Promise<ItineraryViewDto> {
-    const { itinerary, day } = await this.activity(ownerId, id);
+    const { itinerary, day, activity } = await this.activity(ownerId, id);
     day.activities = day.activities.filter(
       (activity) => !activity._id.equals(id),
     );
-    return this.save(itinerary);
+    const view = await this.save(itinerary);
+    await this.media.remove((activity.images ?? []).map((image) => image.id));
+    return view;
+  }
+
+  private dayImages(days: ItineraryDay[]): string[] {
+    return days.flatMap((day) =>
+      day.activities.flatMap((activity) =>
+        (activity.images ?? []).map((image) => image.id),
+      ),
+    );
+  }
+
+  async addActivityImage(
+    ownerId: string,
+    id: string,
+    file: UploadedImage | undefined,
+  ): Promise<ItineraryViewDto> {
+    const { itinerary, activity } = await this.activity(ownerId, id);
+    if ((activity.images?.length ?? 0) >= MAX_IMAGES_PER_ITEM)
+      throw new ConflictException('An activity has at most five images');
+    const image = await this.media.save(file);
+    try {
+      activity.images ??= [];
+      activity.images.push({
+        id: image.id,
+        url: activityImageUrl(id, image.id),
+      });
+      return await this.save(itinerary);
+    } catch (error) {
+      await this.media.remove([image.id]);
+      throw error;
+    }
+  }
+
+  async removeActivityImage(
+    ownerId: string,
+    id: string,
+    imageId: string,
+  ): Promise<ItineraryViewDto> {
+    const { itinerary, activity } = await this.activity(ownerId, id);
+    if (!activity.images?.some((image) => image.id === imageId))
+      throw new NotFoundException('Activity image not found');
+    activity.images = activity.images.filter((image) => image.id !== imageId);
+    const view = await this.save(itinerary);
+    await this.media.remove([imageId]);
+    return view;
+  }
+
+  async openActivityImage(ownerId: string, id: string, imageId: string) {
+    const { activity } = await this.activity(ownerId, id);
+    if (!activity.images?.some((image) => image.id === imageId))
+      throw new NotFoundException('Activity image not found');
+    return this.media.open(imageId);
+  }
+
+  async openPublicActivityImage(
+    itineraryId: string,
+    id: string,
+    imageId: string,
+  ) {
+    const itinerary = await this.publicSource(itineraryId);
+    const activity = itinerary.days
+      .flatMap((day) => day.activities)
+      .find((candidate) => candidate._id.equals(id));
+    if (!activity?.images?.some((image) => image.id === imageId))
+      throw new NotFoundException('Activity image not found');
+    return this.media.open(imageId);
   }
 
   async addBudget(
@@ -503,7 +581,32 @@ export class ItinerariesService {
         })),
       })),
     });
-    return this.save(copy);
+    const copiedIds: string[] = [];
+    try {
+      for (let dayIndex = 0; dayIndex < source.days.length; dayIndex++) {
+        for (
+          let activityIndex = 0;
+          activityIndex < source.days[dayIndex].activities.length;
+          activityIndex++
+        ) {
+          const original = source.days[dayIndex].activities[activityIndex];
+          const target = copy.days[dayIndex].activities[activityIndex];
+          target.images = [];
+          for (const originalImage of original.images ?? []) {
+            const image = await this.media.copy(originalImage.id);
+            copiedIds.push(image.id);
+            target.images.push({
+              id: image.id,
+              url: activityImageUrl(target._id.toString(), image.id),
+            });
+          }
+        }
+      }
+      return await this.save(copy);
+    } catch (error) {
+      await this.media.remove(copiedIds);
+      throw error;
+    }
   }
 
   private async page(
@@ -621,6 +724,14 @@ export class ItinerariesService {
       })),
       activities: day.activities.map((activity) => ({
         id: activity._id.toString(),
+        images: (activity.images ?? []).map((image) => ({
+          id: image.id,
+          url: activityImageUrl(
+            activity._id.toString(),
+            image.id,
+            author ? itinerary._id.toString() : undefined,
+          ),
+        })),
         name: activity.name,
         description: activity.description,
         time: activity.time,

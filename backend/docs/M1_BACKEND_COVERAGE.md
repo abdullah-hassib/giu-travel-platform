@@ -11,7 +11,7 @@ Scope follows Hassib's personal task allocation and the official GIU PDF/workboo
 | ACC-15/16 | Admin suspension/reactivation, session invalidation and events; required admin hotel deactivate/reactivate routes delegate to MK's atomic provider service and preserve paid reservations. | Airline state integration and required notification delivery. |
 | ACC-17 | Approved read-only booking projection boundary is documented. | Concrete flight/hotel projections, combined pagination and filters. |
 | ITN-01/03/05/07/08/09/10/14/16/18/20/21 | Private CRUD, ordered days/activities, dates/groups, all cost types, native/preferred-currency summaries, visibility/search and independent cloning. | Preserve current behavior; media and provider searches are separate requirements below. |
-| ITN-12 | Activity CRUD and MK's shared image validation/storage are available. | Activity image attachment/removal and private/clone lifecycle integration. |
+| ITN-12 | Activity image upload/removal and access-checked private/public serving reuse MK's validation/storage; clones get independent files and failed saves clean their new files. | Preserve tested behavior; best-effort filesystem cleanup limits are documented in ACTIVITY_IMAGES.md. |
 | ITN-25 | Owned city-group hotel search reuses MK's real availability/filter/sort/pagination service with server-derived city and dates. | Preserve tested integration behavior. |
 | ITN-26 | Itinerary dates/groups and authoritative airports are available. | Await Adham's flight search integration. |
 | PAY-01/02 | Policy acceptance, immutable quotes, owned create/retry/status, signed raw webhook settlement, expiry/recovery and duplicate protection; actual hotel bookings/inventory connected. | Flight booking adapter and privately configured live Stripe test verification. |
@@ -23,6 +23,6 @@ The previous 21/36 count described an older set of completed integrated requirem
 
 Kuwaity's separately authorized GEN-12/FLT-02 reference implementation is merged, shared Atlas seeding succeeded and all source records were independently verified. It does not add rows to Hassib's original 36-row allocation. All current synchronous location/currency consumers share the reviewed source; flight/hotel owners must reuse the exported database lookup service.
 
-Verified together: typecheck/build/lint, 185 unit tests and 434 HTTP/database tests. Seven new cases exercise the real hotel/provider/payment/refund wiring with only external Stripe responses controlled.
+Verified together: typecheck/build/lint, 185 unit tests and 464 HTTP/database tests. Includes real hotel/provider/payment/refund wiring, itinerary hotel search and private/public activity images with independent clone files. Only external Stripe responses are controlled in the payment integration cases.
 
 Next priorities: remaining admin booking/audit reads and canonical provider routes, itinerary images/hotel searches, the account-deactivation booking guard, then flight and Omar integrations when supplied and live Stripe verification when privately configured. Optional features and teammate domain implementation remain outside this task. See [HOTEL_PAYMENT_INTEGRATION.md](HOTEL_PAYMENT_INTEGRATION.md) for the real hotel wiring and verification limits.

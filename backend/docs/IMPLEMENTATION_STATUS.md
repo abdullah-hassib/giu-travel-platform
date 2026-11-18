@@ -1,5 +1,12 @@
 # November 14, 2026 — Implementation status
 
+## November 18 activity images and independent clone files (ITN-12)
+
+- Added validated multipart activity image attachment/removal, owner/private reads and visibility-checked public reads. Reuses MK's existing media interceptor/storage with an activity subdirectory inaccessible to the generic public media route. Metadata is embedded with a five-image cap and defaults missing legacy arrays to empty; all itinerary views expose access-appropriate image URLs.
+- Clones physically copy images to new IDs/private URLs. Upload/copy/save failure removes only the newly created files. Image/activity/day/owner-itinerary deletion cleans files after a successful database write; failed metadata removal retains the source. No teammate media/moderation implementation or shared contract changed. Best-effort/crash and direct admin-deletion orphan limits are documented in ACTIVITY_IMAGES.md; inaccessible files are never published by a generic route.
+- Typecheck/build/lint, 185 unit and 464 HTTP/database tests passed. Eighteen new actual-module cases cover content signatures/size/count, permission/privacy/visibility, real admin hiding, author status, concurrent cap races, clone/source independence, rollback/cleanup, legacy data and Swagger. Updated the existing exact activity-view expectation for the additive images array; retained the existing admin hide 204 response.
+- Swagger demo and storage/access/lifecycle details are in ACTIVITY_IMAGES.md. The remaining itinerary feature is flight search, dependent on Adham's code. No private configuration, external service, shared Atlas or live Stripe was used.
+
 ## November 18 itinerary hotel search (ITN-25)
 
 - Added GET /api/itineraries/:id/hotels for the owner traveler. A selected day identifies its current consecutive city group; city, check-in and exclusive check-out derive from the itinerary, including after edits/reordering. Calls MK's existing real hotel search and preserves its availability, capacity, filters/sort and ten-row pagination. Unknown location/date overrides are rejected. No teammate module changed.
