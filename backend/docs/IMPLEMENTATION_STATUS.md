@@ -1,5 +1,11 @@
 # November 14, 2026 — Implementation status
 
+## November 18 hotel administration booking reads (ACC-17 partial)
+
+- Added GET /api/admin/bookings?type=hotel with active administrator/forced-password checks, no-store, strict DTOs, status/inclusive start-date filters and stable ten-row pages. A separate read service consumes MK's actual booking schema, positively projects saved user/provider identities and totals, and derives effective expiry/completion without writing domain records. Flight/omitted type returns an explicit 503 rather than a misleading partial list.
+- Typecheck/build/lint, 185 unit and 472 HTTP/database tests passed. Eight new real HTTP/database cases cover roles/inactive/forced-password sessions, projection, pagination/counts, date/state filtering, read-only behavior, unavailable integrations, invalid queries and Swagger. An existing disposable Mongo startup timeout was increased from 10 to 30 seconds; a separate timing stall in the reference CLI test led to bounded child-process timeouts. The final full rerun passed with no weakened assertions or runtime reference changes.
+- ADMIN_BOOKINGS.md documents the contract/demo and incomplete combined ACC-17 coverage. During the final remote refresh Adham's initial flight branch b269bd1 appeared. Read-only inspection found no search or settlement/provider adapters and an older competing replacement of ReferenceDataService; it was not merged. Flight and combined integrations remain blocked on compatible supplied code while independent work continues.
+
 ## November 18 activity images and independent clone files (ITN-12)
 
 - Added validated multipart activity image attachment/removal, owner/private reads and visibility-checked public reads. Reuses MK's existing media interceptor/storage with an activity subdirectory inaccessible to the generic public media route. Metadata is embedded with a five-image cap and defaults missing legacy arrays to empty; all itinerary views expose access-appropriate image URLs.
