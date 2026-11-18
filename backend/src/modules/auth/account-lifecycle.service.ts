@@ -6,6 +6,7 @@ import {
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model } from 'mongoose';
 import { HotelBooking } from '../hotel-bookings/schemas/hotel-booking.schema';
+import { FlightBooking } from '../flight-bookings/schemas/flight-booking.schema';
 import { todayUtc } from '../hotels/stay-rules';
 import { User } from '../users/schemas/user.schema';
 import { UserSession } from './schemas/user-session.schema';
@@ -18,6 +19,7 @@ export class AccountLifecycleService {
     private readonly sessions: Model<UserSession>,
     @InjectModel(HotelBooking.name)
     private readonly hotels: Model<HotelBooking>,
+    @InjectModel(FlightBooking.name) private readonly flights: Model<FlightBooking>,
     @InjectConnection() private readonly connection: Connection,
   ) {}
 
@@ -43,7 +45,7 @@ export class AccountLifecycleService {
           })
           .session(session)
           .exec()
-      ) {
+      || await this.flights.exists({ userId: account._id, status: 'Confirmed', 'segments.arrivalAt': { $gte: new Date() } }).session(session).exec()) {
         throw new ConflictException(
           'Cancel upcoming Confirmed bookings before deactivating your account',
         );

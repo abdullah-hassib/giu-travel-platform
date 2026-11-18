@@ -5,6 +5,10 @@ export type BookingState = 'pending' | 'confirmed' | 'cancelled' | 'completed';
 export type PaymentState = 'pending' | 'authorized' | 'captured' | 'failed' | 'refunded' | 'partially_refunded';
 export type RefundState = 'requested' | 'approved' | 'rejected' | 'processing' | 'completed' | 'failed';
 export const DOMAIN_EVENT_TYPES = [
+  'airline.created',
+  'airline.updated',
+  'airline.policies_updated',
+  'flight.created',
   'account.password_reset',
   'account.suspended',
   'account.reactivated',
@@ -31,6 +35,7 @@ export const NOTIFICATION_EVENT_TYPES = [
   'account.suspended',
   'provider.deactivated',
   'payment.captured',
+  'provider.reactivated',
   'payment.failed',
   'refund.completed',
 ] as const;

@@ -25,6 +25,8 @@ export const DOMAIN_HISTORY_ACTIONS = [
 export const ADMIN_HISTORY_ACTIONS = [
   ...ACCOUNT_HISTORY_ACTIONS,
   ...DOMAIN_HISTORY_ACTIONS,
+  'airline.created', 'airline.updated', 'airline.policies_updated', 'flight.created',
+  'provider.deactivated', 'provider.reactivated',
 ] as const;
 
 export class AdminHistoryQueryDto extends PickType(AccountsQueryDto, [
@@ -54,6 +56,8 @@ class AdminHistoryTargetDto {
   @ApiProperty({
     enum: [
       'account',
+      'airline',
+      'flight',
       'hotel',
       'report',
       'post',

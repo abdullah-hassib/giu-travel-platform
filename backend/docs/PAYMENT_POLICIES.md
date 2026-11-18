@@ -1,6 +1,6 @@
 # Booking policy review and acceptance
 
-PAY-02 service slice, November 17. Implements guarded policy review and timestamped acceptance through the Hassib-approved booking adapter design. Concrete flight/hotel adapters are still supplied by their owners. PaymentsModule registers an empty adapter list until those integrations are connected. A missing adapter returns 503.
+PAY-02 service slice, November 17. Implements guarded policy review and timestamped acceptance through the Hassib-approved booking adapter design. Concrete hotel and flight adapters are now connected, using the approved boundary and immutable saved policies. See HOTEL_PAYMENT_INTEGRATION.md and FLIGHT_PAYMENT_INTEGRATION.md. A future unsupported integration still fails safely rather than inventing a quote.
 
 ## API
 
