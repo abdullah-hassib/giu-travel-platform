@@ -25,6 +25,7 @@ import { BlogPost } from '../src/modules/blog/schemas/blog.schemas';
 import { CommunityModule } from '../src/modules/community/community.module';
 import { Hotel } from '../src/modules/hotels/schemas/hotel.schema';
 import { Itinerary } from '../src/modules/itineraries/schemas/itinerary.schema';
+import { ItinerariesModule } from '../src/modules/itineraries/itineraries.module';
 import { Review } from '../src/modules/reviews/schemas/review.schema';
 import { User } from '../src/modules/users/schemas/user.schema';
 
@@ -75,6 +76,7 @@ describe('Blog, community reports and moderation (real HTTP and MongoDB)', () =>
         TestConfigurationModule,
         MongooseModule.forRoot(server.getUri(), { dbName: 'giu_blog_tests' }),
         CommunityModule,
+        ItinerariesModule,
       ],
     }).compile();
     app = module.createNestApplication();
@@ -698,6 +700,14 @@ describe('Blog, community reports and moderation (real HTTP and MongoDB)', () =>
         .patch(`/api/admin/reports/${report.body.id}`)
         .send({ action: 'hide' })
         .expect(200);
+      const hidden = await itineraries.findById(shared._id).lean();
+      expect(hidden!.visibility).toBe('private');
+      expect(hidden!.moderationHidden).toBe(true);
+      // GEN-10: the owner must not undo an admin hide via ITN-20 visibility.
+      await author
+        .patch(`/api/itineraries/${shared._id}`)
+        .send({ visibility: 'public' })
+        .expect(409);
       expect((await itineraries.findById(shared._id).lean())!.visibility).toBe(
         'private',
       );
