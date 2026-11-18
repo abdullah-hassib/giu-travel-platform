@@ -1268,4 +1268,380 @@ describe('Adham flight domain with real Hassib payments, administration and Omar
       ).schema,
     ).toMatchObject({ type: 'number', default: 1 });
   });
+  async function secondModerator() {
+    await admin
+      .post('/api/admin/moderators')
+      .send({
+        email: 'operations-second@example.com',
+        fullName: 'Second Airline Moderator',
+        password: 'temporary-password1',
+        role: 'airline_moderator',
+        providerId: otherAirlineId,
+      })
+      .expect(201);
+    let agent = await login(
+      'operations-second@example.com',
+      'temporary-password1',
+    );
+    await agent
+      .patch('/api/auth/change-password')
+      .send({
+        currentPassword: 'temporary-password1',
+        newPassword: 'changed-password2',
+      })
+      .expect(204);
+    agent = await login('operations-second@example.com', 'changed-password2');
+    await agent
+      .put('/api/airlines/' + otherAirlineId + '/baggage-policy')
+      .send({ extraBagPrice: 25, maxExtraBags: 2 })
+      .expect(200);
+    return agent;
+  }
+  const editTimes = {
+    departureLocalDateTime: '2099-01-16T12:00',
+    arrivalLocalDateTime: '2099-01-16T16:00',
+  };
+  it('management: updates active schedules and confirmed-owner notifications while preserving quotes', async () => {
+    const { bookingId, payment } = await initiate();
+    await settle(payment);
+    const pendingId = (await hold({}, other).expect(201)).body.booking.id;
+    const before = await bookings.findById(bookingId).orFail();
+    await moderator
+      .patch('/api/flights/' + flightId)
+      .send(editTimes)
+      .expect(200)
+      .expect('Cache-Control', 'no-store');
+    for (const id of [bookingId, pendingId]) {
+      const booking = await bookings.findById(id).orFail();
+      expect(booking.segments[0].departureAt.toISOString()).toBe(
+        '2099-01-16T10:00:00.000Z',
+      );
+      expect(booking.totalAmountMinor).toBe(10_000);
+      expect(booking.policySnapshot).toEqual(before.policySnapshot);
+    }
+    expect((await publicSearch().expect(200)).body.outbound.meta.total).toBe(0);
+    await app.get(DomainEventConsumer).consumePending();
+    expect(
+      (await traveler.get('/api/notifications').expect(200)).body.data.filter(
+        (n: { eventType: string }) => n.eventType === 'flight.schedule_changed',
+      ),
+    ).toHaveLength(1);
+    expect(
+      (await other.get('/api/notifications').expect(200)).body.data.filter(
+        (n: { eventType: string }) => n.eventType === 'flight.schedule_changed',
+      ),
+    ).toHaveLength(0);
+    expect(
+      (
+        await admin
+          .get('/api/admin/audit-logs?action=flight.updated')
+          .expect(200)
+      ).body.meta.total,
+    ).toBe(1);
+  });
+  it('management: allows unbooked airport edits but rejects them after any hold, including expired history', async () => {
+    await moderator
+      .patch('/api/flights/' + flightId)
+      .send({ arrivalAirportCode: 'LHR' })
+      .expect(200);
+    expect((await flights.findById(flightId).orFail()).arrivalAirportId).toBe(
+      'LHR',
+    );
+    await hold().expect(201);
+    advance(11);
+    await app.get(FlightBookingsService).expireDue();
+    moderator = await login('mod@example.com', 'changed-password2');
+    await moderator
+      .patch('/api/flights/' + flightId)
+      .send({ arrivalAirportCode: 'JFK' })
+      .expect(409);
+    expect((await flights.findById(flightId).orFail()).arrivalAirportId).toBe(
+      'LHR',
+    );
+  });
+  it('management: protects held/booked capacity and freezes old fares while pricing new holds correctly', async () => {
+    const { bookingId, payment } = await initiate();
+    await settle(payment);
+    const pending = (await hold({}, other).expect(201)).body.booking;
+    const path = '/api/flights/' + flightId + '/cabins/Economy';
+    await moderator.patch(path).send({ totalSeats: 1 }).expect(409);
+    await moderator
+      .patch(path)
+      .send({ totalSeats: 3, price: 15_000 })
+      .expect(200);
+    expect((await bookings.findById(bookingId).orFail()).totalAmountMinor).toBe(
+      10_000,
+    );
+    expect(
+      (await bookings.findById(pending.id).orFail()).totalAmountMinor,
+    ).toBe(10_000);
+    const next = (await hold().expect(201)).body.booking;
+    expect(next.totalAmountMinor).toBe(15_000);
+    expect((await flights.findById(flightId).orFail()).cabins[0]).toMatchObject(
+      { totalSeats: 3, bookedSeats: 1, heldSeats: 2 },
+    );
+  });
+  it('management: adds unique fixed cabins and uses category identifiers without a cabin-ID migration', async () => {
+    const path = '/api/flights/' + flightId + '/cabins';
+    await moderator
+      .post(path)
+      .send({ ...cabin, category: 'Premium Economy' })
+      .expect(201);
+    await moderator
+      .post(path)
+      .send({ ...cabin, category: 'Premium Economy' })
+      .expect(409);
+    const changed = (
+      await moderator
+        .patch(path + '/Premium%20Economy')
+        .send({ price: 12_000 })
+        .expect(200)
+    ).body;
+    expect(
+      changed.cabins.find(
+        (c: { category: string }) => c.category === 'Premium Economy',
+      ).price,
+    ).toBe(12_000);
+    await moderator
+      .patch(path + '/Unknown')
+      .send({ price: 1000 })
+      .expect(400);
+    await moderator
+      .patch(path + '/Business')
+      .send({ price: 1000 })
+      .expect(404);
+  });
+  it.each([
+    {},
+    { departureLocalDateTime: null },
+    { arrivalLocalDateTime: '2099-01-15T01:00' },
+    { departureLocalDateTime: '2020-01-01T12:00' },
+    { arrivalAirportCode: 'CAI' },
+    { status: 'Cancelled' },
+  ])('management: rejects invalid/empty flight edits %j', async (body) => {
+    await moderator
+      .patch('/api/flights/' + flightId)
+      .send(body)
+      .expect(400);
+    expect((await flights.findById(flightId).orFail()).status).toBe(
+      'Scheduled',
+    );
+  });
+  it('management: enforces assignment and denies departed changes and unconfirmed cancellation commands', async () => {
+    const second = await secondModerator();
+    await second
+      .patch('/api/flights/' + flightId)
+      .send(editTimes)
+      .expect(403);
+    await second
+      .post('/api/flights/' + flightId + '/cancel')
+      .send({ confirmed: true })
+      .expect(403);
+    await traveler
+      .patch('/api/flights/' + flightId)
+      .send(editTimes)
+      .expect(403);
+    await request(app.getHttpServer())
+      .post('/api/flights/' + flightId + '/cancel')
+      .send({ confirmed: true })
+      .expect(401);
+    await moderator
+      .post('/api/flights/' + flightId + '/cancel')
+      .send({})
+      .expect(400);
+    await moderator
+      .post('/api/flights/' + flightId + '/cancel')
+      .send({ confirmed: false })
+      .expect(400);
+    await flights.updateOne(
+      { _id: flightId },
+      { $set: { departureAt: new Date(Date.now() - 1) } },
+    );
+    await moderator
+      .patch('/api/flights/' + flightId)
+      .send(editTimes)
+      .expect(409);
+    await moderator
+      .post('/api/flights/' + flightId + '/cancel')
+      .send({ confirmed: true })
+      .expect(409);
+    await moderator
+      .patch('/api/flights/' + flightId + '/cabins/Economy')
+      .send({ totalSeats: 3 })
+      .expect(409);
+  });
+  it('management: rejects a schedule that would invalidate an active round-trip return', async () => {
+    const returnFlightId = await returnFlight();
+    const { bookingId } = await initiate({ returnFlightId });
+    await moderator
+      .patch('/api/flights/' + flightId)
+      .send({
+        departureLocalDateTime: '2099-01-25T12:00',
+        arrivalLocalDateTime: '2099-01-25T16:00',
+      })
+      .expect(409);
+    expect(
+      (await bookings.findById(bookingId).orFail()).segments[0]
+        .departureLocalDate,
+    ).toBe('2099-01-15');
+    expect((await flights.findById(flightId).orFail()).departureLocalDate).toBe(
+      '2099-01-15',
+    );
+  });
+  it('management: cancels paid round trips and pending holds atomically with full refunds across providers', async () => {
+    const second = await secondModerator();
+    const returnFlightId = (
+      await second
+        .post('/api/flights')
+        .send({
+          flightNumber: 'OTHERRET',
+          departureAirportCode: 'JFK',
+          arrivalAirportCode: 'CAI',
+          departureLocalDateTime: '2099-01-24T12:00',
+          arrivalLocalDateTime: '2099-01-25T12:00',
+          cabins: [cabin],
+        })
+        .expect(201)
+    ).body.id;
+    const { bookingId, payment } = await initiate({ returnFlightId });
+    await settle(payment);
+    const pendingId = (await hold({}, other).expect(201)).body.booking.id;
+    const result = (
+      await moderator
+        .post('/api/flights/' + flightId + '/cancel')
+        .send({ confirmed: true })
+        .expect(200)
+    ).body;
+    expect(result).toMatchObject({
+      flight: { status: 'Cancelled' },
+      cancelledBookings: 1,
+      expiredHolds: 1,
+    });
+    expect((await bookings.findById(bookingId).orFail()).status).toBe(
+      'Cancelled',
+    );
+    expect((await bookings.findById(pendingId).orFail()).status).toBe(
+      'Expired',
+    );
+    expect(
+      await refunds.findOne({ paymentId: payment.id }).orFail(),
+    ).toMatchObject({ amountMinor: 20_000, reason: 'provider_cancellation' });
+    for (const id of [flightId, returnFlightId])
+      expect((await flights.findById(id).orFail()).cabins[0]).toMatchObject({
+        heldSeats: 0,
+        bookedSeats: 0,
+      });
+    expect((await flights.findById(returnFlightId).orFail()).status).toBe(
+      'Scheduled',
+    );
+    await moderator
+      .post('/api/flights/' + flightId + '/cancel')
+      .send({ confirmed: true })
+      .expect(409);
+    expect(await refunds.countDocuments()).toBe(1);
+    expect((await publicSearch().expect(200)).body.outbound.meta.total).toBe(0);
+    await app.get(DomainEventConsumer).consumePending();
+    expect(
+      (await traveler.get('/api/notifications').expect(200)).body.data.filter(
+        (n: { eventType: string; resourceId: string }) =>
+          n.eventType === 'flight.cancelled' && n.resourceId === bookingId,
+      ),
+    ).toHaveLength(1);
+    await app.get(RefundsService).runDue();
+    expect(gateway.createRefund).toHaveBeenCalledTimes(1);
+  });
+  it('management: rolls flight/booking/inventory cancellation back when the refund reservation fails', async () => {
+    const { bookingId, payment } = await initiate();
+    await settle(payment);
+    jest
+      .spyOn(app.get(RefundsService), 'enqueueCancellation')
+      .mockRejectedValueOnce(new Error('controlled provider-refund failure'));
+    await moderator
+      .post('/api/flights/' + flightId + '/cancel')
+      .send({ confirmed: true })
+      .expect(500);
+    expect(await flights.findById(flightId).orFail()).toMatchObject({
+      status: 'Scheduled',
+    });
+    expect(
+      (await flights.findById(flightId).orFail()).cabins[0].bookedSeats,
+    ).toBe(1);
+    expect((await bookings.findById(bookingId).orFail()).status).toBe(
+      'Confirmed',
+    );
+    expect(await refunds.countDocuments()).toBe(0);
+    expect(
+      await app
+        .get<Model<DomainEventOutbox>>(getModelToken(DomainEventOutbox.name))
+        .countDocuments({ type: 'flight.cancelled' }),
+    ).toBe(0);
+  });
+  it('management: serializes whole-flight cancellation against signed payment confirmation without double release/refund', async () => {
+    const { bookingId, payment } = await initiate();
+    intents.set(payment.stripePaymentId, {
+      ...intents.get(payment.stripePaymentId)!,
+      status: 'succeeded',
+    });
+    const [cancelled, verified] = await Promise.all([
+      moderator
+        .post('/api/flights/' + flightId + '/cancel')
+        .send({ confirmed: true }),
+      deliver(signed(payment)),
+    ]);
+    expect(cancelled.status).toBe(200);
+    expect(verified.status).toBe(200);
+    expect(['Cancelled', 'Expired']).toContain(
+      (await bookings.findById(bookingId).orFail()).status,
+    );
+    expect((await flights.findById(flightId).orFail()).cabins[0]).toMatchObject(
+      { heldSeats: 0, bookedSeats: 0 },
+    );
+    await app.get(RefundsService).runDue();
+    expect(await refunds.countDocuments({ paymentId: payment.id })).toBe(1);
+    expect(
+      (await refunds.findOne({ paymentId: payment.id }).orFail()).amountMinor,
+    ).toBe(10_000);
+  });
+  it.each([
+    {},
+    { price: null },
+    { price: 0 },
+    { totalSeats: 0 },
+    { totalSeats: Number.MAX_SAFE_INTEGER + 1 },
+    { heldSeats: 0 },
+  ])(
+    'management: validates cabin edits and rejects client inventory-counter overrides %j',
+    async (body) => {
+      await moderator
+        .patch('/api/flights/' + flightId + '/cabins/Economy')
+        .send(body)
+        .expect(400);
+      expect(
+        (await flights.findById(flightId).orFail()).cabins[0],
+      ).toMatchObject({
+        totalSeats: 2,
+        heldSeats: 0,
+        bookedSeats: 0,
+        price: 10_000,
+      });
+    },
+  );
+  it('management: serializes capacity reductions against a competing last-seat hold', async () => {
+    await hold().expect(201);
+    const [capacity, reservation] = await Promise.all([
+      moderator
+        .patch('/api/flights/' + flightId + '/cabins/Economy')
+        .send({ totalSeats: 1 }),
+      hold({}, other),
+    ]);
+    if (capacity.status === 200) expect(reservation.status).toBe(409);
+    else {
+      expect(capacity.status).toBe(409);
+      expect(reservation.status).toBe(201);
+    }
+    const current = (await flights.findById(flightId).orFail()).cabins[0];
+    expect(current.heldSeats + current.bookedSeats).toBeLessThanOrEqual(
+      current.totalSeats,
+    );
+  });
 });

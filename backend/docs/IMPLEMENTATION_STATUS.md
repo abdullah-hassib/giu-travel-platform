@@ -1,3 +1,10 @@
+# November 19 flight management and full provider cancellation
+
+- Implemented mandatory FLT-04/05/06/30 schedule/cabin/cancellation endpoints, with actual provider assignment, strict confirmation/DTOs, future-Scheduled guards, official local/UTC airport validation, any-booking airport locks, active round-trip ordering and occupied-seat protection. Active booking schedules and real confirmed-owner notifications commit atomically; quotes and ended history are preserved.
+- Whole-flight cancellation expires/releases pending whole bookings and cancels/refunds Confirmed whole bookings at 100 percent, releasing all segments even across providers. It uses the already approved refund reservation and Omar event handoffs. Repeated/departed attempts do not double refund; provider cancellation versus signed confirmation and capacity reduction versus last-seat holds are exercised with actual concurrent transactions.
+- Typecheck/build/lint and all 209 unit tests passed. The real flight HTTP/database suite passed all 80 cases (22 new management cases); fresh remaining regressions passed 529 cases: 609 total across 23 suites. Provider refund gateways are controlled, while signatures, ownership, references, inventory and MongoDB transactions are actual. No private .env/shared data/live Stripe resource was used.
+- Remaining team backend work: assigned-moderator booking/passenger reads and CSV, private e-ticket download, airline logo upload and remaining admin profile mutation audit producers. Live Stripe acceptance still needs private test setup. See FLIGHT_MANAGEMENT.md.
+
 # November 19 combined administration booking reads
 
 - Completed ACC-17 hotel, flight and omitted-type combined lists over actual schemas. One global newest/type/ID order, ten-row page and total follows the union, with inclusive booking-start date and effective-status filters. Preserved hotel identity/date behavior; added flight owner display-name projection, outbound/final dates, hidden hold references and no private passenger/payment/policy fields.

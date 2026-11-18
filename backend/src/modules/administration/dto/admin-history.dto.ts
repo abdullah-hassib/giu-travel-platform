@@ -25,8 +25,15 @@ export const DOMAIN_HISTORY_ACTIONS = [
 export const ADMIN_HISTORY_ACTIONS = [
   ...ACCOUNT_HISTORY_ACTIONS,
   ...DOMAIN_HISTORY_ACTIONS,
-  'airline.created', 'airline.updated', 'airline.policies_updated', 'flight.created',
-  'provider.deactivated', 'provider.reactivated',
+  'airline.created',
+  'airline.updated',
+  'airline.policies_updated',
+  'flight.created',
+  'provider.deactivated',
+  'provider.reactivated',
+  'flight.updated',
+  'flight.cabins_updated',
+  'flight.cancelled',
 ] as const;
 
 export class AdminHistoryQueryDto extends PickType(AccountsQueryDto, [
