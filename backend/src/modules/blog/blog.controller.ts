@@ -119,7 +119,7 @@ export class PostsController {
   @ApiOperation({
     summary: 'BLG-05: comments on a published post, oldest first',
   })
-  comments_(@Param() params: IdParamDto, @Query() query: PageNumberDto) {
+  listComments(@Param() params: IdParamDto, @Query() query: PageNumberDto) {
     return this.comments.list(params.id, query.page);
   }
 
