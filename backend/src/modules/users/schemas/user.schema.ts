@@ -20,6 +20,10 @@ export class User {
   @Prop({ type: Number, default: 0, min: 0 })
   sessionVersion!: number;
 
+  /** Internal transaction fence; never part of a public user view. */
+  @Prop({ type: Number, default: 0, select: false })
+  bookingFence!: number;
+
   @Prop({ type: Boolean, default: false })
   mustChangePassword!: boolean;
 

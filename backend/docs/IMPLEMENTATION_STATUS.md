@@ -1,5 +1,12 @@
 # November 14, 2026 — Implementation status
 
+## November 18 atomic deactivation and hotel booking guard (ACC-12 partial)
+
+- Moved the existing self-deactivation route to an account lifecycle transaction: status/version and owner session deletion commit together. An upcoming/ongoing Confirmed hotel stay returns 409 with the account/session preserved; ended/cancelled stays do not block. No hotel booking record is mutated by this guard.
+- Added a nonselected internal user bookingFence to serialize payment preparation/settlement with account status changes. A closed owner cannot initiate payment or gain a Confirmed stay. A verified success already in flight stays durable/retryable until the normal hold deadline, then uses existing expiry/full-refund recovery. Suspended owners retain valid existing fulfillment. Quotes, hold durations, adapter contracts and teammate services are unchanged.
+- Typecheck/build/lint and 185 unit tests passed. The original full e2e run hit two existing local Mongo fixture/monitor timeouts while all nine new cases passed. Fresh sequential runs passed all 19 payment integration cases plus all 462 remaining HTTP/database cases (481 total). New cases cover upcoming/past/cancelled guards, all-session revocation, denied login, payment/deactivation race and deferred recovery, stale initiation, rollback, permissions and suspension behavior. No assertion was relaxed.
+- ACCOUNT_DEACTIVATION.md documents the route, transaction, bounded compensation and Swagger demo. Actual flight guards remain pending a compatible flight module. No private environment file, shared Atlas, external service or live Stripe resource was used.
+
 ## November 18 hotel administration booking reads (ACC-17 partial)
 
 - Added GET /api/admin/bookings?type=hotel with active administrator/forced-password checks, no-store, strict DTOs, status/inclusive start-date filters and stable ten-row pages. A separate read service consumes MK's actual booking schema, positively projects saved user/provider identities and totals, and derives effective expiry/completion without writing domain records. Flight/omitted type returns an explicit 503 rather than a misleading partial list.

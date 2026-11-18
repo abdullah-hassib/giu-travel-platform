@@ -7,6 +7,7 @@ import { AuthService } from '../src/modules/auth/auth.service';
 import { SessionGuard } from '../src/modules/auth/security/session.guard';
 import { UsersController } from '../src/modules/auth/users.controller';
 import { UsersService } from '../src/modules/users/users.service';
+import { AccountLifecycleService } from '../src/modules/auth/account-lifecycle.service';
 
 const user = { id: '507f1f77bcf86cd799439011', email: 'test@example.com', fullName: 'Tester', roles: ['traveler'], status: 'active' };
 
@@ -31,6 +32,7 @@ describe('Auth HTTP (isolated, no MongoDB)', () => {
         { provide: AuthService, useValue: auth },
         { provide: ConfigService, useValue: config },
         { provide: UsersService, useValue: users },
+        { provide: AccountLifecycleService, useValue: { deactivate: jest.fn() } },
         { provide: SessionGuard, useValue: { canActivate: () => true } },
       ],
     }).overrideGuard(SessionGuard).useValue({

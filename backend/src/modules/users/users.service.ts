@@ -142,11 +142,4 @@ export class UsersService {
     return UsersService.view(updated);
   }
 
-  async deactivate(userId: string): Promise<void> {
-    const result = await this.users.updateOne(
-      { _id: userId, status: 'active' },
-      { $set: { status: 'deactivated' }, $inc: { sessionVersion: 1 } },
-    ).exec();
-    if (result.matchedCount === 0) throw new NotFoundException('User not found');
-  }
 }
