@@ -1125,6 +1125,288 @@ describe('Payment settlement (real HTTP/replica set with approved contract fixtu
     expect((await refunds.findOne().orFail()).amountMinor).toBe(10000);
   });
 
+  it('recovers a verified event after a gateway outage without another Stripe delivery', async () => {
+    const agent = await signIn();
+    const { target, payment } = await initiate(agent);
+    paid(payment.stripePaymentId);
+    gateway.retrieveIntent.mockRejectedValueOnce(
+      new ServiceUnavailableException('Controlled outage'),
+    );
+    await deliver(signedEvent(payment)).expect(503);
+    const stored = await events.findOne().orFail();
+    expect(stored.status).toBe('pending');
+    expect(stored.nextAttemptAt!.getTime()).toBeGreaterThan(Date.now());
+    expect(JSON.stringify(stored)).not.toMatch(
+      /client_secret|_secret_|card|signature|rawBody/,
+    );
+    gateway.retrieveIntent.mockClear();
+    await app.get(PaymentsService).runDue();
+    expect(gateway.retrieveIntent).not.toHaveBeenCalled();
+    await events.updateOne(
+      { _id: stored._id },
+      { $set: { nextAttemptAt: new Date(0) } },
+    );
+    await app.get(PaymentsService).runDue();
+    await app.get(PaymentsService).runDue();
+    expect(
+      (await bookings.findById(target._id).orFail()).confirmedTransitions,
+    ).toBe(1);
+    expect((await events.findById(stored._id).orFail()).status).toBe(
+      'processed',
+    );
+    expect(gateway.retrieveIntent).toHaveBeenCalledTimes(1);
+  });
+
+  it('replays a verified legacy pending record after transaction rollback without extending its hold', async () => {
+    const agent = await signIn();
+    const { target, payment } = await initiate(agent);
+    paid(payment.stripePaymentId);
+    const write = jest.spyOn(events, 'updateOne').mockImplementationOnce(() => {
+      throw new Error('Controlled rollback');
+    });
+    await deliver(signedEvent(payment)).expect(500);
+    write.mockRestore();
+    await events.updateOne(
+      {},
+      { $unset: { resourceType: 1, nextAttemptAt: 1, refundId: 1 } },
+    );
+    await app.get(PaymentsService).runDue();
+    const stored = await bookings.findById(target._id).orFail();
+    expect(stored.confirmedTransitions).toBe(1);
+    expect(stored.holdExpiresAt).toEqual(target.holdExpiresAt);
+    expect((await events.findOne().orFail()).status).toBe('processed');
+  });
+
+  it('uses late-payment compensation when replay recovers only after the hold expired', async () => {
+    const agent = await signIn();
+    const { target, payment } = await initiate(agent);
+    paid(payment.stripePaymentId);
+    gateway.retrieveIntent.mockRejectedValueOnce(
+      new ServiceUnavailableException('Controlled outage'),
+    );
+    await deliver(signedEvent(payment)).expect(503);
+    advancePastHold();
+    await app.get(PaymentsService).runDue();
+    await app.get(PaymentsService).runDue();
+    const stored = await bookings.findById(target._id).orFail();
+    expect(stored.state).toBe('Expired');
+    expect(stored.confirmedTransitions).toBe(0);
+    expect(stored.releasedTransitions).toBe(1);
+    expect(await refunds.countDocuments()).toBe(1);
+    expect((await refunds.findOne().orFail()).amountMinor).toBe(10000);
+    expect((await events.findOne().orFail()).status).toBe('processed');
+  });
+
+  it('isolates failed replay records so other verified bookings can settle', async () => {
+    const agent = await signIn();
+    const first = await initiate(agent);
+    const second = await initiate(agent, 'hotel');
+    paid(first.payment.stripePaymentId);
+    paid(second.payment.stripePaymentId);
+    const normal = gateway.retrieveIntent.getMockImplementation()!;
+    gateway.retrieveIntent.mockRejectedValueOnce(
+      new ServiceUnavailableException('First delivery unavailable'),
+    );
+    await deliver(signedEvent(first.payment)).expect(503);
+    gateway.retrieveIntent.mockRejectedValueOnce(
+      new ServiceUnavailableException('Second delivery unavailable'),
+    );
+    await deliver(signedEvent(second.payment)).expect(503);
+    gateway.retrieveIntent.mockImplementation(async (input) => {
+      if (input.paymentId === first.payment.id)
+        throw new ServiceUnavailableException('Still unavailable');
+      return normal(input);
+    });
+    await events.updateMany({}, { $set: { nextAttemptAt: new Date(0) } });
+    await app.get(PaymentsService).runDue();
+    expect((await bookings.findById(first.target._id).orFail()).state).toBe(
+      'Pending Payment',
+    );
+    expect((await bookings.findById(second.target._id).orFail()).state).toBe(
+      'Confirmed',
+    );
+    expect(await events.countDocuments({ status: 'pending' })).toBe(1);
+    expect(await events.countDocuments({ status: 'processed' })).toBe(1);
+  });
+
+  it('replays verified refund metadata after a failed status delivery', async () => {
+    const agent = await signIn();
+    const { payment } = await initiate(agent);
+    advancePastHold();
+    paid(payment.stripePaymentId);
+    await deliver(signedEvent(payment)).expect(200);
+    const refund = await refunds.findOne().orFail();
+    const stripeId = `re_${refund._id}`;
+    stripeRefunds.set(stripeId, {
+      id: stripeId,
+      intentId: payment.stripePaymentId,
+      amountMinor: 10000,
+      currency: 'USD',
+      status: 'Refunded',
+    });
+    gateway.retrieveRefund.mockRejectedValueOnce(
+      new ServiceUnavailableException('Controlled status outage'),
+    );
+    const event = signedEvent(payment, {
+      type: 'refund.updated',
+      data: {
+        object: {
+          id: stripeId,
+          object: 'refund',
+          metadata: { refund_id: refund._id.toString() },
+        },
+      },
+    });
+    await deliver(event).expect(503);
+    const stored = await events.findOne({ eventId: event.body.id }).orFail();
+    expect(stored.refundId).toBe(refund._id.toString());
+    await events.updateOne(
+      { _id: stored._id },
+      { $set: { nextAttemptAt: new Date(0) } },
+    );
+    await app.get(PaymentsService).runDue();
+    expect((await refunds.findById(refund._id).orFail()).status).toBe(
+      'Refunded',
+    );
+    expect((await events.findById(stored._id).orFail()).status).toBe(
+      'processed',
+    );
+    expect(
+      await outbox.countDocuments({ 'payload.refundStatus': 'Refunded' }),
+    ).toBe(1);
+    expect(gateway.createRefund).not.toHaveBeenCalled();
+  });
+
+  it.each(['flight', 'hotel'] as BookingKind[])(
+    'settles and refunds a %s through the actual Stripe SDK with isolated transport',
+    async (kind) => {
+      const rawIntents = new Map<string, Record<string, unknown>>();
+      const rawRefunds = new Map<string, Record<string, unknown>>();
+      const transport = jest
+        .fn<ReturnType<typeof fetch>, Parameters<typeof fetch>>()
+        .mockImplementation(async (url, options) => {
+          const path = new URL(String(url)).pathname;
+          const form = new URLSearchParams(String(options?.body ?? ''));
+          let result: Record<string, unknown> | undefined;
+          if (options?.method === 'POST' && path === '/v1/payment_intents') {
+            const paymentId = form.get('metadata[payment_id]')!;
+            const id = `pi_${paymentId}`;
+            result = {
+              id,
+              object: 'payment_intent',
+              amount: Number(form.get('amount')),
+              amount_received: 0,
+              currency: form.get('currency'),
+              livemode: false,
+              status: 'requires_payment_method',
+              capture_method: form.get('capture_method'),
+              client_secret: `${id}_secret_synthetic`,
+              metadata: { payment_id: paymentId },
+            };
+            rawIntents.set(id, result);
+          } else if (path.startsWith('/v1/payment_intents/')) {
+            result = rawIntents.get(path.split('/').pop()!);
+          } else if (options?.method === 'POST' && path === '/v1/refunds') {
+            const refundId = form.get('metadata[refund_id]')!;
+            const id = `re_${refundId}`;
+            result = {
+              id,
+              object: 'refund',
+              payment_intent: form.get('payment_intent'),
+              amount: Number(form.get('amount')),
+              currency: 'usd',
+              status: 'succeeded',
+              metadata: {
+                refund_id: refundId,
+                payment_id: form.get('metadata[payment_id]'),
+              },
+            };
+            rawRefunds.set(id, result);
+          } else if (path.startsWith('/v1/refunds/')) {
+            result = rawRefunds.get(path.split('/').pop()!);
+          }
+          if (!result) throw new Error('Unexpected isolated SDK request');
+          return new Response(JSON.stringify(result), {
+            status: 200,
+            headers: {
+              'content-type': 'application/json',
+              'request-id': 'req_settlementSynthetic',
+            },
+          });
+        });
+      const sdkGateway = new StripeTestGateway(
+        new ConfigService({
+          STRIPE_SECRET_KEY: 'sk_test_settlementSyntheticOnly',
+        }),
+        (key) =>
+          new Stripe(key, {
+            httpClient: Stripe.createFetchHttpClient(transport),
+            maxNetworkRetries: 0,
+            timeout: 1000,
+          }),
+      );
+      gateway.createIntent.mockImplementation(
+        sdkGateway.createIntent.bind(sdkGateway),
+      );
+      gateway.retrieveIntent.mockImplementation(
+        sdkGateway.retrieveIntent.bind(sdkGateway),
+      );
+      gateway.createRefund.mockImplementation(
+        sdkGateway.createRefund.bind(sdkGateway),
+      );
+      gateway.retrieveRefund.mockImplementation(
+        sdkGateway.retrieveRefund.bind(sdkGateway),
+      );
+      const agent = await signIn();
+      const { target, payment } = await initiate(agent, kind);
+      const raw = rawIntents.get(payment.stripePaymentId)!;
+      raw.status = 'succeeded';
+      raw.amount_received = 10000;
+      await deliver(signedEvent(payment)).expect(200);
+      expect((await bookings.findById(target._id).orFail()).state).toBe(
+        'Confirmed',
+      );
+      await connection.transaction(async (session) => {
+        await bookings.updateOne(
+          { _id: target._id },
+          { $set: { state: 'Cancelled' } },
+          { session },
+        );
+        await app
+          .get(RefundsService)
+          .enqueueCancellation(
+            {
+              paymentId: payment.id,
+              bookingId: payment.bookingId,
+              userId: ownerId,
+              amountMinor: 2500,
+              reason: 'user_cancellation',
+            },
+            session,
+          );
+      });
+      await app.get(RefundsService).runDue();
+      const refund = await refunds.findOne().orFail();
+      expect(
+        (await agent.get(`/api/refunds/${refund._id}`).expect(200)).body,
+      ).toMatchObject({ status: 'Refunded', amountMinor: 2500 });
+      expect(rawRefunds.size).toBe(1);
+      expect(
+        transport.mock.calls
+          .map(([, options]) =>
+            new Headers(options?.headers).get('idempotency-key'),
+          )
+          .filter(Boolean),
+      ).toEqual([
+        `payment:${payment.id}:create`,
+        `refund:${refund._id}:create`,
+      ]);
+      expect(JSON.stringify(await payments.findOne().lean())).not.toContain(
+        '_secret_',
+      );
+    },
+  );
+
   it('publishes owner response schemas and signed raw-body webhook documentation', async () => {
     const document = (
       await request(app.getHttpServer()).get('/api/docs-json').expect(200)

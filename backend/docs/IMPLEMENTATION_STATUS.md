@@ -1,5 +1,11 @@
 # November 14, 2026 — Implementation status
 
+## November 18 verified-event recovery (PAY-01/PAY-03)
+
+- Added durable automatic recovery of failed verified webhook applications through the existing reconciliation worker. Saved minimal resource/refund correlation and a retry deadline allow current gateway state to be reconciled after a process restart without another Stripe delivery. Original signature verification remains mandatory before any event is stored. No raw bodies, signatures or card data are retained.
+- Failed applications back off one minute; completed/ignored records are excluded. Existing leases/transactions preserve idempotency with redelivery and expiry. Legacy pending records remain readable. Replay after expiry keeps the booking Expired and reserves one full refund; one failed event does not block other due records.
+- Typecheck, build and lint passed, with 152 unit and 292 e2e tests. Seven new cases cover outage/rollback recovery, backoff, old records, late recovery, failure isolation, refund metadata and two flight/hotel HTTP-to-real-SDK settlement/refund flows through isolated transport. No real Stripe or shared Atlas access. Actual team adapters/consumers and private test verification remain pending; the stacked candidate remains draft.
+
 ## November 17 payment/refund settlement candidate (PAY-01/02/03/04)
 
 - Implemented owned payment creation/retry/status and refund status with DTO validation, traveler/session/ownership guards, no-store responses and Swagger. Initiation requires matching saved policy acceptance and freezes the authoritative USD quote/policy snapshot. Persisted payment identity and a unique booking key reuse one intent, including recovery after a lost response.

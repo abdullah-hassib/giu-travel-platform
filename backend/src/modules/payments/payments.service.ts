@@ -483,6 +483,9 @@ export class PaymentsService {
               occurredAt: event.createdAt,
               resourceId: event.resourceId ?? undefined,
               paymentId: event.paymentId ?? undefined,
+              refundId: event.refundId ?? undefined,
+              resourceType: event.resourceType ?? undefined,
+              nextAttemptAt: new Date(),
               status: 'pending',
             },
           },
@@ -509,7 +512,34 @@ export class PaymentsService {
   async webhook(rawBody: Buffer, signature: string | undefined): Promise<void> {
     const event = this.gateway.verifyWebhook(rawBody, signature);
     const stored = await this.eventRecord(event);
-    if (stored.status !== 'pending') return;
+    await this.processStoredEvent(stored);
+  }
+
+  private async processStoredEvent(event: PaymentEvent): Promise<void> {
+    if (event.status !== 'pending') return;
+    try {
+      await this.applyStoredEvent(event);
+    } catch (error) {
+      await this.events
+        .updateOne(
+          { eventId: event.eventId, status: 'pending' },
+          { $set: { nextAttemptAt: new Date(Date.now() + 60000) } },
+        )
+        .exec();
+      throw error;
+    }
+  }
+
+  /** Only records persisted after SDK signature verification enter this path. */
+  private async applyStoredEvent(event: PaymentEvent): Promise<void> {
+    // Compatibility with pending records written before durable replay fields.
+    const resourceType =
+      event.resourceType ??
+      (event.type.startsWith('payment_intent.')
+        ? 'payment_intent'
+        : event.type.startsWith('refund.')
+          ? 'refund'
+          : undefined);
     const ignore = () =>
       this.events
         .updateOne(
@@ -517,14 +547,14 @@ export class PaymentsService {
           { $set: { status: 'ignored', processedAt: new Date() } },
         )
         .exec();
-    if (!event.resourceType || !event.resourceId) {
+    if (!resourceType || !event.resourceId) {
       await ignore();
       return;
     }
-    if (event.resourceType === 'refund') {
+    if (resourceType === 'refund') {
       const refundId = await this.refunds.findForEvent(
         event.resourceId,
-        event.refundId,
+        event.refundId ?? null,
       );
       if (!refundId) {
         await ignore();
@@ -571,6 +601,24 @@ export class PaymentsService {
   }
 
   async runDue(): Promise<void> {
+    const pendingEvents = await this.events
+      .find({
+        status: 'pending',
+        $or: [
+          { nextAttemptAt: { $lte: new Date() } },
+          { nextAttemptAt: { $exists: false } },
+        ],
+      })
+      .sort({ nextAttemptAt: 1, _id: 1 })
+      .limit(50)
+      .exec();
+    for (const event of pendingEvents) {
+      try {
+        await this.processStoredEvent(event);
+      } catch {
+        /* Verified metadata stays durable; failures back off without raw bodies. */
+      }
+    }
     const due = await this.payments
       .find({
         fulfillment: { $ne: 'confirmed' },
