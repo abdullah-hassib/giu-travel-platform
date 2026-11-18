@@ -29,6 +29,7 @@ import { Hotel } from '../src/modules/hotels/schemas/hotel.schema';
 import { HotelRoom } from '../src/modules/hotels/schemas/room.schema';
 import { addDays, todayUtc } from '../src/modules/hotels/stay-rules';
 import { ReviewsModule } from '../src/modules/reviews/reviews.module';
+import { RefundsService } from '../src/modules/refunds/refunds.service';
 import { User } from '../src/modules/users/schemas/user.schema';
 
 const uploadDir = mkdtempSync(join(tmpdir(), 'giu-hotel-media-'));
@@ -88,7 +89,10 @@ describe('Hotels, rooms, bookings and reviews (real HTTP and MongoDB)', () => {
         HotelBookingsModule,
         ReviewsModule,
       ],
-    }).compile();
+    })
+      .overrideProvider(RefundsService)
+      .useValue({ enqueueCancellation: jest.fn(async () => null) })
+      .compile();
     app = module.createNestApplication();
     app.setGlobalPrefix('api');
     app.useGlobalPipes(
