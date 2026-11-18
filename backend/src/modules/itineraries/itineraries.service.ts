@@ -413,7 +413,13 @@ export class ItinerariesService {
 
   private publicPipeline(filter: FilterQuery<Itinerary>): PipelineStage[] {
     return [
-      { $match: { ...filter, visibility: 'public', moderationHidden: { $ne: true } } },
+      {
+        $match: {
+          ...filter,
+          visibility: 'public',
+          moderationHidden: { $ne: true },
+        },
+      },
       {
         $lookup: {
           from: this.users.collection.name,
