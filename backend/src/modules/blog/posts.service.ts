@@ -150,7 +150,11 @@ export class PostsService implements ModeratedContent {
       .lean<{ _id: Types.ObjectId; fullName: string; createdAt?: Date }>();
     if (!author) throw new NotFoundException('Author not found');
 
-    const itineraryFilter = { ownerId: author._id, visibility: 'public', moderationHidden: { $ne: true } };
+    const itineraryFilter = {
+      ownerId: author._id,
+      visibility: 'public',
+      moderationHidden: { $ne: true },
+    };
     const [posts, itineraries, itineraryTotal] = await Promise.all([
       this.list({ page: query.postsPage }, { authorId: author._id }),
       this.itineraries
