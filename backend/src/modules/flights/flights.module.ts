@@ -15,6 +15,8 @@ import { FlightSearchService } from './flight-search.service';
 import { FlightBookingsModule } from '../flight-bookings/flight-bookings.module';
 import { FlightOperationsService } from './flight-operations.service';
 import { FlightOperationsController } from './flight-operations.controller';
+import { FlightRosterService } from './flight-roster.service';
+import { FlightRosterController } from './flight-roster.controller';
 import { RefundsModule } from '../refunds/refunds.module';
 import {
   FlightBooking,
@@ -36,8 +38,17 @@ import {
       { name: FlightBooking.name, schema: FlightBookingSchema },
     ]),
   ],
-  controllers: [FlightsController, FlightOperationsController],
-  providers: [FlightsService, FlightSearchService, FlightOperationsService],
+  controllers: [
+    FlightsController,
+    FlightOperationsController,
+    FlightRosterController,
+  ],
+  providers: [
+    FlightsService,
+    FlightSearchService,
+    FlightOperationsService,
+    FlightRosterService,
+  ],
   exports: [FlightsService, FlightSearchService],
 })
 export class FlightsModule {}
