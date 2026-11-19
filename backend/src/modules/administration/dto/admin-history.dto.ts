@@ -25,6 +25,11 @@ export const DOMAIN_HISTORY_ACTIONS = [
 export const ADMIN_HISTORY_ACTIONS = [
   ...ACCOUNT_HISTORY_ACTIONS,
   ...DOMAIN_HISTORY_ACTIONS,
+  'hotel.created',
+  'hotel.updated',
+  'hotel.policies_updated',
+  'hotel.image_added',
+  'hotel.image_removed',
   'airline.created',
   'airline.updated',
   'airline.policies_updated',

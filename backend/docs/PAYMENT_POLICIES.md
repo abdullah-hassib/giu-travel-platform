@@ -1,3 +1,5 @@
+> Current November 19 handoff: [M1_BACKEND_HANDOFF.md](M1_BACKEND_HANDOFF.md). The integrated backend now includes actual hotel/flight/provider/payment/refund/delivery paths, all mandatory exports/media and hotel profile audit producers. Older remaining-integration statements below describe their dated checkpoints. Private Stripe and intended runtime acceptance remain unverified.
+
 # Booking policy review and acceptance
 
 PAY-02 service slice, November 17. Implements guarded policy review and timestamped acceptance through the Hassib-approved booking adapter design. Concrete hotel and flight adapters are now connected, using the approved boundary and immutable saved policies. See HOTEL_PAYMENT_INTEGRATION.md and FLIGHT_PAYMENT_INTEGRATION.md. A future unsupported integration still fails safely rather than inventing a quote.

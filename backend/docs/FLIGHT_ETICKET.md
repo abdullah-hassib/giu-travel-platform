@@ -1,6 +1,6 @@
 # Private flight e-ticket PDF
 
-Mandatory FLT-23 with FLT-24/ACC-11. `GET /api/flight-bookings/:id/e-ticket` requires an active, unrestricted traveler session and that exact booking owner. Missing/foreign bookings return 404; unpaid, Expired and Cancelled bookings return 409. Confirmed and Completed bookings remain downloadable, including history from a provider that is no longer active. Administrators and moderators do not inherit this private traveler download permission.
+Mandatory FLT-23 with GEN-06/ACC-11. `GET /api/flight-bookings/:id/e-ticket` requires an active, unrestricted traveler session and that exact booking owner. Missing/foreign bookings return 404; unpaid, Expired and Cancelled bookings return 409. Confirmed and Completed bookings remain downloadable, including history from a provider that is no longer active. Administrators and moderators do not inherit this private traveler download permission.
 
 The PDF contains the actual confirmed reference, every saved outbound/return segment, airline/flight/airport names, airport-local dates/times with UTC offsets and official IANA zones, matching cabin/seats, saved baggage allowance and passenger extra bags/weights, names/types and exact USD total. Active schedule changes already propagate into booking segments through the verified flight-management transaction; the ticket uses those saved segments. Prices/policies remain the booking's saved quote. Birth dates, identity documents, owner contacts, payment IDs, credentials and card data are not selected for the ticket.
 

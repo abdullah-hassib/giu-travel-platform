@@ -15,12 +15,14 @@ import { HotelsService } from './hotels.service';
 import { RoomsService } from './rooms.service';
 import { Hotel, HotelSchema } from './schemas/hotel.schema';
 import { HotelRoom, HotelRoomSchema } from './schemas/room.schema';
+import { DomainEventsModule } from '../domain-events/domain-events.module';
 
 /** Hotels, their rooms, availability and policies (HTL-01..HTL-15, HTL-22). */
 @Module({
   imports: [
     AuthModule,
     MediaUploadsModule,
+    DomainEventsModule,
     MongooseModule.forFeature([
       { name: Hotel.name, schema: HotelSchema },
       { name: HotelRoom.name, schema: HotelRoomSchema },

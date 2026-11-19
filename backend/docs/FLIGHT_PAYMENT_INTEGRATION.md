@@ -1,3 +1,5 @@
+> Current November 19 handoff: [M1_BACKEND_HANDOFF.md](M1_BACKEND_HANDOFF.md). The integrated backend now includes actual hotel/flight/provider/payment/refund/delivery paths, all mandatory exports/media and hotel profile audit producers. Older remaining-integration statements below describe their dated checkpoints. Private Stripe and intended runtime acceptance remain unverified.
+
 # Flight foundation, booking and payment integration
 
 This slice integrates Adham's submitted creation, time-zone and passenger-pricing work with the current official reference service, administration, payments/refunds and Omar's real event delivery. Hassib approved FLIGHT_INTEGRATION_PLAN.md before the shared model changes. Flight search, editing/cancellation of an entire flight, itinerary flight search, administrator combined pages and the required exports are subsequent slices; their absence is not represented as completed functionality.

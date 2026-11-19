@@ -1,0 +1,798 @@
+{
+  "source": "docs/requirements/official-giu-project-description.pdf",
+  "sourceSha256": "be97dd0731e67f1eebecce20e0b7bbf5f480f4e36592ff123decfda0585fb869",
+  "notes": "Section 8 API catalogue; explicitly Optional rows excluded. Supporting-service routes may be additional.",
+  "routes": [
+    {
+      "method": "post",
+      "path": "/api/auth/register",
+      "requirements": [
+        "ACC-01"
+      ]
+    },
+    {
+      "method": "post",
+      "path": "/api/auth/login",
+      "requirements": [
+        "ACC-04",
+        "ACC-05"
+      ]
+    },
+    {
+      "method": "post",
+      "path": "/api/auth/logout",
+      "requirements": [
+        "ACC-06"
+      ]
+    },
+    {
+      "method": "post",
+      "path": "/api/admin/users/{id}/reset-password",
+      "requirements": [
+        "ACC-07a"
+      ]
+    },
+    {
+      "method": "patch",
+      "path": "/api/auth/change-password",
+      "requirements": [
+        "ACC-08"
+      ]
+    },
+    {
+      "method": "get",
+      "path": "/api/auth/me",
+      "requirements": [
+        "ACC-04",
+        "ACC-19"
+      ]
+    },
+    {
+      "method": "get",
+      "path": "/api/users/me",
+      "requirements": [
+        "ACC-11"
+      ]
+    },
+    {
+      "method": "patch",
+      "path": "/api/users/me",
+      "requirements": [
+        "ACC-09"
+      ]
+    },
+    {
+      "method": "delete",
+      "path": "/api/users/me",
+      "requirements": [
+        "ACC-12"
+      ]
+    },
+    {
+      "method": "post",
+      "path": "/api/admin/moderators",
+      "requirements": [
+        "ACC-13"
+      ]
+    },
+    {
+      "method": "get",
+      "path": "/api/admin/accounts",
+      "requirements": [
+        "ACC-14"
+      ]
+    },
+    {
+      "method": "patch",
+      "path": "/api/admin/accounts/{id}/suspend",
+      "requirements": [
+        "ACC-15",
+        "ACC-16"
+      ]
+    },
+    {
+      "method": "patch",
+      "path": "/api/admin/accounts/{id}/reactivate",
+      "requirements": [
+        "ACC-15",
+        "ACC-16"
+      ]
+    },
+    {
+      "method": "patch",
+      "path": "/api/admin/providers/{type}/{id}/deactivate",
+      "requirements": [
+        "ACC-15"
+      ]
+    },
+    {
+      "method": "patch",
+      "path": "/api/admin/providers/{type}/{id}/reactivate",
+      "requirements": [
+        "ACC-15"
+      ]
+    },
+    {
+      "method": "get",
+      "path": "/api/admin/bookings",
+      "requirements": [
+        "ACC-17"
+      ]
+    },
+    {
+      "method": "get",
+      "path": "/api/admin/reports",
+      "requirements": [
+        "GEN-09",
+        "GEN-10"
+      ]
+    },
+    {
+      "method": "patch",
+      "path": "/api/admin/reports/{id}",
+      "requirements": [
+        "GEN-10"
+      ]
+    },
+    {
+      "method": "delete",
+      "path": "/api/admin/content/{type}/{id}",
+      "requirements": [
+        "GEN-10"
+      ]
+    },
+    {
+      "method": "get",
+      "path": "/api/admin/audit-logs",
+      "requirements": [
+        "GEN-07"
+      ]
+    },
+    {
+      "method": "post",
+      "path": "/api/airlines",
+      "requirements": [
+        "FLT-01"
+      ]
+    },
+    {
+      "method": "get",
+      "path": "/api/airlines/{id}",
+      "requirements": [
+        "FLT-01"
+      ]
+    },
+    {
+      "method": "patch",
+      "path": "/api/airlines/{id}",
+      "requirements": [
+        "FLT-01"
+      ]
+    },
+    {
+      "method": "get",
+      "path": "/api/airports",
+      "requirements": [
+        "FLT-02"
+      ]
+    },
+    {
+      "method": "post",
+      "path": "/api/flights",
+      "requirements": [
+        "FLT-03"
+      ]
+    },
+    {
+      "method": "get",
+      "path": "/api/flights/search",
+      "requirements": [
+        "FLT-11",
+        "FLT-12",
+        "FLT-15"
+      ]
+    },
+    {
+      "method": "get",
+      "path": "/api/flights/{id}",
+      "requirements": [
+        "FLT-17"
+      ]
+    },
+    {
+      "method": "patch",
+      "path": "/api/flights/{id}",
+      "requirements": [
+        "FLT-05"
+      ]
+    },
+    {
+      "method": "post",
+      "path": "/api/flights/{id}/cancel",
+      "requirements": [
+        "FLT-06"
+      ]
+    },
+    {
+      "method": "post",
+      "path": "/api/flights/{id}/cabins",
+      "requirements": [
+        "FLT-04"
+      ]
+    },
+    {
+      "method": "patch",
+      "path": "/api/flights/{id}/cabins/{cabinId}",
+      "requirements": [
+        "FLT-04",
+        "FLT-05"
+      ]
+    },
+    {
+      "method": "put",
+      "path": "/api/airlines/{id}/baggage-policy",
+      "requirements": [
+        "FLT-04",
+        "FLT-08"
+      ]
+    },
+    {
+      "method": "put",
+      "path": "/api/airlines/{id}/cancellation-policy",
+      "requirements": [
+        "FLT-09"
+      ]
+    },
+    {
+      "method": "get",
+      "path": "/api/flights/{id}/bookings",
+      "requirements": [
+        "FLT-29"
+      ]
+    },
+    {
+      "method": "get",
+      "path": "/api/flights/{id}/passengers/export",
+      "requirements": [
+        "FLT-29"
+      ]
+    },
+    {
+      "method": "post",
+      "path": "/api/flight-bookings/hold",
+      "requirements": [
+        "FLT-22"
+      ]
+    },
+    {
+      "method": "post",
+      "path": "/api/flight-bookings",
+      "requirements": [
+        "FLT-19",
+        "FLT-21"
+      ]
+    },
+    {
+      "method": "get",
+      "path": "/api/flight-bookings",
+      "requirements": [
+        "FLT-25"
+      ]
+    },
+    {
+      "method": "get",
+      "path": "/api/flight-bookings/{id}",
+      "requirements": [
+        "FLT-25"
+      ]
+    },
+    {
+      "method": "post",
+      "path": "/api/flight-bookings/{id}/cancel",
+      "requirements": [
+        "FLT-26"
+      ]
+    },
+    {
+      "method": "get",
+      "path": "/api/flight-bookings/{id}/e-ticket",
+      "requirements": [
+        "FLT-23"
+      ]
+    },
+    {
+      "method": "post",
+      "path": "/api/hotels",
+      "requirements": [
+        "HTL-01"
+      ]
+    },
+    {
+      "method": "get",
+      "path": "/api/hotels/search",
+      "requirements": [
+        "HTL-11",
+        "HTL-12"
+      ]
+    },
+    {
+      "method": "get",
+      "path": "/api/hotels/{id}",
+      "requirements": [
+        "HTL-02"
+      ]
+    },
+    {
+      "method": "patch",
+      "path": "/api/hotels/{id}",
+      "requirements": [
+        "HTL-01"
+      ]
+    },
+    {
+      "method": "post",
+      "path": "/api/hotels/{id}/rooms",
+      "requirements": [
+        "HTL-03"
+      ]
+    },
+    {
+      "method": "patch",
+      "path": "/api/hotels/{id}/rooms/{roomId}",
+      "requirements": [
+        "HTL-05"
+      ]
+    },
+    {
+      "method": "delete",
+      "path": "/api/hotels/{id}/rooms/{roomId}",
+      "requirements": [
+        "HTL-06"
+      ]
+    },
+    {
+      "method": "get",
+      "path": "/api/hotels/{id}/rooms/available",
+      "requirements": [
+        "HTL-15"
+      ]
+    },
+    {
+      "method": "post",
+      "path": "/api/hotels/{id}/rooms/{roomId}/availability",
+      "requirements": [
+        "HTL-04"
+      ]
+    },
+    {
+      "method": "patch",
+      "path": "/api/hotels/{id}/rooms/{roomId}/availability",
+      "requirements": [
+        "HTL-05",
+        "HTL-06"
+      ]
+    },
+    {
+      "method": "get",
+      "path": "/api/hotels/{id}/availability",
+      "requirements": [
+        "HTL-08"
+      ]
+    },
+    {
+      "method": "put",
+      "path": "/api/hotels/{id}/policies",
+      "requirements": [
+        "HTL-09",
+        "HTL-10"
+      ]
+    },
+    {
+      "method": "get",
+      "path": "/api/hotels/{id}/reservations",
+      "requirements": [
+        "HTL-22"
+      ]
+    },
+    {
+      "method": "post",
+      "path": "/api/hotel-bookings",
+      "requirements": [
+        "HTL-16",
+        "HTL-18"
+      ]
+    },
+    {
+      "method": "get",
+      "path": "/api/hotel-bookings",
+      "requirements": [
+        "HTL-20"
+      ]
+    },
+    {
+      "method": "get",
+      "path": "/api/hotel-bookings/{id}",
+      "requirements": [
+        "HTL-20"
+      ]
+    },
+    {
+      "method": "post",
+      "path": "/api/hotel-bookings/{id}/cancel",
+      "requirements": [
+        "HTL-21"
+      ]
+    },
+    {
+      "method": "post",
+      "path": "/api/hotel-bookings/{id}/review",
+      "requirements": [
+        "HTL-23"
+      ]
+    },
+    {
+      "method": "patch",
+      "path": "/api/reviews/{id}",
+      "requirements": [
+        "HTL-23"
+      ]
+    },
+    {
+      "method": "delete",
+      "path": "/api/reviews/{id}",
+      "requirements": [
+        "HTL-23"
+      ]
+    },
+    {
+      "method": "get",
+      "path": "/api/hotels/{id}/reviews",
+      "requirements": [
+        "HTL-24"
+      ]
+    },
+    {
+      "method": "get",
+      "path": "/api/bookings/{type}/{id}/policies",
+      "requirements": [
+        "PAY-02"
+      ]
+    },
+    {
+      "method": "post",
+      "path": "/api/bookings/{type}/{id}/accept-policies",
+      "requirements": [
+        "PAY-02"
+      ]
+    },
+    {
+      "method": "post",
+      "path": "/api/payments",
+      "requirements": [
+        "PAY-01"
+      ]
+    },
+    {
+      "method": "post",
+      "path": "/api/payments/{id}/retry",
+      "requirements": [
+        "PAY-01"
+      ]
+    },
+    {
+      "method": "get",
+      "path": "/api/payments/{id}",
+      "requirements": [
+        "PAY-01"
+      ]
+    },
+    {
+      "method": "post",
+      "path": "/api/payments/webhook",
+      "requirements": [
+        "PAY-01"
+      ]
+    },
+    {
+      "method": "get",
+      "path": "/api/refunds/{id}",
+      "requirements": [
+        "PAY-03"
+      ]
+    },
+    {
+      "method": "post",
+      "path": "/api/itineraries",
+      "requirements": [
+        "ITN-01"
+      ]
+    },
+    {
+      "method": "get",
+      "path": "/api/itineraries",
+      "requirements": [
+        "ITN-03"
+      ]
+    },
+    {
+      "method": "get",
+      "path": "/api/itineraries/{id}",
+      "requirements": [
+        "ITN-03"
+      ]
+    },
+    {
+      "method": "patch",
+      "path": "/api/itineraries/{id}",
+      "requirements": [
+        "ITN-01",
+        "ITN-20"
+      ]
+    },
+    {
+      "method": "delete",
+      "path": "/api/itineraries/{id}",
+      "requirements": [
+        "ITN-01"
+      ]
+    },
+    {
+      "method": "post",
+      "path": "/api/itineraries/{id}/days",
+      "requirements": [
+        "ITN-05"
+      ]
+    },
+    {
+      "method": "patch",
+      "path": "/api/itineraries/{id}/days/{dayId}",
+      "requirements": [
+        "ITN-05"
+      ]
+    },
+    {
+      "method": "delete",
+      "path": "/api/itineraries/{id}/days/{dayId}",
+      "requirements": [
+        "ITN-07"
+      ]
+    },
+    {
+      "method": "patch",
+      "path": "/api/itineraries/{id}/days/reorder",
+      "requirements": [
+        "ITN-08"
+      ]
+    },
+    {
+      "method": "post",
+      "path": "/api/itineraries/{id}/days/{dayId}/activities",
+      "requirements": [
+        "ITN-10"
+      ]
+    },
+    {
+      "method": "patch",
+      "path": "/api/activities/{id}",
+      "requirements": [
+        "ITN-10"
+      ]
+    },
+    {
+      "method": "delete",
+      "path": "/api/activities/{id}",
+      "requirements": [
+        "ITN-10"
+      ]
+    },
+    {
+      "method": "post",
+      "path": "/api/activities/{id}/images",
+      "requirements": [
+        "ITN-12",
+        "GEN-08"
+      ]
+    },
+    {
+      "method": "delete",
+      "path": "/api/activities/{id}/images/{imageId}",
+      "requirements": [
+        "ITN-12"
+      ]
+    },
+    {
+      "method": "post",
+      "path": "/api/itineraries/{id}/days/{dayId}/budgets",
+      "requirements": [
+        "ITN-14"
+      ]
+    },
+    {
+      "method": "patch",
+      "path": "/api/budgets/{id}",
+      "requirements": [
+        "ITN-14"
+      ]
+    },
+    {
+      "method": "delete",
+      "path": "/api/budgets/{id}",
+      "requirements": [
+        "ITN-14"
+      ]
+    },
+    {
+      "method": "post",
+      "path": "/api/itineraries/{id}/transport-costs",
+      "requirements": [
+        "ITN-16"
+      ]
+    },
+    {
+      "method": "patch",
+      "path": "/api/transport-costs/{id}",
+      "requirements": [
+        "ITN-16"
+      ]
+    },
+    {
+      "method": "delete",
+      "path": "/api/transport-costs/{id}",
+      "requirements": [
+        "ITN-16"
+      ]
+    },
+    {
+      "method": "get",
+      "path": "/api/itineraries/{id}/budget-summary",
+      "requirements": [
+        "ITN-14",
+        "ITN-18"
+      ]
+    },
+    {
+      "method": "get",
+      "path": "/api/itineraries/public/search",
+      "requirements": [
+        "ITN-20",
+        "ITN-21"
+      ]
+    },
+    {
+      "method": "get",
+      "path": "/api/itineraries/public/{id}",
+      "requirements": [
+        "ITN-21"
+      ]
+    },
+    {
+      "method": "post",
+      "path": "/api/itineraries/{id}/clone",
+      "requirements": [
+        "ITN-21"
+      ]
+    },
+    {
+      "method": "get",
+      "path": "/api/itineraries/{id}/hotels",
+      "requirements": [
+        "ITN-25"
+      ]
+    },
+    {
+      "method": "get",
+      "path": "/api/itineraries/{id}/flights",
+      "requirements": [
+        "ITN-26"
+      ]
+    },
+    {
+      "method": "post",
+      "path": "/api/posts",
+      "requirements": [
+        "BLG-01"
+      ]
+    },
+    {
+      "method": "get",
+      "path": "/api/posts",
+      "requirements": [
+        "BLG-02",
+        "BLG-09"
+      ]
+    },
+    {
+      "method": "get",
+      "path": "/api/posts/{id}",
+      "requirements": [
+        "BLG-02"
+      ]
+    },
+    {
+      "method": "get",
+      "path": "/api/posts/mine",
+      "requirements": [
+        "BLG-03"
+      ]
+    },
+    {
+      "method": "patch",
+      "path": "/api/posts/{id}",
+      "requirements": [
+        "BLG-04",
+        "BLG-08"
+      ]
+    },
+    {
+      "method": "delete",
+      "path": "/api/posts/{id}",
+      "requirements": [
+        "BLG-04"
+      ]
+    },
+    {
+      "method": "post",
+      "path": "/api/posts/{id}/comments",
+      "requirements": [
+        "BLG-05"
+      ]
+    },
+    {
+      "method": "patch",
+      "path": "/api/comments/{id}",
+      "requirements": [
+        "BLG-07"
+      ]
+    },
+    {
+      "method": "delete",
+      "path": "/api/comments/{id}",
+      "requirements": [
+        "BLG-07"
+      ]
+    },
+    {
+      "method": "post",
+      "path": "/api/posts/{id}/like",
+      "requirements": [
+        "BLG-06"
+      ]
+    },
+    {
+      "method": "delete",
+      "path": "/api/posts/{id}/like",
+      "requirements": [
+        "BLG-06"
+      ]
+    },
+    {
+      "method": "post",
+      "path": "/api/posts/{id}/images",
+      "requirements": [
+        "BLG-10",
+        "GEN-08"
+      ]
+    },
+    {
+      "method": "delete",
+      "path": "/api/posts/{id}/images/{imageId}",
+      "requirements": [
+        "BLG-10"
+      ]
+    },
+    {
+      "method": "get",
+      "path": "/api/tags/{tag}/posts",
+      "requirements": [
+        "BLG-08"
+      ]
+    },
+    {
+      "method": "get",
+      "path": "/api/authors/{id}",
+      "requirements": [
+        "BLG-12"
+      ]
+    }
+  ]
+}

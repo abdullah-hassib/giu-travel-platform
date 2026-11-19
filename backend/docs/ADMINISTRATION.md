@@ -1,3 +1,5 @@
+> Current November 19 handoff: [M1_BACKEND_HANDOFF.md](M1_BACKEND_HANDOFF.md). The integrated backend now includes actual hotel/flight/provider/payment/refund/delivery paths, all mandatory exports/media and hotel profile audit producers. Older remaining-integration statements below describe their dated checkpoints. Private Stripe and intended runtime acceptance remain unverified.
+
 # Administration and team handoff
 
 November 18, 2026. Hassib approved the provider/assignment/outbox design and subsequently authorized merging the tested services. Moderator creation and suspension/reactivation are merged through PR #26. The hotel integration now registers MK's actual provider adapter and verifies provisioning, first-password-change enforcement and assigned-hotel isolation. The airline adapter and Omar's notification/audit consumer remain pending.

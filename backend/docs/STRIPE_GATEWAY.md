@@ -1,3 +1,5 @@
+> Current November 19 handoff: [M1_BACKEND_HANDOFF.md](M1_BACKEND_HANDOFF.md). The integrated backend now includes actual hotel/flight/provider/payment/refund/delivery paths, all mandatory exports/media and hotel profile audit producers. Older remaining-integration statements below describe their dated checkpoints. Private Stripe and intended runtime acceptance remain unverified.
+
 # Stripe test gateway and USD decision
 
 November 17, 2026. Hassib delegated the PAY-04 currency selection, and USD was selected for flight/hotel prices, payments and refunds. `payments/platform-money.ts` exports the shared value for future booking/provider adapters. The itinerary FX preference continues to describe itinerary budgets independently.
