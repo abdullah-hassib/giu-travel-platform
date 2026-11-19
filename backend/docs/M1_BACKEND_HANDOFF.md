@@ -36,7 +36,7 @@ Feature demos: FLIGHT_SEARCH.md, FLIGHT_MANAGEMENT.md, FLIGHT_ROSTER.md, FLIGHT_
 
 ## Remaining external acceptance
 
-Private STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET are not configured to the user's latest knowledge. Configure them privately, never in chat or Git. A real test-mode payment/refund demonstration needs a genuine webhook delivery setup whose signing secret matches the application, plus separately approved test resources. No real payment, shared Atlas booking fixture, secret read or live Stripe operation was performed here.
+The user now reports configuring the private Stripe keys and stopping the shared application's local webhook listener for isolated acceptance. Credential values have not been inspected, and their correctness remains unverified. See [STRIPE_SANDBOX_ACCEPTANCE.md](STRIPE_SANDBOX_ACCEPTANCE.md) for the opt-in disposable-database test. Its actual offline fixture check, plan preview, typecheck/build/lint and 209 unit tests passed on November 19. Genuine Stripe payment/refund/webhook checks still require explicit permission for local runtime credential consumption; automatic review rejected the initial credential-loading preflight under the earlier no-secret-reading instruction. No real payment, shared Atlas booking fixture, secret read or Stripe API operation was performed in this preparation.
 
 The intended private runtime/HTTPS browser demonstration also remains unverified. Production cookie flags and runtime wiring are tested locally. Prior shared reference seed verification remains historical evidence and was not repeated against private data.
 
