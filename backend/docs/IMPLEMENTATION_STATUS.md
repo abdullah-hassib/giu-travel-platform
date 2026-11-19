@@ -1,3 +1,10 @@
+# November 19 assigned flight roster and passenger CSV
+
+- Implemented FLT-29/ACC-11 actual assigned-airline booking reads with reference/names/matching cabin/seats/status, ten-booking pages and current per-category inventory. Pending/Expired passengers are excluded; inactive/departed paid history remains accessible to the assigned moderator. Identity documents, birth dates, contacts, payment and policy data are not projected.
+- Added a no-store UTF-8 CSV attachment with all pages, one passenger per row, safe quoting and formula protection. Cross-provider round trips use the requested segment. Actual assignment is verified before existing expiry reconciliation. No download file/public URL is persisted.
+- Typecheck/build/lint and all 209 unit tests passed. All eight new roster HTTP/database cases and a fresh run of all 609 existing cases passed: 617 total across 24 suites. Uses disposable databases and actual modules/guards; only external payment gateway responses in payment cases are controlled. No private .env/shared database/live Stripe resource was used. See FLIGHT_ROSTER.md.
+- Remaining mandatory backend code: private e-ticket PDF, airline logo uploads and remaining provider-profile administration audit producers. Live Stripe test acceptance still requires private setup.
+
 # November 19 flight management and full provider cancellation
 
 - Implemented mandatory FLT-04/05/06/30 schedule/cabin/cancellation endpoints, with actual provider assignment, strict confirmation/DTOs, future-Scheduled guards, official local/UTC airport validation, any-booking airport locks, active round-trip ordering and occupied-seat protection. Active booking schedules and real confirmed-owner notifications commit atomically; quotes and ended history are preserved.

@@ -1,0 +1,16 @@
+# Assigned flight bookings and passenger CSV
+
+Mandatory FLT-29 and ACC-11. Both routes require an active airline moderator, completed temporary-password change and the actual assignment for the flight's airline. Administrator, traveler and hotel-moderator sessions do not grant this provider permission. The assignment is checked before expiry reconciliation or passenger reads. An inactive provider and a departed flight retain access to their own paid booking history.
+
+- `GET /api/flights/:id/bookings?page=1` returns ten bookings per page with one total/count. Each row contains the booking ID/reference, passenger names, this segment's cabin and reserved seats, and Confirmed or Cancelled status. Completed reservation history is represented as Confirmed. The flight summary includes UTC schedule, effective status and total/booked/held/available seats per category. Pending Payment and Expired passengers are excluded. A round trip uses the matching flight segment, including when the other segment belongs to another airline.
+- `GET /api/flights/:id/passengers/export` downloads all matching passengers across every booking page as UTF-8 CSV, one passenger per row. Columns are bookingReference, passengerName, cabinCategory and status. The attachment has a UTF-8 BOM, CRLF lines, RFC 4180 quoting and spreadsheet-formula protection. Unicode, commas, quotes and newlines are preserved. The filename uses only the validated flight ID.
+
+Both responses use no-store; the CSV also uses nosniff. Positive database projections exclude identity documents, birth dates, owner contact/account fields, payment IDs and policy snapshots. No file is persisted and there is no public download URL. Existing hold expiry releases only unfulfilled holds through the approved flight adapter; a roster read cannot manufacture a paid confirmation.
+
+Swagger demo: log in as the moderator assigned through the administrator's provider-first workflow, open a flight from that airline, then call its bookings route and CSV download. Use a different airline's moderator to demonstrate rejection. To see rows, use a verified paid booking; a pending hold is intentionally absent. Live payment demonstrations require private Stripe test setup.
+
+Eight new real HTTP/disposable-MongoDB cases passed: actual provider assignment and role/state guards, cross-provider round-trip projection, ten-row pagination versus complete CSV, Unicode/quoting/formula protection, private-data exclusion, departed/inactive history, authorized expiry reconciliation, and documented protected/binary Swagger routes. The existing module/guard/expiry services run without booking-adapter substitutes. Read fixtures are created directly for projection tests; they are not live Stripe verification.
+
+Remaining mandatory team backend slices are private e-ticket PDF, airline logo uploads and remaining provider-profile admin audit producers. External Stripe test acceptance remains unverified.
+
+Typecheck/build/lint and all 209 unit tests passed. All eight new roster HTTP/database cases and a fresh run of all 609 existing cases passed: 617 total across 24 suites. Uses disposable databases and actual modules/guards; only external payment gateway responses in payment cases are controlled. No private .env/shared database/live Stripe resource was used.
