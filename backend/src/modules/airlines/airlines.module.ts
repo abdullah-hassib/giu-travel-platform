@@ -11,12 +11,14 @@ import { DomainEventsModule } from '../domain-events/domain-events.module';
 import { Airline, AirlineSchema } from './schemas/airline.schema';
 import { AirlinesController } from './airlines.controller';
 import { AirlinesService } from './airlines.service';
+import { MediaUploadsModule } from '../media-uploads/media-uploads.module';
 
 @Module({
   imports: [
     AuthModule,
     ModeratorAssignmentsModule,
     DomainEventsModule,
+    MediaUploadsModule,
     MongooseModule.forFeature([
       { name: Airline.name, schema: AirlineSchema },
       { name: Flight.name, schema: FlightSchema },

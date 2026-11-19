@@ -9,6 +9,8 @@ import {
   Put,
   Req,
   UseGuards,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
 import {
   ApiCookieAuth,
@@ -21,6 +23,11 @@ import {
   ApiNotFoundResponse,
   ApiUnauthorizedResponse,
   ApiForbiddenResponse,
+  ApiConsumes,
+  ApiBody,
+  ApiExtraModels,
+  ApiPayloadTooLargeResponse,
+  getSchemaPath,
 } from '@nestjs/swagger';
 import { AirlinesService } from './airlines.service';
 import { CreateAirlineDto } from './dto/create-airline.dto';
@@ -34,8 +41,13 @@ import {
   SessionGuard,
 } from '../auth/security/session.guard';
 import { Roles, RolesGuard } from '../auth/security/roles.guard';
+import { ImageUpload } from '../media-uploads/image-upload.decorator';
+import { MAX_IMAGE_BYTES, UploadedImage } from '../media-uploads/media.service';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { AccountStatusActionDto } from '../administration/dto/account-status.dto';
 
 @ApiTags('Airlines')
+@ApiExtraModels(CreateAirlineDto)
 @ApiCookieAuth('giu_session')
 @Controller('airlines')
 @UseGuards(SessionGuard, RolesGuard)
@@ -58,12 +70,62 @@ export class AirlinesController {
   @Header('Cache-Control', 'no-store')
   @ApiCreatedResponse({ type: AirlineViewDto })
   @Roles('admin')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: MAX_IMAGE_BYTES, files: 1 },
+    }),
+  )
+  @ApiConsumes('application/json', 'multipart/form-data')
+  @ApiBody({
+    schema: {
+      allOf: [
+        { $ref: getSchemaPath(CreateAirlineDto) },
+        {
+          type: 'object',
+          properties: {
+            file: {
+              type: 'string',
+              format: 'binary',
+              description:
+                'One JPG/PNG logo, max 5 MB; use file or legacy logoUrl, never both',
+            },
+          },
+        },
+      ],
+    },
+  })
+  @ApiPayloadTooLargeResponse({ description: 'Logo larger than 5 MB' })
   @ApiOperation({
     summary:
       'FLT-01: create an airline; provision its moderator through administration',
+    description:
+      'Use JSON name/code/legacy absolute logoUrl, or multipart name/code with one file. Uploaded logos must be JPG/PNG and at most 5 MB. Supply file or logoUrl, never both. Moderator assignment remains a separate administrator command.',
   })
-  create(@Body() dto: CreateAirlineDto, @Req() request: AuthenticatedRequest) {
-    return this.airlinesService.create(dto, request.authUser.id);
+  create(
+    @Body() dto: CreateAirlineDto,
+    @Req() request: AuthenticatedRequest,
+    @UploadedFile() file: UploadedImage | undefined,
+  ) {
+    return this.airlinesService.create(dto, request.authUser.id, file);
+  }
+
+  @Post(':id/logo')
+  @Roles('admin', 'airline_moderator')
+  @Header('Cache-Control', 'no-store')
+  @ImageUpload()
+  @ApiCreatedResponse({ type: AirlineViewDto })
+  @ApiOperation({
+    summary: 'FLT-01/GEN-08: upload or replace the one airline logo',
+    description:
+      'Administrator or actual assigned airline moderator. JPG/PNG, max 5 MB. Replaces the existing owned file only after the profile and audit transaction commits.',
+  })
+  logo(
+    @Body() _fields: AccountStatusActionDto,
+    @Req() request: AuthenticatedRequest,
+    @Param() params: AirlineIdParamDto,
+    @UploadedFile() file: UploadedImage | undefined,
+  ) {
+    return this.airlinesService.replaceLogo(request.authUser, params.id, file);
   }
 
   @Patch(':id')

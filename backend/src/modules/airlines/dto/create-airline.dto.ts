@@ -1,6 +1,7 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsString, IsUrl, Length, MaxLength } from 'class-validator';
+import { IsString, Length, MaxLength, ValidateIf } from 'class-validator';
+import { IsAirlineLogoUrl } from './airline-logo-url.validator';
 
 export class CreateAirlineDto {
   @ApiProperty({ example: 'EgyptAir' })
@@ -18,7 +19,12 @@ export class CreateAirlineDto {
   @MaxLength(10)
   code!: string;
 
-  @ApiProperty({ example: 'https://example.com/egyptair.png' })
-  @IsUrl({ require_protocol: true })
-  logoUrl!: string;
+  @ApiPropertyOptional({
+    example: 'https://example.com/egyptair.png',
+    description:
+      'Legacy absolute logo URL. New profiles may instead upload one JPG/PNG as multipart file. A patch may echo its current stored media URL.',
+  })
+  @ValidateIf((_object, value: unknown) => value !== undefined)
+  @IsAirlineLogoUrl()
+  logoUrl?: string;
 }

@@ -1,0 +1,19 @@
+# Airline profile logos
+
+Mandatory FLT-01 and GEN-08, using MK's unchanged MediaService and image serving. No new storage service, dependency or shared migration is introduced.
+
+- `POST /api/airlines` remains administrator-only. Existing JSON name/code/logoUrl requests work. It also accepts multipart name/code plus one `file` in place of logoUrl. Supplying neither or both fails. New uploads use the actual content signature to select JPG/PNG, ignore the client MIME/name, and enforce the shared 5 MB/one-file limit. Moderator provisioning remains the separate provider-first administration workflow.
+- `POST /api/airlines/:id/logo` accepts one file from an administrator or the airline's actual assigned moderator. Temporary-password/account restrictions and role checks apply before the upload handler. Unknown fields and invalid identifiers fail; a missing airline returns 404. It returns the updated airline with its server-served logoUrl and no internal file ownership or inventory fields.
+- The existing own-airline profile patch can echo its current stored URL. It cannot attach another provider's stored file by URL. Legacy absolute URL changes remain compatible and remove the previous owned file only after commit. Explicit null and forged ownership fields are rejected.
+
+The airline's one optional internal logoImage snapshot records only files that this airline owns. Profile, ownership metadata and the existing airline.created/updated audit effect commit atomically. Failed create/replace transactions delete only their newly written file. A committed replacement deletes only its obsolete owned file. Retrying concurrent replacements leave one current file without deleting the winner. Legacy external URLs have no ownership metadata and are never fetched or deleted.
+
+Files use MK's generated IDs under the configured media directory and are publicly served as images through `/api/media/:imageId`. Old provider logos are public, so replacement cleanup is a storage concern rather than private-file access. Filesystem cleanup is best effort: a process crash between file creation and database commit, or between commit and removal, can leave an unreferenced file. There is no claim of a distributed filesystem/database transaction or optional orphan-recovery worker.
+
+Eleven actual HTTP/MongoDB/filesystem tests cover real PNG/JPEG bytes, normalized multipart creation, legacy JSON behavior, ownership/roles/password/account guards, spoofed MIME/name handling, size/count/field limits, duplicate/audit-failure rollback, concurrent replacement, old-file cleanup, returned-current-URL behavior, null/forged fields, public image serving and Swagger. The synthetic JPEG fixture is an original locally generated white pixel. Disposable test media paths are verified before cleanup; no shared configuration/database or external image/gateway is used.
+
+Swagger demo: log in as an admin, select multipart on POST /api/airlines, enter name/code and one file, then open the returned logoUrl. Provision the airline moderator through administration and change its temporary password. As that moderator, upload a replacement through the logo route; the old owned URL becomes 404. A different provider's moderator is rejected. Existing JSON examples continue to work with a legacy absolute URL.
+
+Remaining mandatory backend code: provider-profile administration audit producers, then complete regression/requirement review. External live Stripe acceptance still requires private setup.
+
+Typecheck/build/lint and 209 unit tests passed. All eleven real logo HTTP/database/filesystem cases plus eighty flight/payment and four complete-AppModule regressions passed (95 targeted cases). No private configuration, shared data or live payment resource was used. The complete regression will run again after the audit slice.

@@ -18,6 +18,9 @@ import { CreateAirlineDto } from './dto/create-airline.dto';
 import { UpdateAirlineDto } from './dto/update-airline.dto';
 import { BaggagePolicyDto } from './dto/baggage-policy.dto';
 import { CancellationPolicyDto } from './dto/cancellation-policy.dto';
+import { isStoredLogoUrl } from './dto/airline-logo-url.validator';
+import { MediaService, UploadedImage } from '../media-uploads/media.service';
+import { PublicUser } from '../users/users.service';
 
 @Injectable()
 export class AirlinesService {
@@ -31,13 +34,34 @@ export class AirlinesService {
     @InjectConnection() private readonly connection: Connection,
     private readonly ownership: ModeratorAssignmentsService,
     private readonly events: DomainEventPublisherService,
+    private readonly media: MediaService,
   ) {}
 
-  async create(dto: CreateAirlineDto, actorId: string): Promise<Airline> {
+  async create(
+    dto: CreateAirlineDto,
+    actorId: string,
+    file?: UploadedImage,
+  ): Promise<Airline> {
+    if (file && dto.logoUrl)
+      throw new BadRequestException(
+        'Use an uploaded file or logoUrl, not both',
+      );
+    if (!file && (!dto.logoUrl || isStoredLogoUrl(dto.logoUrl)))
+      throw new BadRequestException(
+        'Upload one logo file or provide a legacy absolute logoUrl',
+      );
+    const image = file ? await this.media.saveImage(file) : undefined;
     try {
       return await this.connection.transaction(async (session) => {
         const [airline] = await this.airlines.create(
-          [{ ...dto, status: 'active' }],
+          [
+            {
+              ...dto,
+              logoUrl: image?.url ?? dto.logoUrl,
+              ...(image && { logoImage: image }),
+              status: 'active',
+            },
+          ],
           { session },
         );
         await publishEffects(this.events, session, 'airline.created', actorId, {
@@ -49,7 +73,52 @@ export class AirlinesService {
         return airline;
       });
     } catch (error) {
+      if (image) await this.media.removeImage(image.id);
       this.rethrowDuplicate(error);
+    }
+  }
+
+  async replaceLogo(
+    user: PublicUser,
+    airlineId: string,
+    file: UploadedImage | undefined,
+  ): Promise<Airline> {
+    if (!user.roles.includes('admin'))
+      await this.assertAssigned(user.id, airlineId);
+    await this.findById(airlineId);
+    const image = await this.media.saveImage(file);
+    try {
+      const result = await this.connection.transaction(async (session) => {
+        const before = await this.airlines
+          .findByIdAndUpdate(
+            airlineId,
+            {
+              $set: { logoUrl: image.url, logoImage: image },
+              $inc: { inventoryVersion: 1 },
+            },
+            { session, runValidators: true },
+          )
+          .select('+logoImage');
+        if (!before) throw new NotFoundException('Airline not found');
+        await publishEffects(this.events, session, 'airline.updated', user.id, {
+          action: 'airline.updated',
+          resourceType: 'airline',
+          resourceId: airlineId,
+          outcome: 'success',
+          metadata: { field: 'logo' },
+        });
+        const airline = await this.airlines
+          .findById(airlineId)
+          .session(session)
+          .orFail();
+        return { airline, obsoleteImageId: before.logoImage?.id };
+      });
+      if (result.obsoleteImageId)
+        await this.media.removeImage(result.obsoleteImageId);
+      return result.airline;
+    } catch (error) {
+      await this.media.removeImage(image.id);
+      throw error;
     }
   }
 
@@ -122,11 +191,29 @@ export class AirlinesService {
     actorId: string,
     action: 'airline.updated' | 'airline.policies_updated',
   ): Promise<Airline> {
-    return this.connection.transaction(async (session) => {
+    const result = await this.connection.transaction(async (session) => {
+      const previous = await this.airlines
+        .findById(airlineId)
+        .select('+logoImage')
+        .session(session);
+      if (!previous) throw new NotFoundException('Airline not found');
+      const logoUrl =
+        'logoUrl' in update && typeof update.logoUrl === 'string'
+          ? update.logoUrl
+          : undefined;
+      if (logoUrl && isStoredLogoUrl(logoUrl) && logoUrl !== previous.logoUrl)
+        throw new BadRequestException(
+          'Upload a new logo using the logo endpoint',
+        );
+      const clearImage = logoUrl !== undefined && logoUrl !== previous.logoUrl;
       const airline = await this.airlines
         .findByIdAndUpdate(
           airlineId,
-          { $set: update, $inc: { inventoryVersion: 1 } },
+          {
+            $set: update,
+            $inc: { inventoryVersion: 1 },
+            ...(clearImage && { $unset: { logoImage: 1 } }),
+          },
           { new: true, runValidators: true, session },
         )
         .exec();
@@ -137,8 +224,14 @@ export class AirlinesService {
         resourceId: airlineId,
         outcome: 'success',
       });
-      return airline;
+      return {
+        airline,
+        obsoleteImageId: clearImage ? previous.logoImage?.id : undefined,
+      };
     });
+    if (result.obsoleteImageId)
+      await this.media.removeImage(result.obsoleteImageId);
+    return result.airline;
   }
 
   async findById(id: string): Promise<Airline> {
