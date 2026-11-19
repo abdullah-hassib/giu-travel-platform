@@ -1,5 +1,9 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
+import {
+  StoredImage,
+  StoredImageSchema,
+} from '../../media-uploads/stored-image.schema';
 
 export const AIRLINE_STATUSES = ['active', 'deactivated'] as const;
 export type AirlineStatus = (typeof AIRLINE_STATUSES)[number];
@@ -41,6 +45,7 @@ export const CancellationPolicyTierSchema = SchemaFactory.createForClass(
       delete result.__v;
       delete result.moderatorId;
       delete result.inventoryVersion;
+      delete result.logoImage;
       return result;
     },
   },
@@ -64,6 +69,9 @@ export class Airline {
 
   @Prop({ type: String, required: true, trim: true })
   logoUrl!: string;
+
+  /** Internal ownership of the one uploaded file; absent for legacy external logos. */
+  @Prop({ type: StoredImageSchema, select: false }) logoImage?: StoredImage;
 
   // Assignment authority is moderator_assignments, shared with administration.
   @Prop({ type: Number, default: 0, select: false })

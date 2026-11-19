@@ -1,3 +1,9 @@
+# November 19 airline logo uploads
+
+- Completed FLT-01/GEN-08 multipart profile creation and guarded one-logo replacement through the existing media service. Legacy JSON creation remains compatible; internal ownership is private and files/audit metadata follow transaction success/failure. Concurrent replacement, invalid input and orphan-cleanup limits are documented in AIRLINE_LOGOS.md.
+- Typecheck/build/lint and 209 unit tests passed. All eleven real logo HTTP/database/filesystem cases plus eighty flight/payment and four complete-AppModule regressions passed (95 targeted cases). No private configuration, shared data or live payment resource was used. The complete regression will run again after the audit slice.
+- Remaining mandatory code: provider-profile administration audit producers. Final complete regression/requirement review and private live Stripe acceptance remain.
+
 # November 19 private flight e-ticket PDF
 
 - Implemented the FLT-23 owner-only Confirmed/Completed PDF attachment with official airport-local times, both saved segments, names/cabin/baggage and exact total. Excludes birth dates, documents, contacts and payment identifiers; no public file, external fetch or booking-state mutation.
