@@ -1,3 +1,10 @@
+# November 19 private flight e-ticket PDF
+
+- Implemented the FLT-23 owner-only Confirmed/Completed PDF attachment with official airport-local times, both saved segments, names/cabin/baggage and exact total. Excludes birth dates, documents, contacts and payment identifiers; no public file, external fetch or booking-state mutation.
+- Native PDFKit and licensed embedded fonts are copied into dist; Unicode extraction, Arabic shaping and multipage layout were verified. See FLIGHT_ETICKET.md for Swagger demo, privacy, dependency and test details.
+- Typecheck/build/lint and all 209 unit tests passed. Eight new PDF HTTP/content cases plus all 92 affected flight/payment/roster/full-AppModule cases passed (100 targeted cases). All seven representative PDF pages were rendered and visually inspected with Poppler. A compiled-dist render verified the copied font assets. The latest prior complete regression checkpoint remains 617 cases; the complete regression will run again after the remaining slices. No private environment/shared database/live payment resource was used.
+- Remaining mandatory backend code: airline logo uploads and provider-profile administration audit producers. Private live Stripe acceptance remains.
+
 # November 19 assigned flight roster and passenger CSV
 
 - Implemented FLT-29/ACC-11 actual assigned-airline booking reads with reference/names/matching cabin/seats/status, ten-booking pages and current per-category inventory. Pending/Expired passengers are excluded; inactive/departed paid history remains accessible to the assigned moderator. Identity documents, birth dates, contacts, payment and policy data are not projected.

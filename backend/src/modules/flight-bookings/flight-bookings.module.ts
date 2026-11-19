@@ -17,6 +17,8 @@ import { FlightPaymentAdapter } from './flight-payment.adapter';
 
 import { FlightBookingsService } from './flight-bookings.service';
 import { FlightBookingsController } from './flight-bookings.controller';
+import { FlightEticketController } from './flight-eticket.controller';
+import { FlightEticketService } from './flight-eticket.service';
 
 @Module({
   imports: [
@@ -39,8 +41,12 @@ import { FlightBookingsController } from './flight-bookings.controller';
       },
     ]),
   ],
-  controllers: [FlightBookingsController],
-  providers: [FlightBookingsService, FlightPaymentAdapter],
+  controllers: [FlightBookingsController, FlightEticketController],
+  providers: [
+    FlightBookingsService,
+    FlightPaymentAdapter,
+    FlightEticketService,
+  ],
   exports: [MongooseModule, FlightBookingsService, FlightPaymentAdapter],
 })
 export class FlightBookingsModule {}

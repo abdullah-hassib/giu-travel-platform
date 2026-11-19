@@ -557,6 +557,7 @@ describe('Adham flight domain with real Hassib payments, administration and Omar
 
   it('requires policy acceptance and real SDK verification, confirms once and emits actual notifications', async () => {
     const id: string = (await hold().expect(201)).body.booking.id;
+    await traveler.get('/api/flight-bookings/' + id + '/e-ticket').expect(409);
     await traveler
       .post('/api/payments')
       .send({ bookingType: 'flight', bookingId: id })
@@ -575,6 +576,11 @@ describe('Adham flight domain with real Hassib payments, administration and Omar
     ).body;
     expect(booking.status).toBe('Confirmed');
     expect(booking.reference).toMatch(/^FLT-/);
+    const ticket = await traveler
+      .get('/api/flight-bookings/' + bookingId + '/e-ticket')
+      .expect(200)
+      .expect('Content-Type', /^application\/pdf/);
+    expect((ticket.body as Buffer).subarray(0, 5).toString()).toBe('%PDF-');
     expect((await flights.findById(flightId).orFail()).cabins[0]).toMatchObject(
       { heldSeats: 1, bookedSeats: 1 },
     );
