@@ -37,9 +37,17 @@ import {
 import { averageRating, Hotel } from './schemas/hotel.schema';
 import { HotelRoom } from './schemas/room.schema';
 import { assertStay, isRoomOpen, NightRange } from './stay-rules';
+import { DomainEventPublisherService } from '../domain-events/domain-event-publisher.service';
+import { publishEffects } from '../domain-events/publish-effects';
 
 type StoredHotel = Hotel & { _id: Types.ObjectId };
 type StoredRoom = HotelRoom & { _id: Types.ObjectId };
+type HotelProfileAction =
+  | 'hotel.created'
+  | 'hotel.updated'
+  | 'hotel.policies_updated'
+  | 'hotel.image_added'
+  | 'hotel.image_removed';
 
 @Injectable()
 export class HotelsService {
@@ -51,7 +59,24 @@ export class HotelsService {
     @InjectModel(OutboxEvent.name) private readonly outbox: Model<OutboxEvent>,
     @InjectConnection() private readonly connection: Connection,
     private readonly media: MediaService,
+    private readonly events: DomainEventPublisherService,
   ) {}
+
+  private audit(
+    session: ClientSession,
+    actorId: string,
+    hotelId: string,
+    action: HotelProfileAction,
+    metadata?: Record<string, string>,
+  ): Promise<void> {
+    return publishEffects(this.events, session, action, actorId, {
+      action,
+      resourceType: 'hotel',
+      resourceId: hotelId,
+      outcome: 'success',
+      ...(metadata && { metadata }),
+    });
+  }
 
   /** A hotel moderator manages only the hotel assigned to them; admins optionally too. */
   async canManage(
@@ -87,29 +112,36 @@ export class HotelsService {
   }
 
   /** HTL-01: admins create hotel profiles. */
-  async create(dto: CreateHotelDto) {
+  async create(dto: CreateHotelDto, actorId: string) {
     assertCityInCountry(dto.cityId, dto.countryCode);
-    const hotel = await this.hotels.create(dto);
-    return hotelView(hotel.toObject());
+    return this.connection.transaction(async (session) => {
+      const [hotel] = await this.hotels.create([dto], { session });
+      await this.audit(session, actorId, hotel._id.toString(), 'hotel.created');
+      return hotelView(hotel.toObject());
+    });
   }
 
   /** HTL-01: the assigned moderator (or an admin) edits the profile. */
   async update(user: PublicUser, hotelId: string, dto: UpdateHotelDto) {
     await this.assertCanManage(user, hotelId, true);
-    const hotel = await this.findOrFail(hotelId);
-    assertCityInCountry(
-      dto.cityId ?? hotel.cityId,
-      dto.countryCode ?? hotel.countryCode,
-    );
-    const updated = await this.hotels
-      .findByIdAndUpdate(
-        hotelId,
-        { $set: dto },
-        { new: true, runValidators: true },
-      )
-      .lean();
-    if (!updated) throw new NotFoundException('Hotel not found');
-    return hotelView(updated);
+    return this.connection.transaction(async (session) => {
+      const hotel = await this.hotels.findById(hotelId).session(session).lean();
+      if (!hotel) throw new NotFoundException('Hotel not found');
+      assertCityInCountry(
+        dto.cityId ?? hotel.cityId,
+        dto.countryCode ?? hotel.countryCode,
+      );
+      const updated = await this.hotels
+        .findByIdAndUpdate(
+          hotelId,
+          { $set: dto },
+          { new: true, runValidators: true, session },
+        )
+        .lean();
+      if (!updated) throw new NotFoundException('Hotel not found');
+      await this.audit(session, user.id, hotelId, 'hotel.updated');
+      return hotelView(updated);
+    });
   }
 
   /**
@@ -161,21 +193,24 @@ export class HotelsService {
     const cancellationTiers = dto.cancellationTiers
       .map(({ daysBefore, refundPercent }) => ({ daysBefore, refundPercent }))
       .sort((a, b) => b.daysBefore - a.daysBefore);
-    const updated = await this.hotels
-      .findByIdAndUpdate(
-        hotelId,
-        {
-          $set: {
-            checkInTime: dto.checkInTime,
-            checkOutTime: dto.checkOutTime,
-            cancellationTiers,
+    return this.connection.transaction(async (session) => {
+      const updated = await this.hotels
+        .findByIdAndUpdate(
+          hotelId,
+          {
+            $set: {
+              checkInTime: dto.checkInTime,
+              checkOutTime: dto.checkOutTime,
+              cancellationTiers,
+            },
           },
-        },
-        { new: true, runValidators: true },
-      )
-      .lean();
-    if (!updated) throw new NotFoundException('Hotel not found');
-    return hotelView(updated);
+          { new: true, runValidators: true, session },
+        )
+        .lean();
+      if (!updated) throw new NotFoundException('Hotel not found');
+      await this.audit(session, user.id, hotelId, 'hotel.policies_updated');
+      return hotelView(updated);
+    });
   }
 
   /** HTL-01 photos under GEN-08: at most five per hotel. */
@@ -187,37 +222,52 @@ export class HotelsService {
     await this.assertCanManage(user, hotelId, true);
     await this.findOrFail(hotelId);
     const image = await this.media.saveImage(file);
-    const updated = await this.hotels
-      .findOneAndUpdate(
-        {
-          _id: hotelId,
-          [`images.${MAX_IMAGES_PER_ITEM - 1}`]: { $exists: false },
-        },
-        { $push: { images: image } },
-        { new: true },
-      )
-      .lean();
-    if (!updated) {
+    try {
+      return await this.connection.transaction(async (session) => {
+        const updated = await this.hotels
+          .findOneAndUpdate(
+            {
+              _id: hotelId,
+              [`images.${MAX_IMAGES_PER_ITEM - 1}`]: { $exists: false },
+            },
+            { $push: { images: image } },
+            { new: true, session },
+          )
+          .lean();
+        if (!updated) {
+          throw new BadRequestException(
+            `A hotel can have at most ${MAX_IMAGES_PER_ITEM} images`,
+          );
+        }
+        await this.audit(session, user.id, hotelId, 'hotel.image_added', {
+          imageId: image.id,
+        });
+        return hotelView(updated);
+      });
+    } catch (error) {
       await this.media.removeImage(image.id);
-      throw new BadRequestException(
-        `A hotel can have at most ${MAX_IMAGES_PER_ITEM} images`,
-      );
+      throw error;
     }
-    return hotelView(updated);
   }
 
   async removeImage(user: PublicUser, hotelId: string, imageId: string) {
     await this.assertCanManage(user, hotelId, true);
-    const updated = await this.hotels
-      .findOneAndUpdate(
-        { _id: hotelId, 'images.id': imageId },
-        { $pull: { images: { id: imageId } } },
-        { new: true },
-      )
-      .lean();
-    if (!updated) throw new NotFoundException('Image not found');
+    const result = await this.connection.transaction(async (session) => {
+      const updated = await this.hotels
+        .findOneAndUpdate(
+          { _id: hotelId, 'images.id': imageId },
+          { $pull: { images: { id: imageId } } },
+          { new: true, session },
+        )
+        .lean();
+      if (!updated) throw new NotFoundException('Image not found');
+      await this.audit(session, user.id, hotelId, 'hotel.image_removed', {
+        imageId,
+      });
+      return hotelView(updated);
+    });
     await this.media.removeImage(imageId);
-    return hotelView(updated);
+    return result;
   }
 
   /** HTL-02: public details, plus the free rooms when dates are given. */

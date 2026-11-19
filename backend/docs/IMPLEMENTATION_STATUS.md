@@ -1,3 +1,10 @@
+# November 19 complete local backend regression and requirement review
+
+- Hotel profile/policy/photo audit producers commit with actual metadata and integrate with immediate/durable history; failed writes preserve prior state/files. Ten new real-module cases and existing history regressions pass. See HOTEL_PROFILE_AUDIT.md.
+- Typecheck, build, lint and 209 unit tests passed. The full fresh HTTP/database run passed all 647 cases in 27 suites. All 110 mandatory PDF method/path operations are registered by the actual AppModule. Read-only official workbook reconciliation found 104 matching mandatory statements and eleven optional requirements excluded from scope.
+- Flight PDFs, airline logos, passenger roster/CSV and all approved team integrations are implemented. Public FX succeeded with no API key, returning seven supported currencies and a November 18 rate date.
+- Private live Stripe test-mode acceptance and the intended private runtime/HTTPS/browser demonstration remain unverified. No private environment/shared database/live payment operation was used. Current handoff and evidence are in M1_BACKEND_HANDOFF.md and M1_REQUIREMENT_REVIEW.md; older checkpoints below are historical.
+
 # November 19 airline logo uploads
 
 - Completed FLT-01/GEN-08 multipart profile creation and guarded one-logo replacement through the existing media service. Legacy JSON creation remains compatible; internal ownership is private and files/audit metadata follow transaction success/failure. Concurrent replacement, invalid input and orphan-cleanup limits are documented in AIRLINE_LOGOS.md.

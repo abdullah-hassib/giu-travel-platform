@@ -68,8 +68,8 @@ export class HotelsController {
   @Post()
   @Authenticated('admin')
   @ApiOperation({ summary: 'HTL-01: admin creates a hotel profile' })
-  create(@Body() dto: CreateHotelDto) {
-    return this.hotels.create(dto);
+  create(@Body() dto: CreateHotelDto, @CurrentUser() user: PublicUser) {
+    return this.hotels.create(dto, user.id);
   }
 
   @Get('search')

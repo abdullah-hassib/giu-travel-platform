@@ -30,6 +30,7 @@ import {
 import { AdminOutboxEvent } from '../src/modules/administration/schemas/admin-outbox.schema';
 import { hashPassword } from '../src/modules/auth/security/password';
 import { User } from '../src/modules/users/schemas/user.schema';
+import { DomainEventConsumer } from '../src/modules/domain-events/domain-event-consumer';
 
 @Global()
 @Module({
@@ -182,12 +183,21 @@ describe('GEN-07 committed administrative history with separate delivery acknowl
     const result = (
       await list().expect(200).expect('Cache-Control', 'no-store')
     ).body;
-    expect(result.meta.total).toBe(2);
+    expect(result.meta.total).toBe(3);
     expect(
       new Set(result.data.map((row: { action: string }) => row.action)),
-    ).toEqual(new Set(['account.suspended', 'hotel.deactivated']));
+    ).toEqual(
+      new Set(['account.suspended', 'hotel.deactivated', 'hotel.created']),
+    );
     expect(result.data).toEqual(
       expect.arrayContaining([
+        expect.objectContaining({
+          action: 'hotel.created',
+          actorId: adminId,
+          target: { type: 'hotel', id: hotelId },
+          outcome: 'committed',
+          deliveryStatus: 'pending',
+        }),
         expect.objectContaining({
           action: 'account.suspended',
           actorId: adminId,
@@ -205,7 +215,7 @@ describe('GEN-07 committed administrative history with separate delivery acknowl
     );
   });
 
-  it('maps every current admin action, excludes system booking events and retains delivered history', async () => {
+  it('maps legacy actions and audited profile creation, excludes system events and retains delivered history', async () => {
     await accounts.create(
       ACCOUNT_HISTORY_ACTIONS.map((type) => accountEvent(type)),
     );
@@ -226,7 +236,7 @@ describe('GEN-07 committed administrative history with separate delivery acknowl
       outboxEvent('hotel_booking.confirmed', null, { bookingId: targetId }),
     );
     const before = (await list().expect(200)).body;
-    expect(before.meta.total).toBe(9);
+    expect(before.meta.total).toBe(10);
     expect(
       before.data.find(
         (row: { action: string }) =>
@@ -240,8 +250,9 @@ describe('GEN-07 committed administrative history with separate delivery acknowl
     ).toEqual({ type: 'itinerary', id: targetId });
     await accounts.updateMany({}, { $set: { status: 'delivered' } });
     await domain.updateMany({}, { $set: { status: 'delivered' } });
+    expect(await app.get(DomainEventConsumer).consumePending()).toBe(1);
     const after = (await list().expect(200)).body;
-    expect(after.meta.total).toBe(9);
+    expect(after.meta.total).toBe(10);
     expect(
       after.data.every(
         (row: { outcome: string; deliveryStatus: string }) =>
@@ -251,6 +262,9 @@ describe('GEN-07 committed administrative history with separate delivery acknowl
   });
 
   it('paginates both sources together with stable event IDs and correct totals', async () => {
+    const setup = (await list().expect(200)).body;
+    expect(setup.meta.total).toBe(1);
+    expect(setup.data[0].action).toBe('hotel.created');
     const ids: string[] = [];
     for (let index = 0; index < 12; index++) {
       if (index % 2) {
@@ -271,14 +285,14 @@ describe('GEN-07 committed administrative history with separate delivery acknowl
     expect(first.meta).toEqual({
       page: 1,
       limit: 10,
-      total: 12,
+      total: 13,
       totalPages: 2,
     });
     expect(first.data).toHaveLength(10);
-    expect(second.data).toHaveLength(2);
+    expect(second.data).toHaveLength(3);
     expect(
       [...first.data, ...second.data].map((row: { id: string }) => row.id),
-    ).toEqual(ids.sort().reverse());
+    ).toEqual([setup.data[0].id, ...ids.sort().reverse()]);
     expect((await list({ page: 3 }).expect(200)).body.data).toEqual([]);
   });
 
@@ -350,7 +364,10 @@ describe('GEN-07 committed administrative history with separate delivery acknowl
       .send({})
       .expect(503);
     expect((await users.findById(targetId).orFail()).status).toBe('active');
-    expect((await list().expect(200)).body.meta.total).toBe(0);
+    expect((await list().expect(200)).body.meta.total).toBe(1);
+    expect(
+      (await list({ action: 'account.suspended' }).expect(200)).body.meta.total,
+    ).toBe(0);
   });
 
   it('requires an active unrestricted administrator', async () => {
@@ -385,9 +402,12 @@ describe('GEN-07 committed administrative history with separate delivery acknowl
     expect((await list().expect(200)).body.meta).toEqual({
       page: 1,
       limit: 10,
-      total: 0,
-      totalPages: 0,
+      total: 1,
+      totalPages: 1,
     });
+    expect(
+      (await list({ action: 'account.reactivated' }).expect(200)).body.meta,
+    ).toEqual({ page: 1, limit: 10, total: 0, totalPages: 0 });
     const doc = (
       await request(app.getHttpServer()).get('/api/docs-json').expect(200)
     ).body;

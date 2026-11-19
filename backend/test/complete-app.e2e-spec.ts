@@ -5,7 +5,8 @@ import { Test } from '@nestjs/testing';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { MongoMemoryReplSet } from 'mongodb-memory-server-core';
 import { Connection, Model } from 'mongoose';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import request from 'supertest';
@@ -114,6 +115,50 @@ describe('Complete AppModule with disposable configuration and no environment-fi
     if (!mediaRoot.startsWith(join(tmpdir(), 'giu-full-app-')))
       throw new Error('Unexpected cleanup path');
     rmSync(mediaRoot, { recursive: true, force: true });
+  });
+
+  it('publishes all 110 mandatory method/path pairs from the checksum-pinned official project PDF', async () => {
+    const fixture = JSON.parse(
+      readFileSync(join(__dirname, 'fixtures/mandatory-routes.json'), 'utf8'),
+    ) as {
+      sourceSha256: string;
+      routes: { method: string; path: string; requirements: string[] }[];
+    };
+    expect(fixture.routes).toHaveLength(110);
+    const checksum = createHash('sha256')
+      .update(
+        readFileSync(
+          join(
+            __dirname,
+            '../../docs/requirements/official-giu-project-description.pdf',
+          ),
+        ),
+      )
+      .digest('hex');
+    expect(checksum).toBe(fixture.sourceSha256);
+    const doc: { paths: Record<string, Record<string, unknown>> } = (
+      await request(app.getHttpServer()).get('/api/docs-json').expect(200)
+    ).body;
+    const normalize = (path: string) => path.replace(/\{[^}]+\}/g, '{}');
+    const available = new Set(
+      Object.entries(doc.paths).flatMap(([path, operations]) =>
+        Object.keys(operations).map((method) => method + ' ' + normalize(path)),
+      ),
+    );
+    const missing = fixture.routes
+      .filter(
+        (route) => !available.has(route.method + ' ' + normalize(route.path)),
+      )
+      .map(
+        (route) =>
+          route.method.toUpperCase() +
+          ' ' +
+          route.path +
+          ' (' +
+          route.requirements.join(', ') +
+          ')',
+      );
+    expect(missing).toEqual([]);
   });
 
   it('boots all actual modules and publishes Swagger UI, schemas, cookie access and available routes', async () => {

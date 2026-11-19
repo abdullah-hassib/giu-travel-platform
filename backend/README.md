@@ -1,16 +1,16 @@
-# GIU Travel Backend — Milestone 1 work in progress
+# GIU Travel Backend - Milestone 1
 
 See [root README](../README.md), [implementation status](docs/IMPLEMENTATION_STATUS.md), and [contracts requiring approval](docs/CONTRACTS_PROPOSED.md).
 
 Current Hassib-owned mandatory coverage and remaining work are tracked in [Milestone 1 backend coverage](docs/M1_BACKEND_COVERAGE.md).
 
-The [November 18 completed-slice handoff](docs/M1_INDEPENDENT_HANDOFF.md) lists merged PRs, exact validation and remaining flight/Omar/Stripe dependencies. Available admin, itinerary image/search and hotel deactivation work is implemented and verified.
+The [current backend handoff](docs/M1_BACKEND_HANDOFF.md) lists integrated modules, checks, demo order and remaining private Stripe/runtime acceptance. See the [authoritative requirement review](docs/M1_REQUIREMENT_REVIEW.md); earlier dated checkpoints remain historical.
 
 ## Quick start
 
 ```bash
 npm install
-cp .env.example .env
+# For a fresh clone only: create .env from .env.example if no private .env exists.
 # Set MONGODB_URI in the new local .env (never commit this file).
 npm run typecheck
 npm run build
@@ -70,7 +70,7 @@ Hotel inventory, search, concurrency-safe bookings, reviews, the blog, content r
 
 Policy review/acceptance and payment/refund services are connected to MK's real hotel booking adapter. Both concrete hotel and flight settlement adapters are connected; see [flight integration](docs/FLIGHT_PAYMENT_INTEGRATION.md). See [policy contract](docs/PAYMENT_POLICIES.md) and [hotel integration](docs/HOTEL_PAYMENT_INTEGRATION.md).
 
-USD is the platform currency. Payment create/retry/status, signed raw webhooks, durable event recovery, expiry and policy-derived cancellation/late refunds are implemented with actual hotel transactions. Private live Stripe test verification remains pending. Flight holds, settlement and saved-policy refunds are connected; public flight search/details and itinerary reuse are connected; schedule/cabin edits and whole-flight cancellation/full refunds are connected; assigned-moderator flight rosters and private all-passenger CSV downloads are implemented; see [roster and CSV](docs/FLIGHT_ROSTER.md). Private [e-ticket PDF downloads](docs/FLIGHT_ETICKET.md) are implemented and tested. [Airline logo uploads](docs/AIRLINE_LOGOS.md) are implemented and tested. Remaining provider-profile audit producers are the next slice. Account, hotel/provider/moderation and refund events now feed Omar's notification/audit consumers; see [delivery integration](docs/NOTIFICATIONS_AND_AUDIT.md). See [settlement API and demo](docs/PAYMENT_SETTLEMENT.md) and [private gateway setup](docs/STRIPE_GATEWAY.md).
+USD is the platform currency. Payment create/retry/status, signed raw webhooks, durable event recovery, expiry and policy-derived cancellation/late refunds are implemented with actual hotel transactions. Private live Stripe test verification remains pending. Flight holds, settlement and saved-policy refunds are connected; public flight search/details and itinerary reuse are connected; schedule/cabin edits and whole-flight cancellation/full refunds are connected; assigned-moderator flight rosters and private all-passenger CSV downloads are implemented; see [roster and CSV](docs/FLIGHT_ROSTER.md). Private [e-ticket PDF downloads](docs/FLIGHT_ETICKET.md) are implemented and tested. [Airline logo uploads](docs/AIRLINE_LOGOS.md) are implemented and tested. Hotel profile/policy/photo mutations now have atomic audit effects; see [hotel audit](docs/HOTEL_PROFILE_AUDIT.md). Private live Stripe acceptance remains. Account, hotel/provider/moderation and refund events now feed Omar's notification/audit consumers; see [delivery integration](docs/NOTIFICATIONS_AND_AUDIT.md). See [settlement API and demo](docs/PAYMENT_SETTLEMENT.md) and [private gateway setup](docs/STRIPE_GATEWAY.md).
 
 ACC-09 profile editing supports name, international phone and the official supported preferred currencies through `PATCH /api/users/me`. All fields validate before an atomic save. Existing accounts return null phone/currency until set. See [profile inputs and Swagger demo](docs/API_CONVENTIONS.md#own-profile-acc-09).
 
@@ -78,4 +78,4 @@ Budget and intercity transport CRUD include native day/category/group totals and
 
 Itineraries support private CRUD, ordered days/activities, public discovery, budgets/FX, owned city-group hotel search and activity images with private/public access and independent clone files. Public flight search/details and owned first-city itinerary flight reuse are implemented; see [flight search](docs/FLIGHT_SEARCH.md). See [itinerary API/demo](docs/ITINERARIES.md), [hotel search](docs/ITINERARY_HOTEL_SEARCH.md) and [images](docs/ACTIVITY_IMAGES.md). [Self-deactivation](docs/ACCOUNT_DEACTIVATION.md) atomically revokes sessions, blocks upcoming Confirmed hotel stays and protects against payment races; current/upcoming flight segments are included in the same transactional guard.
 
-The official workbook and reference CSVs have been inspected. Typecheck/build/lint, 209 unit and 617 HTTP/database tests passed, including complete AppModule/Swagger/auth/admin smoke with validated disposable configuration and no .env loading. Production cookie flags are tested; local HTTP uses non-Secure cookies. Live Stripe, shared Atlas payment transactions and HTTPS/browser demonstration remain unverified; shared reference seeding was separately verified. See the current handoff for cross-team dependencies and documented cleanup/retention limits.
+The official workbook and reference CSVs have been inspected. Typecheck/build/lint, 209 unit and 647 HTTP/database tests passed, including complete AppModule/Swagger/auth/admin smoke with validated disposable configuration and no .env loading. Production cookie flags are tested; local HTTP uses non-Secure cookies. Live Stripe, shared Atlas payment transactions and HTTPS/browser demonstration remain unverified; shared reference seeding was separately verified. See the current handoff for cross-team dependencies and documented cleanup/retention limits.

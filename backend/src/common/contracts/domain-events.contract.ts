@@ -12,6 +12,11 @@ export type PaymentState =
 export type RefundState =
   'requested' | 'approved' | 'rejected' | 'processing' | 'completed' | 'failed';
 export const DOMAIN_EVENT_TYPES = [
+  'hotel.created',
+  'hotel.updated',
+  'hotel.policies_updated',
+  'hotel.image_added',
+  'hotel.image_removed',
   'airline.created',
   'airline.updated',
   'airline.policies_updated',

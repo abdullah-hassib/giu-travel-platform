@@ -1,3 +1,5 @@
+> Current November 19 handoff: [M1_BACKEND_HANDOFF.md](M1_BACKEND_HANDOFF.md). The integrated backend now includes actual hotel/flight/provider/payment/refund/delivery paths, all mandatory exports/media and hotel profile audit producers. Older remaining-integration statements below describe their dated checkpoints. Private Stripe and intended runtime acceptance remain unverified.
+
 # Payment settlement and refunds
 
 November 18, 2026. PAY-01/02/03/04 services are merged through PR #26 under Hassib's explicit authorization. MK's real hotel adapter and transactional cancellation/refund callback are now integrated and exercised with disposable MongoDB and controlled external gateway responses. The concrete flight adapter and Omar event delivery are now connected. Privately configured live Stripe test verification remains pending. See FLIGHT_PAYMENT_INTEGRATION.md for the current flight flow. See HOTEL_PAYMENT_INTEGRATION.md for the concrete hotel sequence and limits.
