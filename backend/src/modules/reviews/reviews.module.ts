@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { AuthModule } from '../auth/auth.module';
+import { ModeratorAssignmentsModule } from '../administration/moderator-assignments.module';
 import {
   HotelBooking,
   HotelBookingSchema,
@@ -11,10 +12,11 @@ import { ReviewsController } from './reviews.controller';
 import { ReviewsService } from './reviews.service';
 import { Review, ReviewSchema } from './schemas/review.schema';
 
-/** Hotel ratings and reviews for completed stays (HTL-23, HTL-24). */
+/** Hotel ratings, reviews and assigned hotel moderator replies (HTL-23/24/26). */
 @Module({
   imports: [
     AuthModule,
+    ModeratorAssignmentsModule,
     MongooseModule.forFeature([
       { name: Review.name, schema: ReviewSchema },
       { name: HotelBooking.name, schema: HotelBookingSchema },

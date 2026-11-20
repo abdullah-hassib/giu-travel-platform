@@ -1,6 +1,6 @@
 # Milestone 1 backend handoff - November 20, 2026
 
-Mandatory backend features in the reviewed scope are implemented and verified. Genuine Stripe test-mode payment/refund/webhook/expiry scenarios and the user's running HTTP readiness/Swagger endpoints were verified on November 19. The deadline is November 20. Frontend Milestone 2 and optional bonuses remain outside this work.
+Mandatory backend features in the reviewed scope are implemented and verified. Genuine Stripe test-mode payment/refund/webhook/expiry scenarios and the user's running HTTP readiness/Swagger endpoints were verified on November 19. The deadline is November 20. The user subsequently approved one optional bonus, hotel moderator review replies (HTL-26), after the mandatory release. Frontend Milestone 2 and the remaining bonuses stay outside this work.
 
 ## Completed integration
 
@@ -25,6 +25,8 @@ All seven representative synthetic PDF pages were rendered with Poppler and visu
 The existing FX client also succeeded against its public endpoint with the optional key explicitly disabled. It returned valid rates for all seven supported currencies, dated November 18. This read used no private configuration or database writes.
 
 ## Authoritative requirement review
+
+The approved HTL-26 bonus adds `POST /api/reviews/:id/reply` and an additive nullable response in existing review views. It reuses the current hotel assignment registry, restricts creation to the assigned active hotel moderator, preserves ratings and guest edits, and follows review moderation/deletion. See [hotel review replies](HOTEL_REVIEW_REPLIES.md) for the contract, implementation choices, tests and demo. Its verification is tracked separately from the mandatory 104 statements and 110 API operations.
 
 The official Excel workbook was fetched read-only on November 19. Its 104 mandatory statements match the supplied checklist after whitespace/typographic normalization, with no missing, additional or substantively changed statements. Its eleven optional requirements remain excluded. Workbook metadata reports modification on October 31, 2026. See M1_REQUIREMENT_REVIEW.md for scope and evidence.
 

@@ -16,7 +16,7 @@ import { MongoMemoryReplSet } from 'mongodb-memory-server-core';
 import { Connection, Model, Types } from 'mongoose';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, isAbsolute, join, relative, resolve } from 'node:path';
 import request from 'supertest';
 import { HttpErrorFilter } from '../src/common/filters/http-error.filter';
 import { OutboxEvent } from '../src/common/events/outbox-event.schema';
@@ -29,6 +29,8 @@ import { Hotel } from '../src/modules/hotels/schemas/hotel.schema';
 import { HotelRoom } from '../src/modules/hotels/schemas/room.schema';
 import { addDays, todayUtc } from '../src/modules/hotels/stay-rules';
 import { ReviewsModule } from '../src/modules/reviews/reviews.module';
+import { ReviewsService } from '../src/modules/reviews/reviews.service';
+import { Review } from '../src/modules/reviews/schemas/review.schema';
 import { RefundsService } from '../src/modules/refunds/refunds.service';
 import { User } from '../src/modules/users/schemas/user.schema';
 
@@ -66,6 +68,7 @@ describe('Hotels, rooms, bookings and reviews (real HTTP and MongoDB)', () => {
   let rooms: Model<HotelRoom>;
   let bookings: Model<HotelBooking>;
   let outbox: Model<OutboxEvent>;
+  let reviews: Model<Review>;
   let payments: HotelPaymentAdapter;
   let passwordHash: string;
 
@@ -115,6 +118,7 @@ describe('Hotels, rooms, bookings and reviews (real HTTP and MongoDB)', () => {
     rooms = app.get(getModelToken(HotelRoom.name));
     bookings = app.get(getModelToken(HotelBooking.name));
     outbox = app.get(getModelToken(OutboxEvent.name));
+    reviews = app.get(getModelToken(Review.name));
     payments = app.get(HotelPaymentAdapter);
     await Promise.all(
       connection.modelNames().map((name) => connection.model(name).init()),
@@ -125,6 +129,15 @@ describe('Hotels, rooms, bookings and reviews (real HTTP and MongoDB)', () => {
   afterAll(async () => {
     await app?.close();
     await server?.stop();
+    const target = resolve(uploadDir),
+      withinTemp = relative(resolve(tmpdir()), target);
+    if (
+      !withinTemp ||
+      withinTemp.startsWith('..') ||
+      isAbsolute(withinTemp) ||
+      !basename(target).startsWith('giu-hotel-media-')
+    )
+      throw new Error('Unsafe hotel-test media cleanup path');
     rmSync(uploadDir, { recursive: true, force: true });
   });
 
@@ -944,6 +957,289 @@ describe('Hotels, rooms, bookings and reviews (real HTTP and MongoDB)', () => {
         .send({ rating: 5 })
         .expect(409);
     });
+
+    describe('hotel moderator replies (HTL-26 bonus)', () => {
+      async function makeReview(): Promise<string> {
+        await completeStay();
+        const result = await traveler
+          .post(`/api/hotel-bookings/${bookingId}/review`)
+          .send({ rating: 4, comment: 'Original guest review' })
+          .expect(201);
+        expect(result.body.reply).toBeNull();
+        return result.body.id as string;
+      }
+      const path = (id: string) => `/api/reviews/${id}/reply`;
+      const listing = () =>
+        request(app.getHttpServer())
+          .get(`/api/hotels/${hotelId}/reviews`)
+          .expect(200);
+
+      it('publishes a trimmed Unicode hotel reply without moderator identity or rating changes', async () => {
+        const id = await makeReview();
+        const comment =
+          '\u0634\u0643\u0631\u0627 \u0644\u0632\u064a\u0627\u0631\u062a\u0643\u0645';
+        const result = await moderator
+          .post(path(id))
+          .send({ comment: `  ${comment}\n` })
+          .expect(201)
+          .expect('Cache-Control', 'no-store');
+        expect(Object.keys(result.body).sort()).toEqual([
+          'comment',
+          'createdAt',
+        ]);
+        expect(result.body.comment).toBe(comment);
+        expect(Number.isFinite(Date.parse(result.body.createdAt))).toBe(true);
+        const stored = await reviews.findById(id).orFail();
+        const mod = await users.findOne({ email: 'mod@example.com' }).orFail();
+        expect(stored.reply?.moderatorId.toString()).toBe(mod._id.toString());
+        const page = (await listing()).body;
+        expect(page).toMatchObject({
+          averageRating: 4,
+          ratingCount: 1,
+          meta: { page: 1, limit: 10, total: 1 },
+        });
+        expect(page.data[0]).toMatchObject({
+          id,
+          rating: 4,
+          comment: 'Original guest review',
+          reply: result.body,
+        });
+        expect(JSON.stringify(page)).not.toContain(mod._id.toString());
+        expect((await hotels.findById(hotelId).orFail()).ratingSum).toBe(4);
+      });
+
+      it('enforces guest and role guards, including administrator and airline-moderator denial', async () => {
+        const id = await makeReview();
+        await request(app.getHttpServer())
+          .post(path(id))
+          .send({ comment: 'Denied' })
+          .expect(401);
+        for (const agent of [traveler, otherTraveler, admin])
+          await agent.post(path(id)).send({ comment: 'Denied' }).expect(403);
+        await users.create({
+          email: 'airline-reply@example.com',
+          fullName: 'Airline moderator',
+          roles: ['airline_moderator'],
+          passwordHash,
+        });
+        const airlineMod = await signIn('airline-reply@example.com');
+        await airlineMod.post(path(id)).send({ comment: 'Denied' }).expect(403);
+        expect((await reviews.findById(id).orFail()).reply).toBeUndefined();
+      });
+
+      it('requires the current hotel assignment and conceals other hotels and missing reviews', async () => {
+        const id = await makeReview();
+        await otherModerator
+          .post(path(id))
+          .send({ comment: 'Wrong hotel' })
+          .expect(404);
+        await moderator
+          .post(path(new Types.ObjectId().toString()))
+          .send({ comment: 'Missing' })
+          .expect(404);
+        const mod = await users.findOne({ email: 'mod@example.com' }).orFail();
+        await connection
+          .collection('moderator_assignments')
+          .deleteOne({ userId: mod._id });
+        await moderator
+          .post(path(id))
+          .send({ comment: 'No assignment' })
+          .expect(403);
+        await connection
+          .collection('moderator_assignments')
+          .insertOne({
+            userId: mod._id,
+            providerType: 'airline',
+            providerId: new Types.ObjectId(),
+          });
+        await moderator
+          .post(path(id))
+          .send({ comment: 'Wrong provider type' })
+          .expect(403);
+        expect((await reviews.findById(id).orFail()).reply).toBeUndefined();
+      });
+
+      it('rejects malformed IDs, empty/oversized text, nulls and forged fields before writing', async () => {
+        const id = await makeReview();
+        for (const body of [
+          {},
+          { comment: '' },
+          { comment: ' \n\t ' },
+          { comment: null },
+          { comment: 7 },
+          { comment: {} },
+          { comment: [] },
+          { comment: 'x'.repeat(1001) },
+          { comment: '\uD83D\uDE00'.repeat(1001) },
+          { comment: 'Valid', moderatorId: new Types.ObjectId().toString() },
+          { comment: 'Valid', createdAt: '2026-01-01' },
+          { comment: 'Valid', rating: 5 },
+        ]) {
+          await moderator.post(path(id)).send(body).expect(400);
+        }
+        await moderator
+          .post(path('not-an-object-id'))
+          .send({ comment: 'Valid' })
+          .expect(400);
+        expect((await reviews.findById(id).orFail()).reply).toBeUndefined();
+      });
+
+      it.each([
+        ['ASCII', 'x'.repeat(1000)],
+        ['supplementary Unicode', '\uD83D\uDE00'.repeat(1000)],
+      ])(
+        'accepts the exact 1000-character boundary for %s through validation and persistence',
+        async (_name, comment) => {
+          const id = await makeReview();
+          await moderator.post(path(id)).send({ comment }).expect(201);
+          expect((await reviews.findById(id).orFail()).reply?.comment).toBe(
+            comment,
+          );
+        },
+      );
+
+      it('returns 409 on repeat submissions and preserves the original reply and timestamp', async () => {
+        const id = await makeReview();
+        const original = (
+          await moderator
+            .post(path(id))
+            .send({ comment: 'Original hotel response' })
+            .expect(201)
+        ).body;
+        await moderator
+          .post(path(id))
+          .send({ comment: 'Original hotel response' })
+          .expect(409);
+        await moderator
+          .post(path(id))
+          .send({ comment: 'Replacement attempt' })
+          .expect(409);
+        expect((await listing()).body.data[0].reply).toEqual(original);
+      });
+
+      it('allows exactly one concurrent reply without last-writer overwrite', async () => {
+        const id = await makeReview();
+        const secondSession = await signIn('mod@example.com');
+        const results = await Promise.all([
+          moderator.post(path(id)).send({ comment: 'First response' }),
+          secondSession.post(path(id)).send({ comment: 'Second response' }),
+        ]);
+        expect(results.map((r) => r.status).sort()).toEqual([201, 409]);
+        const winner = results.find((r) => r.status === 201)!;
+        expect((await listing()).body.data[0].reply).toEqual(winner.body);
+        expect((await hotels.findById(hotelId).orFail()).ratingCount).toBe(1);
+      });
+
+      it('hides an existing reply with its moderated review and rejects further replies without disclosure', async () => {
+        const id = await makeReview();
+        await moderator
+          .post(path(id))
+          .send({ comment: 'Hotel response' })
+          .expect(201);
+        await connection.transaction((session) =>
+          app.get(ReviewsService).moderate(id, 'hide', session),
+        );
+        await moderator
+          .post(path(id))
+          .send({ comment: 'Cannot reply' })
+          .expect(404);
+        expect((await listing()).body).toMatchObject({
+          ratingCount: 0,
+          data: [],
+          meta: { total: 0 },
+        });
+      });
+
+      it('rejects a reply to an unreplied hidden review', async () => {
+        const id = await makeReview();
+        await connection.transaction((session) =>
+          app.get(ReviewsService).moderate(id, 'hide', session),
+        );
+        await moderator
+          .post(path(id))
+          .send({ comment: 'Cannot reply' })
+          .expect(404);
+        expect((await reviews.findById(id).orFail()).reply).toBeUndefined();
+      });
+
+      it('blocks replies while the assigned hotel is inactive', async () => {
+        const id = await makeReview();
+        await hotels.updateOne({ _id: hotelId }, { $set: { active: false } });
+        await moderator
+          .post(path(id))
+          .send({ comment: 'Cannot reply' })
+          .expect(404);
+        expect((await reviews.findById(id).orFail()).reply).toBeUndefined();
+        await hotels.updateOne({ _id: hotelId }, { $set: { active: true } });
+        await moderator
+          .post(path(id))
+          .send({ comment: 'Active again' })
+          .expect(201);
+      });
+
+      it('rechecks account status and temporary-password enforcement on the reply endpoint', async () => {
+        const id = await makeReview();
+        for (const status of ['suspended', 'deactivated']) {
+          await users.updateOne(
+            { email: 'mod@example.com' },
+            { $set: { status } },
+          );
+          await moderator
+            .post(path(id))
+            .send({ comment: 'Cannot reply' })
+            .expect(401);
+        }
+        await users.updateOne(
+          { email: 'mod@example.com' },
+          { $set: { status: 'active', mustChangePassword: true } },
+        );
+        await moderator
+          .post(path(id))
+          .send({ comment: 'Cannot reply' })
+          .expect(403);
+        expect((await reviews.findById(id).orFail()).reply).toBeUndefined();
+      });
+
+      it('preserves replies on guest edits and anonymization, then removes them with the review', async () => {
+        const id = await makeReview();
+        const reply = (
+          await moderator
+            .post(path(id))
+            .send({ comment: 'Hotel response' })
+            .expect(201)
+        ).body;
+        await traveler
+          .patch(`/api/reviews/${id}`)
+          .send({ rating: 2, comment: 'Edited guest review' })
+          .expect(200);
+        expect((await listing()).body).toMatchObject({
+          averageRating: 2,
+          data: [{ id, reply }],
+        });
+        await users.updateOne(
+          { email: 'guest@example.com' },
+          { $set: { status: 'deactivated' } },
+        );
+        expect((await listing()).body.data[0]).toMatchObject({
+          authorName: 'Deleted user',
+          reply,
+        });
+        await users.updateOne(
+          { email: 'guest@example.com' },
+          { $set: { status: 'active' } },
+        );
+        await traveler.delete(`/api/reviews/${id}`).expect(204);
+        await moderator
+          .post(path(id))
+          .send({ comment: 'Deleted review' })
+          .expect(404);
+        expect(await reviews.findById(id)).toBeNull();
+        expect((await listing()).body).toMatchObject({
+          ratingCount: 0,
+          data: [],
+        });
+      });
+    });
   });
 
   describe('hotel photos (GEN-08)', () => {
@@ -1006,9 +1302,34 @@ describe('Hotels, rooms, bookings and reviews (real HTTP and MongoDB)', () => {
       '/api/hotel-bookings/{id}/cancel',
       '/api/hotel-bookings/{id}/review',
       '/api/reviews/{id}',
+      '/api/reviews/{id}/reply',
       '/api/hotels/{id}/reviews',
     ]) {
       expect(document.body.paths[path]).toBeDefined();
     }
+    const reply = document.body.paths['/api/reviews/{id}/reply'].post;
+    expect(reply.security).toEqual([{ giu_session: [] }]);
+    for (const code of ['201', '400', '401', '403', '404', '409'])
+      expect(reply.responses[code]).toBeDefined();
+    expect(reply.requestBody.content['application/json'].schema.$ref).toBe(
+      '#/components/schemas/CreateReviewReplyDto',
+    );
+    expect(reply.responses['201'].content['application/json'].schema.$ref).toBe(
+      '#/components/schemas/ReviewReplyViewDto',
+    );
+    const schemas = document.body.components.schemas;
+    expect(schemas.CreateReviewReplyDto).toMatchObject({
+      required: ['comment'],
+      properties: {
+        comment: { type: 'string', minLength: 1, maxLength: 1000 },
+      },
+    });
+    expect(schemas.ReviewViewDto.properties.reply).toMatchObject({
+      nullable: true,
+    });
+    expect(Object.keys(schemas.ReviewReplyViewDto.properties).sort()).toEqual([
+      'comment',
+      'createdAt',
+    ]);
   });
 });

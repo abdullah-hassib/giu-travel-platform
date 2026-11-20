@@ -4,6 +4,8 @@ See [root README](../README.md), [implementation status](docs/IMPLEMENTATION_STA
 
 Current Hassib-owned mandatory coverage and remaining work are tracked in [Milestone 1 backend coverage](docs/M1_BACKEND_COVERAGE.md).
 
+The user approved one optional bonus after the mandatory release: [hotel moderator review replies (HTL-26)](docs/HOTEL_REVIEW_REPLIES.md), through `POST /api/reviews/:id/reply`. Current hotel assignment and active-account guards apply. Replies are included in existing public review views, preserve ratings and guest edits, and follow review hiding/deletion.
+
 The [current backend handoff](docs/M1_BACKEND_HANDOFF.md) lists integrated modules, checks and demo order. Genuine Stripe test-mode payments/refunds/webhooks/expiry and running HTTP readiness/Swagger were verified on November 19; see the [precise execution record](docs/STRIPE_SANDBOX_ACCEPTANCE.md). See the [authoritative requirement review](docs/M1_REQUIREMENT_REVIEW.md); earlier dated checkpoints remain historical.
 
 ## Quick start

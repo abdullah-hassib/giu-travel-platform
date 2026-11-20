@@ -1,11 +1,13 @@
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
+import { REVIEW_REPLY_MAX_LENGTH } from '../review.constants';
 import {
   IsInt,
   IsString,
   Max,
   MaxLength,
   Min,
+  MinLength,
   ValidateIf,
 } from 'class-validator';
 
@@ -33,3 +35,18 @@ export class CreateReviewDto {
 export class UpdateReviewDto extends PartialType(CreateReviewDto, {
   skipNullProperties: false,
 }) {}
+
+export class CreateReviewReplyDto {
+  @ApiProperty({
+    minLength: 1,
+    maxLength: REVIEW_REPLY_MAX_LENGTH,
+    example: 'Thank you for staying with us. We appreciate your feedback.',
+    description:
+      'Plain text, trimmed. The 1000-character cap is an implementation limit matching review comments.',
+  })
+  @Transform(trim)
+  @IsString()
+  @MinLength(1)
+  @MaxLength(REVIEW_REPLY_MAX_LENGTH)
+  comment!: string;
+}

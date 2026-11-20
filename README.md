@@ -9,3 +9,5 @@ Typecheck, build and lint passed, with 209 unit tests and 647 HTTP/database test
 Start with [backend setup](backend/README.md), [current handoff](backend/docs/M1_BACKEND_HANDOFF.md), [requirement review](backend/docs/M1_REQUIREMENT_REVIEW.md) and [reference setup](backend/docs/REFERENCE_DATA.md). The official PDF/workbook define requirements; historical unchecked boxes in the supplied implementation guide describe its November 15 audit. Material assistance is recorded in [AI_PROMPTS.txt](AI_PROMPTS.txt).
 
 Use tested feature branches and reviewed merges into develop. Keep private .env files and credentials out of Git. Frontend and deployment bonuses were not added.
+
+After the mandatory release, the user approved one optional addition: [HTL-26 hotel moderator review replies](backend/docs/HOTEL_REVIEW_REPLIES.md). The assigned moderator can create one hotel response per visible review; public review views include it without exposing moderator identity. Existing ratings, guest edits and moderation are preserved.
