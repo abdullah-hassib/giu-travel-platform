@@ -2,7 +2,7 @@
 
 Milestone 1 backend deadline: November 20, 2026. Milestone 2 frontend deadline: December 11, 2026.
 
-The NestJS/TypeScript backend integrates authentication/users/administration, flight and hotel search/inventory/bookings, policy acceptance/payments/refunds, itineraries/budgets/FX, reviews/blog/community, server media, notifications/audit and official references. The remaining independent backend features are implemented, including flight roster/CSV, private e-ticket PDFs, airline logos and hotel profile/photo audit events. Private Stripe test-mode acceptance and the intended private runtime demonstration remain unverified.
+The NestJS/TypeScript backend integrates authentication/users/administration, flight and hotel search/inventory/bookings, policy acceptance/payments/refunds, itineraries/budgets/FX, reviews/blog/community, server media, notifications/audit and official references. Mandatory backend features in the reviewed scope are implemented, including flight roster/CSV, private e-ticket PDFs, airline logos and hotel profile/photo audit events. Real Stripe test-mode payments, signed webhooks, decline/retry, refunds and unpaid expiry were verified on November 19 using disposable local databases. The user's running readiness and Swagger endpoints also returned 200.
 
 Typecheck, build and lint passed, with 209 unit tests and 647 HTTP/database tests across 27 suites. The running application publishes all 110 mandatory API method/path pairs from the official PDF. The 104 mandatory workbook statements were cross-checked read-only; UI acceptance and optional bonuses remain outside the backend assignment.
 

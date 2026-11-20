@@ -1,3 +1,16 @@
+# November 20 final release verification
+
+- The fresh complete HTTP/database rerun passed all 647 tests across 27 suites, with zero failures or pending cases. Its saved Jest JSON report and process exit code both confirm success. This supersedes the unavailable final result of the interrupted November 19 rerun.
+- The unchanged code checkpoint also passed typecheck/build/lint and 209 unit tests. Real Stripe test-mode success/decline/retry/refunds/expiry were verified in the separately approved November 19 runs below. No additional Stripe objects were created on November 20.
+- Mandatory backend features in the reviewed scope are implemented. PR #46 packages the isolated acceptance harness, corrected test fixture and current handoff/coverage evidence; production modules, dependencies and schemas are unchanged. Restart the backend and normal Stripe CLI forwarder for a new local demo.
+
+# November 19 genuine Stripe test-mode acceptance
+
+- Actual flight payment/confirmation/PDF, signed replay/tamper rejection, full provider refund, hotel decline/retry/confirmation/full user refund, and genuine success/failure/refund webhooks passed against Stripe test mode in an isolated disposable database.
+- The first combined run correctly rejected a forced-deadline fixture with an inconsistent immutable quote. Production safeguards were preserved. One separately approved unpaid intent then passed service-driven cancellation, signed cancellation webhook processing, booking expiry, held-seat release and provider audit delivery. The original combined run is recorded as false, with its successful cases preserved as individual evidence.
+- Across both approved runs: four test PaymentIntents, two successes fully refunded, two unpaid intents cancelled, cleanup complete, no shared Atlas booking fixture, no exposed/committed credential or raw payload. See STRIPE_SANDBOX_ACCEPTANCE.md for exact evidence and reproduction modes.
+- Running GET /api/health/ready and /api/docs-json returned 200; all 110 mandatory API operations matched actual Swagger. Restart the normal CLI forwarder for future local payments. Earlier dated local-only checkpoints below remain historical.
+
 # November 19 complete local backend regression and requirement review
 
 - Hotel profile/policy/photo audit producers commit with actual metadata and integrate with immediate/durable history; failed writes preserve prior state/files. Ten new real-module cases and existing history regressions pass. See HOTEL_PROFILE_AUDIT.md.
