@@ -42,7 +42,7 @@ jobs:
           short_sha="$(git rev-parse --short=12 HEAD)"
           archive="giu-travel-milestone1-${short_sha}.zip"
           cd "$RUNNER_TEMP/m1-submission"
-          git -C "$GITHUB_WORKSPACE" archive --format=zip --output="$archive" HEAD
+          git -C "$GITHUB_WORKSPACE" archive --format=zip --output="$RUNNER_TEMP/m1-submission/$archive" HEAD
           sha256sum "$archive" > "$archive.sha256"
           cat > RELEASE_MANIFEST.txt <<EOF
           Project: GIU Travel Planning and Booking Platform
