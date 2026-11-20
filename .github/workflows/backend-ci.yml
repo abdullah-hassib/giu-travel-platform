@@ -6,11 +6,14 @@ on:
     paths:
       - 'backend/**'
       - '.github/workflows/backend-ci.yml'
+      - '.nvmrc'
   push:
     branches: [develop]
     paths:
       - 'backend/**'
       - '.github/workflows/backend-ci.yml'
+      - '.nvmrc'
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -37,10 +40,10 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v4
 
-      - name: Set up Node.js 20 with npm cache
+      - name: Set up Node.js 24 with npm cache
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version-file: '.nvmrc'
           cache: npm
           cache-dependency-path: backend/package-lock.json
 

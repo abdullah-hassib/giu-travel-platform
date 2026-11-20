@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -27,8 +28,13 @@ import {
 import { averageRating, Hotel } from '../hotels/schemas/hotel.schema';
 import { User } from '../users/schemas/user.schema';
 import { PublicUser } from '../users/users.service';
-import { CreateReviewDto, UpdateReviewDto } from './dto/review.dto';
-import { Review } from './schemas/review.schema';
+import { ModeratorAssignmentsService } from '../administration/moderator-assignments.module';
+import {
+  CreateReviewDto,
+  CreateReviewReplyDto,
+  UpdateReviewDto,
+} from './dto/review.dto';
+import { Review, ReviewReply } from './schemas/review.schema';
 
 type StoredReview = Review & { _id: Types.ObjectId };
 
@@ -45,6 +51,7 @@ export class ReviewsService implements ModeratedContent {
     @InjectModel(Hotel.name) private readonly hotels: Model<Hotel>,
     @InjectModel(User.name) private readonly users: Model<User>,
     @InjectConnection() private readonly connection: Connection,
+    private readonly assignments: ModeratorAssignmentsService,
   ) {}
 
   /** One review per Completed reservation, no matter how many rooms it had. */
@@ -119,6 +126,47 @@ export class ReviewsService implements ModeratedContent {
       if (!review) throw new NotFoundException('Review not found');
       if (!review.hidden) await this.removeFromAverage(review, session);
     });
+  }
+
+  /** HTL-26: reply once to a visible review of the moderator's active hotel. */
+  async reply(user: PublicUser, reviewId: string, dto: CreateReviewReplyDto) {
+    const assignment = await this.assignments.getForModerator(user.id);
+    if (
+      !user.roles.includes('hotel_moderator') ||
+      assignment?.providerType !== 'hotel'
+    ) {
+      throw new ForbiddenException('A hotel moderator assignment is required');
+    }
+    if (
+      !(await this.hotels.exists({ _id: assignment.providerId, active: true }))
+    ) {
+      throw new NotFoundException('Hotel not found');
+    }
+    const filter = {
+      _id: reviewId,
+      hotelId: assignment.providerId,
+      hidden: false,
+    };
+    const reply: ReviewReply = {
+      moderatorId: new Types.ObjectId(user.id),
+      comment: dto.comment,
+      createdAt: new Date(),
+    };
+    // One conditional document write: concurrent requests cannot overwrite a reply.
+    // MongoDB's null equality also matches legacy reviews with no reply field.
+    const updated = await this.reviews
+      .findOneAndUpdate(
+        { ...filter, reply: null },
+        { $set: { reply } },
+        { new: true, runValidators: true },
+      )
+      .lean();
+    if (!updated) {
+      if (await this.reviews.exists(filter))
+        throw new ConflictException('This review already has a hotel reply');
+      throw new NotFoundException('Review not found');
+    }
+    return replyView(reply);
   }
 
   /** HTL-24: average, count and reviews of an active hotel, newest first. */
@@ -204,5 +252,10 @@ function reviewView(review: StoredReview, authorName: string) {
     authorName,
     createdAt: review.createdAt,
     updatedAt: review.updatedAt,
+    reply: review.reply ? replyView(review.reply) : null,
   };
+}
+
+function replyView(reply: ReviewReply) {
+  return { comment: reply.comment, createdAt: reply.createdAt };
 }

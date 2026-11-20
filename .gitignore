@@ -11,3 +11,7 @@ coverage/
 
 # Uploaded images (GEN-08) are stored on the server, not in Git
 uploads/
+
+# Locally generated submission archives, checksums and verification manifests
+/artifacts/
+/.cache/

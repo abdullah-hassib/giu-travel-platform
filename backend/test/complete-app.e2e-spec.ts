@@ -184,11 +184,14 @@ describe('Complete AppModule with disposable configuration and no environment-fi
       '/api/payments/webhook',
       '/api/refunds/{id}',
       '/api/countries',
+      '/api/reviews/{id}/reply',
     ]) {
       expect(doc.paths).toHaveProperty(path);
     }
     expect(doc.components.securitySchemes.giu_session.in).toBe('cookie');
     expect(doc.components.schemas).toHaveProperty('AdminHistoryPageDto');
+    expect(doc.components.schemas).toHaveProperty('CreateReviewReplyDto');
+    expect(doc.components.schemas).toHaveProperty('ReviewReplyViewDto');
   });
 
   it('runs registration, cookie rotation and an owned itinerary-to-hotel search through the full module graph', async () => {
