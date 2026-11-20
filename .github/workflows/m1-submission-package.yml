@@ -1,0 +1,74 @@
+name: Milestone 1 source submission package
+
+on:
+  push:
+    branches: [main]
+  create:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package-source:
+    name: Archive the exact main release commit
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout immutable release commit
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Verify tracked submission inputs and exclusions
+        shell: bash
+        run: |
+          set -euo pipefail
+          for path in README.md AI_PROMPTS.txt backend/package.json backend/package-lock.json backend/.env.example backend/src/main.ts backend/docs/M1_BACKEND_HANDOFF.md backend/docs/M1_SUBMISSION_CHECKLIST.md; do
+            test -f "$path" || { echo "::error::Missing required source: $path"; exit 1; }
+          done
+          if git ls-files | grep -E '(^|/)\.env$|(^|/)node_modules/|(^|/)dist/|(^|/)coverage/|(^|/)uploads/'; then
+            echo "::error::Private runtime or generated files are tracked; refusing archive."
+            exit 1
+          fi
+          test "$(grep -c '^Date:' AI_PROMPTS.txt)" -ge 1
+
+      - name: Create source ZIP, checksum and release manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/m1-submission"
+          short_sha="$(git rev-parse --short=12 HEAD)"
+          archive="giu-travel-milestone1-${short_sha}.zip"
+          cd "$RUNNER_TEMP/m1-submission"
+          git -C "$GITHUB_WORKSPACE" archive --format=zip --output="$RUNNER_TEMP/m1-submission/$archive" HEAD
+          sha256sum "$archive" > "$archive.sha256"
+          cat > RELEASE_MANIFEST.txt <<EOF
+          Project: GIU Travel Planning and Booking Platform
+          Scope: Milestone 1 NestJS backend (plus approved HTL-26 bonus)
+          Release branch: main
+          Full source commit SHA: ${GITHUB_SHA}
+          Archive: ${archive}
+          Archive checksum: $(sha256sum "$archive" | cut -d' ' -f1)
+          Repository: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}
+          Exact commit: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/tree/${GITHUB_SHA}
+          Source archive includes committed code, README, AI_PROMPTS.txt,
+          documentation, reference CSVs and tracked assets. It excludes
+          .git history, private .env, dependencies, uploads and build output.
+          Contribution history is preserved online in the linked GitHub repo.
+          Validation evidence: backend/docs/M1_BACKEND_HANDOFF.md
+          External Stripe evidence: backend/docs/STRIPE_SANDBOX_ACCEPTANCE.md
+          Last recorded source checks: 209 unit, 660 HTTP/database.
+          This package job does not re-execute the test suite or submit to GIU.
+          EOF
+          unzip -t "$archive" | tail -n 1
+          printf 'Archive and manifest ready: %s\n' "$archive"
+
+      - name: Upload instructor-ready source package
+        uses: actions/upload-artifact@v4
+        with:
+          name: milestone1-source-${{ github.sha }}
+          path: ${{ runner.temp }}/m1-submission/
+          if-no-files-found: error
+          retention-days: 90
