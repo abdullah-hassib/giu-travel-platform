@@ -1,6 +1,7 @@
 /** Opt-in external acceptance. Default invocation prints a plan without credentials/network. */
 import {
   Global,
+  HttpException,
   INestApplication,
   Module,
   ValidationPipe,
@@ -29,12 +30,14 @@ import { hashPassword } from '../../src/modules/auth/security/password';
 import { DomainEventConsumer } from '../../src/modules/domain-events/domain-event-consumer';
 import { CommittedOutboxConsumer } from '../../src/modules/domain-events/committed-outbox-consumer';
 import { FlightBooking } from '../../src/modules/flight-bookings/schemas/flight-booking.schema';
+import { FlightPaymentAdapter } from '../../src/modules/flight-bookings/flight-payment.adapter';
 import { FlightsModule } from '../../src/modules/flights/flights.module';
 import { Flight } from '../../src/modules/flights/schemas/flight.schema';
 import { HotelBooking } from '../../src/modules/hotel-bookings/schemas/hotel-booking.schema';
 import { configurePaymentBodyParsers } from '../../src/modules/payments/payment-body-parsers';
 import { PaymentsModule } from '../../src/modules/payments/payments.module';
 import { PaymentsService } from '../../src/modules/payments/payments.service';
+import { bookingPolicyToken } from '../../src/modules/payments/booking-policy-snapshot';
 import { Payment } from '../../src/modules/payments/schemas/payment.schema';
 import { PaymentEvent } from '../../src/modules/payments/schemas/payment-event.schema';
 import { Refund } from '../../src/modules/refunds/schemas/refund.schema';
@@ -90,8 +93,9 @@ const plan = {
 
 async function main(): Promise<void> {
   const fixtureOnly = process.argv.includes('--verify-fixtures');
+  const expiryOnly = process.argv.includes('--expiry-only');
   check(
-    !(fixtureOnly && process.argv.includes('--execute')),
+    !(fixtureOnly && (process.argv.includes('--execute') || expiryOnly)),
     'choose_one_execution_mode',
   );
   if (!fixtureOnly && !process.argv.includes('--execute')) {
@@ -100,7 +104,15 @@ async function main(): Promise<void> {
         mode: 'plan_only',
         credentialAccess: false,
         stripeNetwork: false,
-        plan,
+        plan: expiryOnly
+          ? {
+              ...plan,
+              paymentIntents: 1,
+              successfulPayments: 0,
+              fullRefunds: 0,
+              declinedRetry: false,
+            }
+          : plan,
       }) + '\n',
     );
     return;
@@ -497,7 +509,7 @@ async function main(): Promise<void> {
         'invalid_stripe_payment_link',
       );
       remote.set(attempt.stripePaymentId, attempt.id);
-      check(remote.size <= 3, 'acceptance_payment_limit');
+      check(remote.size <= (expiryOnly ? 1 : 3), 'acceptance_payment_limit');
       return attempt;
     }
     async function confirm(
@@ -569,6 +581,19 @@ async function main(): Promise<void> {
         );
       }, 'genuine_refund_webhook_not_processed');
     }
+    if (expiryOnly) {
+      await expireUnpaid();
+      await app.get(DomainEventConsumer).consumePending();
+      check(
+        await app
+          .get<Model<AuditLog>>(getModelToken(AuditLog.name))
+          .exists({ action: 'airline.created', resourceId: airlineId }),
+        'actual_provider_audit_missing',
+      );
+      mark('actual_provider_audit_delivery');
+      passed = true;
+      return;
+    }
     if (fixtureOnly) {
       stage = 'offline_fixture_routes';
       const id = await flightHold(flightId);
@@ -585,6 +610,26 @@ async function main(): Promise<void> {
         });
       }
       mark('offline_actual_auth_provider_inventory_booking_and_policy_routes');
+      const before = await app
+        .get(FlightPaymentAdapter)
+        .getOwned(
+          (
+            await userModel
+              .findOne({ email: 'traveler@acceptance.invalid' })
+              .orFail()
+          )._id.toString(),
+          id,
+        );
+      await forceDeadline(id);
+      const after = await app
+        .get(FlightPaymentAdapter)
+        .getOwned(before.userId, id);
+      check(
+        after.holdExpiresAt.getTime() < Date.now() &&
+          bookingPolicyToken(before) !== bookingPolicyToken(after),
+        'forced_fixture_must_rebind_deadline_quote',
+      );
+      mark('offline_forced_deadline_changes_immutable_quote_binding');
       passed = true;
       return;
     }
@@ -765,45 +810,80 @@ async function main(): Promise<void> {
     );
     await refund(hotelPayment);
     mark('hotel_real_decline_retry_confirmation_and_user_full_refund');
-    stage = 'unpaid_expiry_cancels_stripe_intent';
-    const expiringFlight = await createFlight('AC002'),
-      expiringBooking = await flightHold(expiringFlight),
-      expiringPayment = await payment('flight', expiringBooking);
-    // Force only this disposable fixture's deadline; do not claim ten real minutes elapsed.
-    const past = new Date(Date.now() - 1000);
-    await db.transaction(async (session) => {
-      await flightBookings.updateOne(
-        { _id: expiringBooking },
-        { $set: { holdExpiresAt: past } },
-        { session },
+    async function forceDeadline(bookingId: string, paymentId?: string) {
+      const past = new Date(Date.now() - 1000);
+      await db.transaction(async (session) => {
+        const booking = await flightBookings
+          .findByIdAndUpdate(
+            bookingId,
+            { $set: { holdExpiresAt: past } },
+            { new: true, session },
+          )
+          .orFail();
+        const snapshot = await app!
+          .get(FlightPaymentAdapter)
+          .getOwnedForUpdate(booking.userId.toString(), bookingId, session);
+        // The deadline is part of the immutable quote. Prepare a consistent
+        // expired fixture, rather than disabling the production integrity check.
+        if (paymentId)
+          await paymentModel.updateOne(
+            { _id: paymentId },
+            {
+              $set: {
+                holdExpiresAt: past,
+                policyToken: bookingPolicyToken(snapshot),
+              },
+            },
+            { session },
+          );
+      });
+    }
+    async function expireUnpaid() {
+      stage = 'unpaid_expiry_cancels_stripe_intent';
+      const expiringFlight = await createFlight('AC002'),
+        expiringBooking = await flightHold(expiringFlight),
+        expiringPayment = await payment('flight', expiringBooking);
+      // Force only this disposable fixture's deadline; do not claim ten real minutes elapsed.
+      await forceDeadline(expiringBooking, expiringPayment.id);
+      stage = 'expiry_service_and_real_stripe_cancellation';
+      await app!.get(PaymentsService).expire(expiringPayment.id);
+      const expired = await stripe.paymentIntents.retrieve(
+        expiringPayment.stripePaymentId,
       );
-      await paymentModel.updateOne(
-        { _id: expiringPayment.id },
-        { $set: { holdExpiresAt: past } },
-        { session },
+      check(
+        expired.livemode === false && expired.status === 'canceled',
+        'unpaid_intent_not_canceled',
       );
-    });
-    await app.get(PaymentsService).expire(expiringPayment.id);
-    const expired = await stripe.paymentIntents.retrieve(
-      expiringPayment.stripePaymentId,
-    );
-    check(
-      expired.livemode === false && expired.status === 'canceled',
-      'unpaid_intent_not_canceled',
-    );
-    check(
-      (await flightBookings.findById(expiringBooking).orFail()).status ===
-        'Expired',
-      'booking_not_expired',
-    );
-    check(
-      (await flightModel.findById(expiringFlight).orFail()).cabins[0]
-        .heldSeats === 0,
-      'expired_inventory_not_released',
-    );
-    mark(
-      'forced_fixture_expiry_real_stripe_cancellation_and_inventory_release',
-    );
+      check(
+        (await flightBookings.findById(expiringBooking).orFail()).status ===
+          'Expired',
+        'booking_not_expired',
+      );
+      check(
+        (await flightModel.findById(expiringFlight).orFail()).cabins[0]
+          .heldSeats === 0,
+        'expired_inventory_not_released',
+      );
+      mark(
+        'forced_fixture_expiry_real_stripe_cancellation_and_inventory_release',
+      );
+      await waitFor(
+        async () => {
+          await app!.get(PaymentsService).runDue();
+          return Boolean(
+            await eventModel.exists({
+              resourceId: expiringPayment.stripePaymentId,
+              type: 'payment_intent.canceled',
+              status: 'processed',
+            }),
+          );
+        },
+        'genuine_cancellation_webhook_not_processed',
+        90,
+      );
+      mark('genuine_cancellation_webhook_processed');
+    }
+    await expireUnpaid();
     await app.get(DomainEventConsumer).consumePending();
     await app.get(CommittedOutboxConsumer).consumePending();
     const notices = await call(owner, 'get', '/api/notifications');
@@ -840,7 +920,14 @@ async function main(): Promise<void> {
           }
         : undefined;
     process.stdout.write(
-      JSON.stringify({ passed: false, stage, code, provider }) + '\n',
+      JSON.stringify({
+        passed: false,
+        stage,
+        code,
+        provider,
+        httpStatus:
+          error instanceof HttpException ? error.getStatus() : undefined,
+      }) + '\n',
     );
   } finally {
     // Recover persisted IDs even if an HTTP response failed after intent creation.
@@ -914,7 +1001,10 @@ async function main(): Promise<void> {
         passed,
         mode: fixtureOnly
           ? 'offline_fixture_verification'
-          : 'external_stripe_acceptance',
+          : expiryOnly
+            ? 'external_stripe_expiry_acceptance'
+            : 'external_stripe_acceptance',
+        paymentIntentsCreated: remote.size,
         cleanupComplete,
         checks,
         sharedDatabaseUsed: false,

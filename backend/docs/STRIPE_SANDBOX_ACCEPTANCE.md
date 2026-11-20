@@ -43,6 +43,23 @@ The external command consumes private configuration and requires explicit permis
 
 The harness cleans only its own Stripe objects after failure, checking test mode and payment metadata ownership first. It cancels unpaid intents and refunds any remaining amount on its own test charges. Stripe retains its normal test transaction history. The harness terminates only its own listener/app/database and verifies the temporary media path before deletion.
 
-No successful real Stripe acceptance run is claimed until the opt-in execution completes and its report is reviewed.
+For a separately approved unpaid-expiry-only run, append `--expiry-only`. It creates exactly one unpaid intent, verifies real cancellation and its signed webhook, releases inventory and verifies provider audit delivery. It creates no charge. Preview this mode without credentials by appending only `--expiry-only` to the preview command.
 
-November 19 preparation evidence: typecheck, build and lint passed; 209 unit tests passed; plan-only invocation passed; actual offline fixture verification and cleanup passed. No private configuration was loaded and no Stripe operation was performed for those checks. The complete backend's latest earlier regression checkpoint remains 647 HTTP/database tests. The acceptance harness remains draft pending the real external run.
+## November 19 execution evidence
+
+Preparation: typecheck/build/lint and 209 unit tests passed; plan-only mode passed; actual offline fixture/API verification and cleanup passed. The offline checks load no private environment and make no Stripe calls. The complete backend regression checkpoint is 647 HTTP/database tests.
+
+The user then explicitly authorized private runtime use of the configured keys and three test PaymentIntents, after confirming the normal listener was stopped. The first real external run verified:
+
+- Matching test key/signing configuration and an isolated listener/database.
+- Flight success through a genuine signed webhook, confirmation/reference/inventory, paid PDF, exact signed replay and rejection of tampered bytes.
+- Provider cancellation with a genuine full Stripe refund and genuine refund webhook processing.
+- Hotel decline with a genuine failure webhook, successful retry/confirmation, user cancellation and genuine full Stripe refund/webhook.
+
+That combined run stopped during expiry because the test fixture moved the hold deadline without updating its quote binding. The production immutable-quote check correctly rejected it. Cleanup passed: both paid attempts were fully refunded and its unpaid intent was cancelled. The combined run's overall report was false; its successful checks remain individual evidence. It did not reach the final notification/refund-audit assertions.
+
+The fixture now prepares an internally consistent expired quote in its disposable database, including the deadline-bound payment token. Production integrity checks are unchanged. Offline verification confirms that moving a deadline changes the quote hash; no ten-minute wall-clock wait is claimed.
+
+With separate explicit approval, one additional unpaid-intent run passed: actual service-driven Stripe cancellation, Expired booking, released held seats, genuine signed cancellation webhook processing and actual provider audit delivery. Its overall report and cleanup were true. Across both runs, four test intents were created, two payments succeeded and were fully refunded, and two unpaid intents were cancelled. No further Stripe objects were created. Actual refund notification/audit delivery remains covered by the independent real-module HTTP/database regressions; the first external run did not claim that final combined check.
+
+No shared Atlas booking data was written, no production code/dependency/schema changed, and credential values/client secrets/raw payloads were never printed or committed. Separately, the user's running HTTP readiness and Swagger endpoints returned 200; all 110 mandatory operations matched the actual Swagger document. The normal local forwarder should be restarted for future demonstrations.
