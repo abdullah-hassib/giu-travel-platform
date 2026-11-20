@@ -1,534 +1,261 @@
 GIU Software Project I — Travel Planning and Booking Platform
-AI ASSISTANCE LOG (Milestone 1)
+AI_PROMPTS.txt — curated chronological Milestone 1 disclosure
 
-This register documents material AI assistance used in the repository. It is a record of specific contributions, not a substitute for Git history, code review, or each student's ability to explain their work. Entries distinguish generated or modified code from tests and checks that were actually run. The team should confirm the individual student attribution for each entry before submission.
+Purpose: disclose material AI assistance as required by the official project PDF, Section 11.
+This is a chronological summary of significant prompts/requests and how AI output was used,
+NOT an export of the team's entire ChatGPT or Codex conversation history.
+Prompts are transparently paraphrased where the original work was multi-turn.
+Contributions were reviewed and integrated into Git; team members remain responsible
+for understanding, testing and explaining the resulting code.
 
+Attribution: named students are retained from the original contribution record.
+The earliest shared scaffold requests did not establish a verified individual requester;
+they are marked as team work instead of guessing an author. Team members should confirm
+their attribution and add any material personal AI assistance not covered here.
+No student's private AI history has been inferred. No secrets, tokens or customer data
+are needed or included in this report.
+
+Evidence: PR/commit history, backend/docs/M1_BACKEND_HANDOFF.md,
+backend/docs/STRIPE_SANDBOX_ACCEPTANCE.md, and the GitHub Actions results.
+Earlier detailed entries remain retrievable in the Git history of AI_PROMPTS.txt.
+Verification statements describe the recorded tests; simulated/offline gateway tests
+are distinguished from the separately authorized genuine Stripe test-mode runs.
 ================================================
 Date: 2026-11-14
-Student: Project team — individual attribution to confirm
-Tool: ChatGPT (GPT-6)
-Related work: Backend foundation; shared infrastructure
-
-Prompt / request:
-"Task 1 — Build the Milestone 1 Backend Foundation" — set up a NestJS/TypeScript backend with MongoDB Atlas/Mongoose, REST APIs, validation, Swagger, Jest, environment configuration, module boundaries, shared contracts and documentation.
-
-How the output was used:
-AI generated an initial backend scaffold, feature-module skeletons, common configuration/validation and error handling, health endpoints, Swagger setup, provisional authorization/event interfaces, starter tests and documentation. Business features were intentionally left out of this initial scaffold.
-
-Verification and limits:
-The original scaffold could not be fully installed, built, started or integration-tested in that execution environment. No database credentials or reference datasets were generated. Subsequent work and checks are recorded below.
-================================================
-Date: 2026-11-14
-Student: Project team — individual attribution to confirm
-Tool: ChatGPT (GPT-6)
-Related requirements: ACC-01, ACC-04, ACC-05, ACC-06, ACC-08, ACC-09, ACC-11, ACC-12, ACC-19
-
-Prompt / request:
-"i dont get this , start the build" — continuation of Milestone 1 after reviewing the official project description.
-
-How the output was used:
-AI assisted with the first authentication/users implementation: Mongoose user and session schemas, password hashing, server-side session tokens in HttpOnly cookies, registration/login/logout, profile routes, password changes, account deactivation, route guards, an administrator seed script, tests and related documentation.
-
-Verification and limits:
-Initial standalone checks passed, but dependency installation and full NestJS/Jest/Atlas verification were not possible at this stage. Exact workbook requirements had not yet been reconciled.
-================================================
-Date: 2026-11-15
-Student: Project team — individual attribution to confirm
-Tool: Codex
-Related requirements: ACC-01, ACC-09
-Prompt / request (summary from development log):
-Proceed with the initial Milestone 1 implementation and improve registration/profile input handling.
-
-How the output was used:
-AI-assisted changes trimmed and validated display names consistently and added isolated HTTP regression cases. The changes were incorporated into the authentication slice.
-
-Reported verification:
-Typecheck, build and lint passed; 8 unit suites / 17 tests passed. After a Jest HTTP configuration fix, 2 HTTP suites / 15 tests passed. HTTP tests used mocked services/guards rather than live MongoDB.
-================================================
-Date: 2026-11-15
-Student: Project team — individual attribution to confirm
-Tool: Codex
-Related requirements: ACC-04, ACC-08, ACC-12, ACC-19
-Prompt / request:
-"Fix tsconfig.json error and continue Hassib Milestone 1 implementation."
-
-How the output was used:
-AI-assisted updates removed an unused TypeScript setting, introduced session-version checks, protected password updates against stale credentials, invalidated old sessions after password changes or deactivation, and added regression tests.
-
-Reported verification:
-Typecheck, build and lint passed; 9 unit suites / 25 tests and 2 isolated HTTP suites / 15 tests passed. Database interactions in these regression tests were mocked. The original editor diagnostic was not independently reproduced.
-================================================
-Date: 2026-11-15
-Student: Project team — individual attribution to confirm
-Tool: Codex
-Related requirements: ACC-01, ACC-04, ACC-05, ACC-08
-Prompt / request:
-"Continue implementation using the supplied implementation guide and official project description; handle commits, pushes, PRs and merges."
-
-How the output was used:
-AI-assisted changes aligned registration with the official workbook: mandatory terms/privacy consent and timestamp, password letter/digit checks, specific suspended-account response, and an atomic five-attempt / fifteen-minute failed-login lockout. Service/HTTP/config tests and Swagger descriptions were updated; changes were submitted through feature-branch pull requests.
-
-Reported verification:
-Typecheck, build and lint passed; 9 unit suites / 34 tests and 2 isolated HTTP suites / 26 tests passed. Live MongoDB concurrency, Atlas connectivity, and live Swagger startup were not verified.
-
-Outstanding work:
-Thirty-minute inactivity expiry, access/refresh-cookie requirements, complete profile and administration behavior, booking-aware deactivation, and remaining project modules are not covered by these entries.
-================================================
-
-Maintenance note (2026-11-15): ChatGPT consolidated and clarified this log for readability at the user's request. The material AI-assisted tasks and known verification limitations above remain disclosed. Update this file with further material AI-assisted development as it occurs.
-
-================================================
-Date: 2026-11-15
-Student: Hassib
-Tool: Codex
-Related requirements: ACC-06 (idle-expiry portion), ACC-04, ACC-05, ACC-08; ACC-19 remains pending
-Prompt / request (summary): Continue assigned mandatory Milestone 1 backend tasks sequentially, inspect latest develop, verify each scoped slice, maintain professional AI records and pause for architectural or integration decisions.
-How the output was used: Updated from origin/develop f179744 before branching. Read the available personal task PDF from Downloads (filename without the requested (1) suffix), relevant official PDF pages and ACC-06/ACC-19 workbook text. Added thirty-minute server-side inactivity expiry and monotonic activity renewal with an atomic revocation/expiry recheck. Existing sessions use persisted update/creation timestamps until renewed. Preserved the current cookie routes and absolute lifetime. Added mongodb-memory-server-core as a development-only test harness and eleven tests against an isolated real MongoDB process. Updated documentation and test-run instructions. No teammate-owned modules changed.
-Reported verification: Typecheck, build and lint passed. Nine unit suites / 34 tests and three e2e suites / 37 tests passed. The eleven persistence cases ran against local MongoDB 8.2.7 in a disposable database, including concurrent failed logins and revocation races. Other HTTP tests continue to use mocks. No .env, Atlas credentials or shared database was accessed. The installed MongoDB binary was selected through test-only process variables after the default binary download timed out. The harness release preserves Node 20 support.
-Outstanding work: Access/refresh-cookie architecture and refresh revocation, remaining account/admin requirements and cross-team contracts require subsequent slices. ACC-06 and ACC-19 are not claimed complete. Live Atlas and deployed browser verification remain pending.
-================================================
-
-================================================
-Date: 2026-11-15
-Student: Hassib
-Tool: Codex
-Related requirements: ACC-06, ACC-19; preserves ACC-04/ACC-08 authentication behavior
-Prompt / request (summary): Implement the approved opaque access/refresh-cookie authentication design, rotation/replay protection, revocation, legacy-session transition, Swagger and real-database tests; handle version control.
-How the output was used: Created feature/auth-refresh-rotation from current develop. Login sets giu_session and giu_refresh HttpOnly/SameSite cookies. Access lifetime is an implementation choice of five minutes, bounded by the original absolute deadline. Refresh credentials combine a random family secret and rotating secret; only family and credential hashes persist. Atomic rotation replaces both credentials. Consumed-token replay and concurrent reuse revoke the family. Frontends must serialize refresh across tabs and require login after refresh rejection or uncertain replay. Logout accepts either cookie and clears both; password changes and inactive account/version checks invalidate both. Added POST /api/auth/refresh, sanitized Swagger response schemas, both cookie security schemes and no-store authentication responses. Preserved existing routes and legacy single-cookie sessions within their original absolute/idle limits until re-login. Updated README, API conventions and implementation status. No teammate-owned modules or secrets were touched.
-Verification: npm run typecheck, npm run build and npm run lint passed. Nine unit suites / 35 tests and three e2e suites / 49 tests passed. Twenty-two e2e cases used real disposable MongoDB 8.2.7, including the real HTTP login/protected-request/refresh/logout flow. Other HTTP cases use service/guard mocks; production Secure/HttpOnly/SameSite flags are asserted. No shared Atlas or .env access. No new dependencies in this slice.
-Remaining limits: Local HTTP development deliberately uses non-Secure cookies; Secure is enabled for production and direct HTTPS. Live HTTPS browser and Atlas verification remain pending. Legacy sessions do not gain refresh capability without re-login. Admin-assisted password reset and mandatory first-login changes, complete profile fields, booking-aware deactivation and remaining authorization/integration work are subsequent slices.
-================================================
-
-================================================
-Date: 2026-11-15
-Student: Hassib
-Tool: Codex
-Related requirements: ACC-14, GEN-05, GEN-13
-Prompt / request (summary): Continue assigned Milestone 1 work after the authentication-cookie implementation, starting administration in reviewed requirement-scoped slices.
-How the output was used: Started feature/admin-account-list from latest origin/develop. Implemented GET /api/admin/accounts in AdministrationModule using the existing User model, SessionGuard and RolesGuard. Added name/email literal case-insensitive search, combined role/status filters, fixed ten-row pagination, stable newest-first order and positive response projection. MongoDB facets return rows and totals from one input stream. Unknown legacy registration timestamps are null. DTO validation rejects invalid page values, operator-shaped filters, arbitrary limit/sort fields and invalid role/status. Swagger includes request/response and 400/401/403 documentation; responses use no-store. Added twenty-two real HTTP/MongoDB tests using actual production feature modules and guards. Updated README, API conventions and implementation status. Drafted an unapproved transactional outbox handoff proposal for Omar before dependent account-write routes; shared TypeScript contracts and teammate modules remain unchanged.
-Reported verification: Typecheck, build, lint and whitespace checks passed. Nine unit suites / 35 tests and four e2e suites / 71 tests passed. Twenty-two new admin tests cover positive access, guest/non-admin/inactive-admin denial, pagination/projection, search/filter combinations, regex escaping, invalid/operator queries, legacy timestamps and generated Swagger. Real database tests use disposable local MongoDB 8.2.7 and do not load .env or use Atlas. Early DTO inheritance and Swagger discovery failures were corrected before final verification.
-Outstanding work: Account suspension/reactivation, temporary password reset/forced change, moderator/provider management and remaining integrations are incomplete. The next account-write slice requires agreement on Omar's audit/notification delivery contract, including transactional consistency, consumer ownership and idempotency. Live Atlas/HTTPS verification remains pending.
-================================================
-
-================================================
-Date: 2026-11-15
-Student: Hassib
-Tool: Codex
-Related requirements: ACC-07a, ACC-08, ACC-13 forced-change support; administrative event producer only, GEN-07 consumer integration pending
-Prompt / request (summary): Continue administration after account listing and the proposed outbox handoff.
-How the output was used: Created feature/admin-password-reset from latest develop. Implemented administrator-only POST /api/admin/users/:id/reset-password using the existing password validation and valid ObjectIds. Traveler/moderator targets are supported; administrator targets are forbidden. In one MongoDB transaction, the service sets a salted temporary-password hash, forces password change, increments sessionVersion, clears failed-login lockout, deletes all target sessions and records a sanitized pending account.password_reset event. Account status is preserved. Added a backward-compatible mustChangePassword flag and metadata-based SessionGuard enforcement; only identity/password change plus public refresh/logout remain usable until a different compliant password is set. A successful change clears the flag, revokes sessions and requires login. Temporary credentials are never returned or logged by the implementation. Updated Swagger, API/README/status and producer handoff documentation.
-Reported verification: Typecheck, build and lint passed. Nine unit suites / 35 tests and four e2e suites / 84 tests passed. Thirteen new real HTTP/replica-set cases verify traveler/moderator resets, existing session/refresh revocation, restricted sessions after refresh, permanent-password transition, unauthorized/invalid targets and passwords, inactive target status and atomic rollback when the outbox insert fails. Test MongoDB is a disposable local 8.2.7 replica set; no .env, shared Atlas or credentials are used. No new packages or teammate-owned module changes.
-Integration limits: admin_outbox is a durable producer boundary, with UUID identity/correlation, version/type, ISO timestamp, actor ID, target ID payload and pending status. Omar's consumer, delivery/retry implementation and audit UI remain pending; no delivery or notification is claimed. Shared consumer agreement is still required before dependent suspension/provider features. Live Atlas/HTTPS verification remains pending. The HTTP reset route requires a transaction-capable MongoDB replica set.
-================================================
-
-================================================
-Date: 2026-11-15
-Student: Hassib
-Tool: Codex
-Related requirements: ITN-01, ITN-03, ITN-05, ITN-10, ITN-20; core portions of ITN-07/08/09/21; ACC-11, GEN-05, GEN-13
-Prompt / request (summary): Continue independent assigned work while deferring complex cross-team administration dependencies.
-How the output was used: Started feature/itinerary-core from latest develop, leaving administration PR 9 unmerged. Implemented private owner-managed itinerary CRUD, sixty-day ordered days, activities with optional local time/currency cost, derived dates/consecutive city groups, public visibility/search/read and independent private cloning of supported content with fresh IDs and attribution. Added explicit positive response schemas, request validation, traveler/owner guards, no-store responses, source-author visibility rules and optimistic concurrency. Used exact eight-country/eight-city records from the official reference workbook 1SlKUTRqlHuBJAMC-Z-QOZzSrzKpGHT_TgQUI5gVm-BA (source title Mock Data, modified November 1) as a documented read-only itinerary validation snapshot. No database seeding, invented reference records or reference API work was performed. Added forty-five real HTTP/MongoDB cases and documentation/demo/traceability.
-Reported verification: Typecheck, build, lint and whitespace checks passed. Nine unit suites / 35 tests and five e2e suites / 129 tests passed. New tests load real feature modules/guards and disposable local MongoDB 8.2.7, covering privacy, role/owner denial, date/reference validation, grouping/reordering, day-cap races, optimistic conflicts, case-normalized IDs, optional cost clearing, safe monetary totals, public author status/search, independent cloning and Swagger. No .env/shared Atlas or new dependencies.
-Implementation choices and limits: Each day city must belong to selected countries. Costs are explicit integer minor units and original currency; safe-integer total/calendar boundaries are enforced. Group activityTotals are activity-only per-currency subtotals. Clones copy all currently supported fields; full budgets, transport costs, FX, images and provider-search integrations remain pending. ITN-07/08/09/21 are not claimed fully complete. The reference snapshot does not complete Kuwaity's GEN-12 seeding work. Live Atlas/HTTPS and deferred cross-team integrations remain unverified.
-================================================
-
-================================================
-Date: 2026-11-15
-Student: Hassib
-Tool: Codex
-Related requirements: ITN-14/ITN-16 native-currency budgeting; budget portions of ITN-07/08/09/21; ITN-18 deferred
-Prompt / request (summary): Continue assigned independent work after itinerary core. The user confirmed no FXRatesAPI key is configured.
-How the output was used: Started feature/itinerary-budgets from latest develop. Implemented daily budget and transport CRUD plus original-currency summary, category/day breakdowns and city-group full budget subtotals. Embedded monetary entries reuse the itinerary owner/save/optimistic-concurrency path. Moving transport preserves ID and reassigns it to an owned day. Day removal cascades entries, reorder/start changes update dates/totals, and public/private clones copy all budget/transport fields with fresh IDs and valid new day references. Reused existing cost/reference validation; extracted the existing UTC calendar helper for consistent daily breakdowns. Legacy records without monetary arrays remain readable. Added Swagger contracts, demos and 28 real HTTP/MongoDB cases. No new dependencies or teammate-owned module changes.
-Reported verification: Typecheck, build, lint and whitespace checks passed. Nine unit suites / 35 tests and five e2e suites / 157 tests passed using disposable local MongoDB 8.2.7. New tests verify source/category arithmetic, original-currency separation, zero values, CRUD/moves, clone independence, owner/role/forced-password checks, invalid/null/operator inputs, legacy records, overflow, budget/day races and Swagger. No .env/shared Atlas/external FX API access.
-Scope limits: Native totals do not satisfy ITN-18 conversion/cache/fallback. No FX key or real exchange-rate result is available, and no conversion is claimed. Summary rejects unsupported conversion query fields. Profile preferred currency, FX, media, provider integrations and deferred administration PR 9 remain pending. Costs use non-negative safe integer minor units, supported source currencies and explicit native totals.
-================================================
-
-================================================
-Date: 2026-11-16
-Student: Hassib
-Tool: Codex
-Related requirements: ACC-09, GEN-13; preferred-currency prerequisite for ITN-18
-Prompt / request (summary): Continue assigned Milestone 1 work toward roughly sixty percent completion after the user reported the Atlas connection is working. Preserve ownership boundaries and handle version control.
-How the output was used: Inspected latest origin/develop affe716 and created feature/account-profile-fields. Extended own profile PATCH and the User schema with optional phone and preferred currency, reusing official supported currencies. Added sanitized nullable fields to identity/login/refresh/profile views. Preserved existing name rules, rejected null names, validated international phone format and normalized currency codes. Added Swagger response/error schemas and no-store profile responses. Atomic field updates preserve omitted fields and concurrent independent edits. No teammate modules, secrets or dependencies changed.
-Reported verification: Typecheck, build and lint passed. Nine unit suites / 35 tests and six e2e suites / 196 tests passed. Thirty-nine new cases use production AuthModule, real guards and disposable local MongoDB 8.2.7. They cover every role/currency, invalid-input atomicity, privilege-field rejection, ownership, legacy data, refresh identity, inactive/forced-password restrictions, concurrent edits and Swagger. No .env/shared Atlas access.
-Implementation choices and limits: ACC-09 does not specify phone syntax; international phone validation and nullable clearing are documented choices. Existing profiles have null preferred currency until selected. Selecting a currency alone does not perform conversion. The user confirms FXRatesAPI is not configured to their knowledge, so live FX verification remains pending. Administration, payment and cross-team dependencies remain incomplete.
-================================================
-
-================================================
-Date: 2026-11-16
-Student: Hassib
-Tool: Codex
-Related requirements: ITN-18, ACC-09; preserves ITN-14/16 and supports ITN-07/08/21
-Prompt / request (summary): Continue assigned backend work toward sixty percent. User reported Atlas connectivity works and said no FX key is configured to their knowledge.
-How the output was used: Started feature/itinerary-fx-summary after merging the tested profile slice in PR 12. Checked official workbook and FXRatesAPI documentation. A direct public daily endpoint call succeeded without credentials, correcting the earlier assumption that a key was required. Implemented the server-side client with optional private key, supported-rate/date validation, five-second timeout, redirect rejection and safe errors. Added persisted daily FX cache with unique day identity, coordinated concurrent fetch/retry, sixty-second failure recovery and attempt IDs preventing stale overwrites. Budget-summary now derives preferred-currency totals beside native totals, including source/rate date/cache fallback/stale metadata. Decimal-fraction arithmetic handles JPY's zero-decimal units, rounds each daily category/source-currency subtotal half up and rejects individual/combined unsafe totals. Added Swagger, budgeting/demo/status docs and an explicit 36-row coverage matrix. No teammate-owned modules, private configuration or new packages changed.
-Reported verification: Typecheck, build and lint passed. Eleven unit suites / 71 tests and seven e2e suites / 218 tests passed. FX adds 36 unit cases and 22 real HTTP/disposable-MongoDB cases with deterministic external-provider fixtures. Tests cover request/response validation, supported minor units, precision, cache sharing/restart/rollover, outage fallback/no-cache failures, concurrent retries, interrupted fetch recovery, stale-attempt protection, ownership/restricted sessions, profile changes, cloning, day/cost mutation recalculation and Swagger. A separate production-client/cache smoke check used the actual public API without a key and a disposable local MongoDB database. It verified one network request, one stored snapshot, reuse, all seven currencies and a safe conversion, with provider rate date 2026-11-15. No .env/shared Atlas access.
-Implementation choices and limits: Rates refresh on the first converted-summary request of each UTC day. Failure retry backoff is one minute and the network timeout is five seconds. Missing preferred currency retains native output. Missing usable cached rates returns 503. Rate date can be older than fetch date and is exposed honestly. Public API availability/quota remains external. Shared Atlas transaction and HTTPS browser checks remain pending. Coverage is an approximate implementation estimate based on 21 implemented and two partial rows out of 36 primary assigned requirements, with unequal remaining effort. Deferred administration PR 9, provider/media/search integrations, payment policies/Stripe/refunds and audit delivery remain pending.
-================================================
-
-================================================
-Date: 2026-11-17
-Student: Hassib
-Tool: Codex
-Related requirements: PAY-01/02/03/04, GEN-11; booking/inventory and notification/audit integration
-Prompt / request (summary): Continue Hassib's assigned Milestone 1 backend implementation toward approximately seventy-five percent while preserving the existing coordination and approval boundaries.
-How the output was used: Inspected clean local develop and fetched every remote branch. Latest origin/develop remains 7e27229, with no new team implementations. Confirmed booking, provider, notification, audit and media modules are still skeletons. Re-read the supplied repository/task instructions and mandatory workbook requirements preserved in the guide. Created docs/payment-integration-handoff and a concrete payments/refunds proposal describing ownership, seven API routes, authoritative booking/policy inputs, transaction boundaries, idempotent gateway operations, webhook settlement, refund authorization and required tests. Checked current official Stripe documentation. Identified the unresolved late-payment/expired-hold settlement decision. Requested the chosen platform currency, external team interfaces and private Stripe configuration status without requesting values.
-Verification and scope: Documentation-only change. Reviewed the proposal against PAY-01/02/03/04, FLT-22, HTL-18 and GEN-11, checked referenced source links and ran git diff --check. Application tests were not rerun for this proposal; the previous implementation baseline remains 71 unit and 218 e2e tests. No shared TypeScript contract, runtime code, teammate module or private .env was changed or read.
-Outstanding work: Progress remains approximately sixty percent. The draft proposal does not complete payment or integration requirements. Shared currency, actual adapters/consumer interfaces and architectural agreement are needed before dependent implementation. User authorization to manage GitHub remains in effect. The earlier instruction to defer complex teammate-owned work remains applicable until the user changes scope.
-================================================
-
-================================================
-Date: 2026-11-17
-Student: Hassib
-Tool: Codex
-Related requirements: PAY-01/03/04 infrastructure; signature verification, idempotency and payment/refund currency
-Prompt / request (summary): User delegated the platform currency choice, reported no team interfaces and no Stripe test credentials, and continued the target of roughly seventy-five percent.
-How the output was used: Fetched latest develop 7e27229 and created feature/stripe-test-gateway. Selected USD and recorded the decision. Added the official stripe 23.1.0 dependency after verifying its Node 20 support and current API parameters. Implemented an exported internal gateway for test-mode intent create/retrieve/cancel, authorized refund create/retrieve and official-SDK raw webhook verification. Added stable operation keys, strict USD/provider amount limits, internal record correlation, response mode/amount/currency checks, safe error mapping and minimal output. Private configuration remains lazy. Added setup/consumer documentation, updated status/coverage and requested approval of the existing draft PR 14 booking-adapter/transaction design before the dependent service slice. No shared booking types or teammate modules changed.
-Reported verification: Typecheck, build and lint passed. Twelve unit suites / 147 tests and seven e2e suites / 218 tests passed. Seventy-six new gateway tests use the real SDK with controlled HTTP transport and synthetic credentials/events. Coverage includes encoded requests, stable casing/idempotency, restricted test credentials, invalid/live inputs, provider/transport errors, cancellation races, bounded refunds and status mapping, response mismatches, raw-byte/timestamp signatures, malformed envelopes and real Nest module configuration. No real Stripe API request, private .env access or shared Atlas test was performed. Existing e2e tests use disposable local MongoDB.
-Implementation choices and limits: USD was chosen under explicit delegated authority. SDK 23.1.0 defaults to API 2026-10-28.endive; gateway operations use automatic card capture, five-second request timeout and two SDK network retries. Stripe's USD intent limit is 50 through 99999999 cents; refund amounts can be smaller and must be positive and bounded by the original paid amount. Consumers must persist operation IDs and enforce ownership/policies/hold/cancellation rules before invoking the gateway. No public payment/refund route, durable event consumer, booking/inventory settlement or notification delivery is claimed. Primary implemented coverage remains 21 of 36 rows, with five partial and ten pending. Reaching seventy-five percent still requires the real service/integration work and Stripe setup. Draft PR 14 architecture approval remains pending.
-================================================
-
-================================================
-Date: 2026-11-17
-Student: Hassib
-Tool: Codex
-Related requirements: PAY-01/02/03/04 integration design
-Prompt / request (summary): User explicitly approved the booking-adapter and transaction design proposed in draft PR 14 after delegating the USD selection.
-How the output was used: Updated the review document to distinguish Hassib's approval from the team adapters/consumers still pending. Recorded the already merged gateway and USD decision, preserving the late-success settlement question. Merged latest develop into the documentation branch and resolved AI_PROMPTS.txt by preserving both independent appended histories.
-Verification and limits: Documentation diff and conflict-marker checks. Runtime files are the already tested gateway merge with 147 unit and 218 e2e passing tests; no additional application changes. No private configuration accessed. Actual team adapters, Stripe setup and the late-payment business rule remain pending. Hassib's independent policy/payment services may now use the approved adapter boundary.
-================================================
-
-================================================
-Date: 2026-11-17
-Student: Hassib
-Tool: Codex
-Related requirements: PAY-02 service candidate; GEN-11 adapter lifecycle
-Prompt / request (summary): User approved the booking-adapter and transaction design in PR 14 and delegated the late-payment settlement choice. Continue toward the requested seventy-five percent target within Hassib's scope.
-How the output was used: Merged the approved documentation design, updated from develop 4723ecb and started feature/booking-policy-acceptance. Implemented owned GET policy review and POST explicit acceptance using validated DTOs, guards, Swagger and no-store responses. Defined the approved payment-side adapter boundary with exact GEN-11 states, authoritative quote/policy snapshots and a transactional conditional booking write. Added sanitized policy projection, SHA-256 quote/policy binding, timestamped unique acceptance persistence, idempotent repeats/concurrency and rollback. Split the reusable SDK gateway into its own module while preserving the PaymentsModule export. Recorded automatic full refund for an unfulfillable verified payment after released inventory, with booking state Expired, as the delegated settlement choice for the next slice. No teammate module or pre-existing common contract changed.
-Reported verification: Typecheck, build and lint passed. Twelve unit suites / 147 tests and eight e2e suites / 260 tests passed. The 42 new real HTTP/replica-set cases use production modules/guards and test-only transactional booking adapters. They cover flight/hotel policies, consent/token/unknown-field validation, ownership/roles/restricted sessions, stale quote/policy/deadline changes, expiry/history, concurrent acceptance, invalid source data, positive projection, rollback and Swagger. No private .env/shared Atlas or real Stripe calls.
-Scope limits: Concrete Adham/MK adapters remain pending. The runtime's empty integration list returns a documented 503, and this integration-dependent service stays in a draft PR under the user's merge rule. PAY-02 still needs payment-initiation gating and actual adapters. Primary completed coverage remains 21/36, with six partial and nine pending rows in this candidate. The seventy-five-percent target has not been reached. Private Stripe setup and Omar delivery remain pending. The next dependent slice will build the approved payment service on this verified candidate.
-================================================
-
-================================================
-Date: 2026-11-17
-Student: Hassib
-Tool: Codex
-Related requirements: PAY-01/02/03/04 service candidate; GEN-11; FLT-22/HTL-18 booking callback integration
-Prompt / request (summary): Continue toward the requested seventy-five percent using the approved payment/booking design. User delegated the payment-versus-hold-expiry decision to the implementation that best satisfies the assignment. Preserve ownership boundaries, verified merges and secret privacy.
-How the output was used: Rechecked latest origin/develop 4723ecb and continued feature/payment-settlement-core stacked on verified policy candidate 5559dbd. Implemented owned payment create/retry/status and refund status APIs, validated DTOs, existing session/role/owner enforcement, no-store responses and Swagger. Payment initiation transactionally requires matching policy acceptance and freezes authoritative USD quote/policies. Added unique booking/payment linkage, leased operations, stable gateway identities, raw-byte signed webhook handling, minimal durable event deduplication and transactional payment/booking callbacks. Added expiry cancellation/reconciliation and selected automatic full refunds for unfulfillable late success while the booking stays Expired. Implemented authorized cancellation refund reservations with bounded serialized amounts, positive/full-refund rules, idempotent execution, status reconciliation and atomic pending notification outbox. Added production retry scheduling with non-overlap, safe backoff and graceful shutdown; preserved normal JSON/urlencoded parsing. Documented concrete team contracts, API/demo/setup, current status and requirement limits. No teammate-owned module, old shared booking proposal or private environment file was changed or read.
-Reported verification: Typecheck, build, lint and whitespace checks passed. Thirteen unit suites / 152 tests and nine e2e suites / 285 tests passed. This slice adds five worker lifecycle cases and 25 settlement HTTP/database cases. Tests use production modules/guards/Swagger/raw parsers, disposable local MongoDB 8.2.7 replica sets, test-only transactional booking adapters and controlled gateway operations. Existing SDK tests use actual Stripe SDK transport/signature logic with synthetic credentials. Cases cover flight/hotel consent gating, transient client-secret privacy, retries/lost responses, concurrent initiation, invalid/altered/live/malformed events, duplicate/unordered deliveries, mismatched amounts, transaction rollback, expiry cancellation, late full-refund compensation, refund retry/status events, cancellation/outbox rollback, permissions and a webhook/expiry race. The scheduler test configuration and race-test clock were corrected before the final passing runs. No shared Atlas or real Stripe request was made.
-Implementation choices and limits: USD and the adapter/transaction design were already approved; late-expiry full-refund compensation follows the user's delegated decision. Gateway calls remain outside retryable MongoDB transactions. Per-record leases last sixty seconds; unresolved expiry/refund attempts back off one minute. In this dated slice pending webhook applications rely on Stripe redelivery and return non-2xx on failure; automatic internal replay was added in the November 18 slice below. Cancellation owners authorize and calculate saved-policy tiers inside their own cancellation transaction; one final cancellation identity derives from booking kind/ID. Actual Adham/MK inventory/provider adapters, Omar notification/audit delivery and privately configured Stripe test verification remain pending. The runtime rejects missing settlement integration before charging. Policy PR 16 and the stacked settlement candidate stay draft under the user's rule against merging unfinished/unverified integrations. Completed integrated coverage remains 21/36 primary rows, approximately sixty percent; the seventy-five-percent target has not been reached.
-================================================
-
-================================================
-Date: 2026-11-18
-Student: Hassib
-Tool: Codex
-Related requirements: PAY-01/PAY-03 verified settlement and durable retry
-Prompt / request (summary): Finish as much of Hassib's assigned Milestone 1 backend as possible before the deadline. User reports MK is done and Omar nearly done, but neither has pushed code, and Stripe test credentials remain unconfigured.
-How the output was used: Fetched all remote branches and rechecked develop 4723ecb and open PRs; no team implementation is available. Created feature/payment-event-recovery on verified settlement candidate d4de795. Added internal recovery for failed verified webhook applications using persisted minimal resource/refund correlation, a retry deadline and the existing leased transactional settlement path. The worker replays up to fifty due verified records before expiry processing; errors back off one minute without preventing other events from progressing. Completed records are excluded and old pending records remain compatible. Signature verification still precedes persistence, with no raw bodies/signatures/card data stored. Added full HTTP/database-to-actual-Stripe-SDK controlled-transport checks for flight and hotel settlement/refunds, as well as recovery regressions. Updated settlement/status documentation. No teammate module or private environment file was touched.
-Reported verification: Typecheck, build, lint and diff checks passed. Thirteen unit suites / 152 tests and nine e2e suites / 292 tests passed using disposable local MongoDB 8.2.7. Seven new cases cover transient outage without redelivery, retry backoff, legacy records after transaction rollback, late full-refund compensation, failure isolation, persisted refund-event correlation and actual SDK flight/hotel create-confirm-refund behavior through isolated transport. No Stripe network or shared Atlas request occurred.
-Scope limits: Actual provider/booking adapters, Omar delivery and privately configured Stripe test-mode verification are still pending. Keep the recovery candidate stacked on draft PR 17 and unmerged. Integrated completed-row coverage remains unchanged; this slice strengthens existing partial payment coverage. User separately approved the proposed administration/provider-assignment/outbox design for implementation in its own branch from develop.
-================================================
-
-================================================
-Date: 2026-11-18
-Student: Hassib
-Tool: Codex
-Related requirements: ACC-13; account-status portions of ACC-15/ACC-16; GEN-07 producer handoff
-Prompt / request (summary): Finish as much of Hassib's assigned backend as possible before the deadline. User reports MK is done and Omar nearly done, but confirms neither has pushed code and Stripe remains unconfigured. User explicitly approved the administration provider/assignment/transactional-outbox plan before its implementation.
-How the output was used: Rechecked latest remote develop 4723ecb and all branches/PRs; no team implementations are available. Re-read supplied instructions and official workbook through Drive. Isolated feature/admin-moderator-provisioning from develop in a local worktree. Implemented administrator-only moderator creation with reused validation, a matching provider lookup/fence port, hashed temporary password, forced first-login password change and exactly one provider assignment. User, assignment and pending event commit in one transaction. Added the independent ModeratorAssignmentsModule read helper for provider owners, without changing their source or inventing assignments for legacy accounts. Reused the exact account-status service/DTO/tests from draft PR 9 commit 68628b8 and adapted the controller/outbox to coexist with moderator creation. Approved status behavior preserves self-deactivation, login lockout and forced-password state, revokes only target sessions, prevents old credentials reviving, and leaves bookings/content/provider state unchanged. Added Swagger, route/assignment/event/demo contracts, approved-plan documentation and truthful candidate coverage.
-Reported verification: Typecheck, build, lint and whitespace checks passed. Twelve unit suites / 147 tests and eight e2e suites / 271 tests passed on this branch. Twenty-nine new real HTTP/replica-set moderator cases cover both provider kinds/roles, normalized concurrent email duplicates, role/input injection, missing/wrong provider or missing adapter, exactly-one assignment, multiple moderators serving a provider, first-login password replacement/session revocation, assignment/outbox rollback and Swagger response privacy. Twenty-four existing status regression cases from PR 9 were revalidated with the full suite. The test identity assertion was corrected to the existing direct /auth/me response before the final passing checks. Tests use actual modules/guards and disposable MongoDB 8.2.7 with explicit transactional provider fixtures. No .env, shared Atlas or actual teammate implementation was accessed.
-Implementation choices and limits: The approved assignment belongs in moderator_assignments, unique per moderator user ID. Provider type derives from the selected role. Default adapters are empty and creation fails closed with 503; provider owners must supply conditional same-session existence checks. Their authorization must compare the internal assignment to the resource owner after role/session validation. Admin outbox events remain pending until Omar supplies a durable idempotent consumer. Provider status/search restrictions, admin booking/report/content/audit APIs and other team integrations remain pending. No dependent functionality is merged into develop or main. This branch and separate payment recovery PR 18 are verified candidates with different baselines, not a claim of combined live integration or seventy-five percent completion.
-================================================
-
-================================================
-Date: 2026-11-18
-Student: Hassib
-Scope attribution: Kuwaity's reference-data assignment, implemented under Hassib's explicit request; not attributed as Kuwaity's unaided work.
-Tool: Codex
-Related requirements: GEN-12, FLT-02 reference portion, GEN-05, GEN-13; shared currency/location support
-Prompt / request (summary): User explicitly expanded scope to finish Kuwaity's part, described as about ten percent of the project. Preserve working functionality and handle version control.
-How the output was used: Fetched latest develop 4723ecb/all branches and inspected the empty ReferenceDataModule. Read Kuwaity's personal task brief and separate detailed guide, distinguishing their conflicting reference-data/payment allocations. Followed the personal reference-data allocation, existing ownership record and official requirements. Retrieved the official reference workbook through Drive and exported all four tabs exactly, excluding only the reader's display row-number column. Created feature/gen12-reference-data from develop. Added strict official CSV ingestion, reviewed source snapshot, natural-key schemas/unique indexes/relationships, transactional idempotent seeding/readiness and a safe validation-only/apply CLI. Added public read-only country/city/airport/attraction/currency list/detail APIs, DTO validation, literal search, location filters, ten-row pagination, positive response projections and Swagger. Exported ReferenceDataService for owners. Centralized existing user/auth/itinerary/budget/FX snapshot imports without changing source IDs/behavior, retaining the old compatibility export. Added source provenance, setup/handoff and implementation-status documentation.
-Reported verification: Final typecheck, build, lint and diff checks passed. Thirteen unit suites / 172 tests and eight e2e suites / 260 tests passed. Twenty-five new ingestion cases verify exact source/snapshot equality, all identifiers/currencies/time zones/relationships, BOM/CRLF/quoted Unicode and rejected malformed/duplicate/broken CSV input. Forty-two new real HTTP/MongoDB/CLI cases verify fresh/repeated/concurrent seed behavior, every unique natural key, rollback, official field repair, unrelated data preservation, unreviewed dataset rejection, public read-only contracts, projection/source-only visibility, search/filter/pagination, unsupported/missing/direct-service references and Swagger. The actual compiled CLI validates offline and applies twice to its own fresh disposable database. Test typing and consistent asynchronous direct-lookup errors were corrected before final passing validation. No private .env or shared Atlas was accessed.
-Implementation choices and limits: The official November 1 workbook contains eight rows per location dataset and seven currencies derived from countries; none were invented. The source headers/natural IDs and IANA zones are preserved. Seed upserts only dedicated reference collections and a manifest in one transaction; no reset/drop/delete is implemented. The CLI requires explicit --apply and privately supplied MONGODB_URI, with fixed safe failure output. Database application to shared Atlas still requires designated-database/team approval from the task brief. Adham/MK must consume the provided lookups when their unpublished modules arrive. Existing synchronous consumers share one reviewed source, and Hassib's personal 36-row coverage count is not inflated by this separate scope. Pinned csv-parse 7.0.3 has no current audit advisory; 71 inherited dependency findings are documented without unrelated forced updates. Payments/admin integration drafts remain separate and unmerged.
-================================================
-
-================================================
-Date: 2026-11-18
-Student: Hassib
-Tool: Codex
-Related requirements: GEN-12 shared setup verification
-Prompt / request (summary): After PR 20 merged, user explicitly approved applying the idempotent official reference seed to the designated shared database configured privately in backend/.env.
-How the output was used: Verified merged develop has the exact tested tree and reran offline CSV validation (8 countries/cities/airports/attractions, 7 currencies). Executed the approved standalone --apply command with private runtime configuration, without opening or displaying credential values. It returned the fixed safe failure message. A separate read-only connection diagnostic printed only error classes/codes and topology: MongooseServerSelectionError, ReplicaSetNoPrimary, MongoNetworkError and ERR_SSL_TLSV1_ALERT_INTERNAL_ERROR. It could not establish a connection. Checked official MongoDB connection troubleshooting and asked the user to confirm cluster availability/current-IP access before retrying. No TLS verification bypass or configuration downgrade was applied.
-Verification and limits: Shared seed application is not confirmed; no successful live seed or API result is claimed. Offline validation and the prior 172 unit/260 HTTP/database tests remain passed. No runtime source changed in this status update, so only documentation/whitespace checks apply. URI, credential values, server names and raw private diagnostics were neither displayed nor recorded. The user's explicit approval remains valid for a retry after access is restored.
-================================================
-
-================================================
-Date: 2026-11-18
-Student: Hassib
-Tool: Codex
-Related requirements: GEN-12 shared setup verification; FLT-02 reference data
-Prompt / request (summary): User replied Ready to retry after the Atlas connection failure; the explicit shared seed approval remains in effect.
-How the output was used: Checked clean develop/current remote and retried the already-approved standalone official seed using private runtime configuration. The seed completed successfully with eight countries/cities/airports/attractions each and seven currencies. Performed a separate read-only verification through ReferenceDataService, comparing all five public record groups against the official dataset. All original fields/identifiers, airport time zones, supported currencies and exact counts matched. Updated reference setup/status documentation to distinguish successful live verification from the earlier failed attempt.
-Verification and limits: Shared seed application and source agreement are now confirmed. No runtime code changed, so documentation/whitespace checks apply; previous typecheck/build/lint, 172 unit and 260 HTTP/database results remain valid. No credential values, URI or hostnames were opened for inspection, displayed or recorded. Private configuration was consumed only by the approved runtime processes. No AppModule, user/admin seed or background payment worker was started. The initial TLS failure's precise cause is not claimed resolved generally; this approved retry and read-only verification succeeded. Actual consumption by the unpublished flight/hotel/provider modules remains a team integration dependency.
-================================================
-
-================================================
-Date: 2026-11-18
-Student: Hassib
-Tool: Codex
-Related requirements: Combined ACC-13/15/16 and PAY-01/02/03/04 service integration
-Prompt / request (summary): User explicitly requested merging the tested drafts and continuing the assigned Milestone 1 backend work before November 20.
-How the output was used: Rechecked develop c831891 and all remote branches. Combined the original policy/payment/refund/recovery and moderator/status commits on integration/hassib-m1-combined. Reconstructed documentation from complete source histories to preserve every independent AI entry and implementation section. Consolidated the delivery checklist and updated the current merge instruction. Corrected the reference CSV fixture's newline conversion to handle existing Windows CRLF without inserting duplicate carriage returns. No runtime business implementation was overwritten and no private configuration was inspected.
-Reported verification: Typecheck, build and lint passed. Fourteen unit suites / 177 tests and eleven HTTP/database suites / 387 tests passed together. The CSV fixture was fixed before the final passing run. Gateway/booking contract-fixture limits remain explicit. No shared database or real Stripe mutation was made in this integration slice.
-Scope limits: User's explicit merge direction supersedes the earlier draft-only decision. Concrete team adapters and notification delivery remain pending and fail safely with 503 when absent. Stripe credentials remain unconfigured according to the user. Merging services does not establish end-to-end completion. Further provider administration, audit history and report/content work continues in separate feature branches.
-================================================
-
-================================================
-Date: 2026-11-18
-Student: Hassib (human review required)
+Student: Project team (original individual requester not established)
 Tool: ChatGPT
-Related requirements: GEN-10 moderation; ITN-20 itinerary visibility; BLG-04 post deletion; GEN-08 media storage
-Prompt / request (summary): Review the newly opened team pull requests, fix suitable review findings and explain why payments/administration integration is blocked.
-How the output was used: Created a separate repair branch based on MK's hotel/community PR #23 and a draft review PR. Added an independent moderator-hidden itinerary flag, set it during admin hide, prevented republishing through owner updates, and excluded hidden itineraries from public discovery/author listings. Moved blog-post filesystem deletion after successful MongoDB transaction commit for both author deletion and admin moderation. Added a real HTTP regression scenario for admin hide followed by owner republish attempt.
-Verification and limits: Changes are source-level proposals for teammate review; ChatGPT could inspect GitHub code but could not clone the private repository or execute typecheck, build, lint, Jest or e2e tests in this environment. Integration with the stacked payments/refunds PRs, moderator provider adapters, and notification/audit consumer remains unresolved. Best-effort post-commit file cleanup may leave orphan media if the process stops after commit; a durable cleanup queue is a later hardening option. No credentials were used or changed; nothing was merged into develop.
+Related requirements / scope: Foundation; ACC-01/04/05/06/08/09/11/12/19
+Prompt / request (chronological paraphrase): Build the NestJS/TypeScript/MongoDB backend foundation; continue with initial user authentication.
+How AI output was used: Helped create feature-module scaffolding, configuration, validation, health, Swagger, starter tests, authentication/session/user models and routes. Later work corrected preliminary contracts and completed requirements.
+Verification and limits: Initial environment could not fully build or connect to Atlas. Do not treat the initial scaffold alone as verified. PR #1 and later authentication PRs provide version history.
+================================================
+
+================================================
+Date: 2026-11-15
+Student: Project team (original individual requester not established)
+Tool: Codex
+Related requirements / scope: ACC-01/04/05/08/09/12/19
+Prompt / request (chronological paraphrase): Fix the TypeScript configuration, continue the approved backend work, and publish scoped reviewed PRs.
+How AI output was used: Assisted with schema/DTO/controller fixes, consent/password handling, initial session and profile flows, TypeScript setup and tests; established an incremental Git review workflow.
+Verification and limits: Early work was superseded or strengthened by the subsequent verified authentication commits. Initial attribution requires team confirmation.
+================================================
+
+================================================
+Date: 2026-11-15
+Student: Hassib
+Tool: Codex
+Related requirements / scope: ACC-04/05/06/08/19
+Prompt / request (chronological paraphrase): Implement robust inactivity expiry, access/refresh cookie rotation, session replay/revocation, account rules and tests.
+How AI output was used: Produced/refined hashed session-state handling, strict idle expiry, cookie rotation/replay checks, authentication guards, Swagger contracts and disposable-MongoDB regression tests. See PRs #5 and #6.
+Verification and limits: Security behaviors were verified with controlled real-module tests; credentials and private sessions were not disclosed.
+================================================
+
+================================================
+Date: 2026-11-15
+Student: Hassib
+Tool: Codex
+Related requirements / scope: ACC-07a/08/13/14, GEN-05/13
+Prompt / request (chronological paraphrase): Continue required administration features after authentication; implement account listing and admin-controlled temporary password resets.
+How AI output was used: Assisted with guarded ten-row account searches, reset/forced-change behavior, session invalidation, transactional events and tests. See PRs #7 and #8.
+Verification and limits: Tests used disposable databases and did not rely on a live shared admin account.
+================================================
+
+================================================
+Date: 2026-11-15
+Student: Hassib
+Tool: Codex
+Related requirements / scope: ITN-01/03/05/07/08/09/10/14/16/20/21
+Prompt / request (chronological paraphrase): Implement core itineraries and native budgeting before provider integrations become available.
+How AI output was used: Assisted with owner CRUD, ordered days/cities/activities, private/public publication, discovery and cloning, budget/transport entries and aggregate totals. See PRs #10 and #11.
+Verification and limits: Later work completed the dependent FX, images and provider searches; this initial slice was not the final itinerary scope.
+================================================
+
+================================================
+Date: 2026-11-16
+Student: Hassib
+Tool: Codex
+Related requirements / scope: ACC-09, ITN-18
+Prompt / request (chronological paraphrase): Complete profile phone/preferred-currency settings and daily currency conversion without assuming an FX API key.
+How AI output was used: Assisted with profile validation, preference storage, rate caching, provider fallback and budget summaries. See PRs #12 and #13.
+Verification and limits: The public FX service was later queried successfully with the optional key disabled; no private FX key was assumed.
+================================================
+
+================================================
+Date: 2026-11-17
+Student: Hassib
+Tool: Codex
+Related requirements / scope: PAY-01/02/03/04, GEN-11
+Prompt / request (chronological paraphrase): Review the official payment rules, choose a single provider currency, and design approved booking/payment adapters before implementation.
+How AI output was used: Helped choose USD, draft transaction/adaptation contracts, payment-policy snapshots, idempotency and late-payment handling. PR #14 documented the design; PR #15 integrated the official Stripe SDK test gateway.
+Verification and limits: Initial gateway checks used controlled Stripe transport responses. Live Stripe resources and team booking adapters were not yet present.
+================================================
+
+================================================
+Date: 2026-11-17 to 2026-11-18
+Student: Hassib
+Tool: Codex
+Related requirements / scope: PAY-01/02/03/04, FLT-22, HTL-18
+Prompt / request (chronological paraphrase): Implement reviewed policy acceptance, durable payment confirmation/refunds, webhook recovery and account/status coupling.
+How AI output was used: Assisted with draft PRs #16–18, signed event verification, saved policy/price acceptance, idempotent settlement, expiry, cancellation refund reservation, reconciliation and recovery tests.
+Verification and limits: The draft stacks were reconciled into reviewed integrated code, not treated as complete while their required booking adapters were missing.
 ================================================
 
 ================================================
 Date: 2026-11-18
 Student: Hassib
 Tool: Codex
-Related requirements: ACC-11/13/15; PAY-01/02/03/04; HTL-17/21; GEN-10; ITN-20
-Prompt / request (summary): Continue the already-approved Milestone 1 implementation and verified merges; user asks what has been reached. Stripe test credentials remain unconfigured.
-How the output was used: Confirmed PR #26 merged the original Hassib service commits into develop. Fetched remote refs and discovered MK's supplied hotel/community implementation (#23), moderation/media fixes (#24), and proposed integration wiring (#25). Composed the original MK/review commit ancestry with latest develop e1fd1f8 on integration/mk-hassib-real-hotels, preserving the complete original AI histories. Reused five supplied wiring files from #25 to register real hotel provider/payment adapters and reserve cancellation refunds in the booking transaction. Did not import its duplicate service overlay or implement a second report engine. Added seven HTTP/MongoDB integration cases that use real provider assignments, bookings, payments and RefundsService. Updated current status, coverage, administration/payment and MK handoff docs, README and a concrete Swagger integration guide, crediting MK's work separately.
-Verification: Typecheck/build/lint passed. Fifteen unit suites / 185 tests and fourteen HTTP/database suites / 434 tests passed together, including the seven new real-hotel cases. Tests verify provider ownership and mandatory password change, missing provider rollback, policy acceptance, invalid signature denial, private access, verified confirmation/replay/inventory, saved-policy refunds, cancellation rollback, late success after a replacement hold, and provider deactivation preserving paid bookings. Early test expectations were corrected to the existing 204 password-change and 409 repeated-cancellation API; expiry advances the clock rather than altering a policy-bound immutable deadline. No working application contract was changed to make the tests pass.
-Scope and limits: Only external Stripe calls are controlled in the new suite; official SDK signature verification is real. This is not live Stripe verification. No private .env, shared Atlas or live payment resources were used. The absent flight adapter and Omar delivery consumer still require actual supplied code; remaining admin reads/provider aliases, itinerary images/searches and account-deactivation booking guard remain unfinished. The older 21/36 estimate is historical and is not reused as a current completion percentage. Main is unchanged. The user has already authorized commits and merges of verified work.
+Related requirements / scope: ACC-12/13/15/16/17, GEN-07
+Prompt / request (chronological paraphrase): Finish user/provider status management, account deactivation checks and administrator booking/history APIs.
+How AI output was used: Assisted with active-account guards, status commands, hotel booking reads, provider administration, retained committed audit history and transaction/concurrency tests. See integration PR #26 and focused PRs #28, #32–34.
+Verification and limits: Actual flight/combined administration and notification behavior were completed in later integration slices.
 ================================================
+
+================================================
+Date: 2026-11-18
+Student: Hassib (with approved coverage of Kuwaity's work)
+Tool: Codex
+Related requirements / scope: GEN-12, FLT-02
+Prompt / request (chronological paraphrase): Complete official reference CSV loading, lookup endpoints and an explicitly approved shared seed.
+How AI output was used: Assisted with canonical country/city/airport/attraction imports, validation, stable IDs, currency lookup, offline checks and approved idempotent database seeding. See PRs #20–22.
+Verification and limits: A first Atlas connection attempt failed; a separately approved retry verified the shared seed. Routine CI uses offline validation only and never repeats shared database writes.
+================================================
+
+================================================
+Date: 2026-11-18
+Student: Hassib
+Tool: ChatGPT
+Related requirements / scope: GEN-08/10, ITN-20, BLG-04, HTL/PAY integration
+Prompt / request (chronological paraphrase): Review new team pull requests, explain integration conflicts and fix suitable code-level issues.
+How AI output was used: Reviewed PRs #16–19 and #23, raised integration blockers, prepared image/itinerary moderation consistency and transactional media cleanup corrections in PR #24, and drafted a composite integration candidate.
+Verification and limits: The untested composite was not represented as a finished release; later reviewed integrated PRs superseded it. Review comments and Git history retain the exact changes.
+================================================
+
 ================================================
 Date: 2026-11-18
 Student: Hassib
 Tool: Codex
-Related requirements: ACC-15 hotel provider administration
-Prompt / request (summary): Finish every remaining assigned feature that can be implemented with the currently supplied modules.
-How the output was used: Refreshed clean develop d107d07 and confirmed no new flight/Omar branches. Added the required admin hotel deactivate/reactivate routes in a scoped feature branch. Delegates to MK's existing atomic HotelsService.setActive, preserving its room fences, event envelope, paid reservations and idempotency. Added strict provider/ID/body DTO validation, administrator/session/forced-password guards, no-store and Swagger errors. No teammate implementation or shared domain contract changed. Updated current handoff/coverage/status.
-Verification: Typecheck/build/lint, 185 unit and 437 HTTP/database tests passed. Three new real integration cases cover event idempotency/reactivation, invalid/unauthorized/unavailable requests and transactional rollback. Existing paid-hotel integration now exercises the canonical admin route. Corrected unused DTO parameter ordering before the passing lint run. No private configuration, shared Atlas or live Stripe resources used. Airline state and Omar delivery remain pending; no additional completion percentage is asserted.
+Related requirements / scope: ITN-12/25, GEN-05/07/08, ACC-11/17
+Prompt / request (chronological paraphrase): Finish independent mandatory slices using currently available code while other provider work lands.
+How AI output was used: Assisted with owned itinerary-hotel search, activity image access and clone independence, hotel administration booking views, account closure/payment race guards and audit history. See PRs #29–35.
+Verification and limits: Disposable HTTP/database and full-AppModule regressions supported these changes; dependent flight/provider actions were integrated later.
 ================================================
+
 ================================================
-Date: 2026-11-18
-Student: Hassib
-Tool: Codex
-Related requirements: ITN-25; ACC-11; GEN-05/13
-Prompt / request (summary): Finish all assigned features supported by the code already supplied, proceeding sequentially with tests and verified merges.
-How the output was used: After merging the hotel admin slice (#28), started feature/itinerary-hotel-search from current develop af9ffeb. Added GET /api/itineraries/:id/hotels with owner/traveler guards, strict query validation and server-derived consecutive-group city/check-in/exclusive-check-out. Reuses MK's actual HotelsService.search without changing his source or accepting client location/date overrides. Added typed Swagger selection/result/page schemas and a detailed handoff/demo guide. Updated coverage and itinerary/current status docs.
-Verification: Typecheck/build/lint, 185 unit and 446 HTTP/database tests passed. Nine new cases use real itinerary/hotel/booking services and disposable MongoDB, comparing with direct hotel search and testing edits, groups, live holds/expiry/capacity, filters/sorting/pagination, access, validation, calendar limits and Swagger. A test array typing issue and inherited Swagger Object metadata on page/rooms were corrected before the passing run; explicit numeric metadata retains defaults and validators. No external API, private configuration, shared Atlas or live Stripe used. Flight search remains dependent on Adham's code.
-================================================
-================================================
-Date: 2026-11-18
-Student: Hassib
-Tool: Codex
-Related requirements: ITN-12/21; GEN-08; ACC-11; ITN-20
-Prompt / request (summary): Continue finishing all assigned features that can use the supplied code without waiting for other developers.
-How the output was used: Started feature/itinerary-activity-images from current develop 9d994f7 after #29. Reused MK's upload interceptor and MediaService validation/storage in an isolated activity directory, without modifying his module or public media route. Added owned multipart attachment/removal, owner/private byte access and current-visibility/author/moderation checked public byte access. Added backward-compatible embedded image metadata and typed Swagger responses. Extended itinerary views, deletion cleanup and cloning: clones get independently copied files/URLs; failed uploads/clones remove new files, and existing files are removed only after successful metadata writes. Updated handoff/demo/status/coverage docs and the additive activity-view test expectation.
-Verification: Typecheck/build/lint, 185 unit and 464 HTTP/database tests passed. Eighteen new actual itinerary/community/auth/media cases use a disposable replica set and an explicitly owned temporary media directory. Cover formats/limits, privacy/roles, generic-public-route denial, real moderation hiding, author status, concurrent cap enforcement, independent clones/source deletion, injected copy/database failures, cleanup, legacy arrays and Swagger. Corrected the test expectation to the existing admin hide 204 contract; application semantics were preserved.
-Limits: No private environment file, external service, shared Atlas or live Stripe used. Filesystem cleanup remains best effort; crashes after commit or MK's direct admin itinerary deletion can leave inaccessible orphan files. No durable cleanup worker or teammate implementation was added. Remaining flight search and Omar/Stripe integrations are not claimed complete.
-================================================
-================================================
-Date: 2026-11-18
-Student: Hassib
-Tool: Codex
-Related requirements: ACC-17 hotel administration reads; ACC-11; GEN-05/13
-Prompt / request (summary): Finish all remaining assigned work supported by the available code, without waiting for missing developers' modules.
-How the output was used: Created feature/admin-hotel-booking-list from develop 6a50740 after #30. Added an explicit type=hotel admin list using MK's actual booking schema through a separate read-only projection service. Added sanitized saved user/provider/date/amount/state rows, status/inclusive start-date filters, stable ten-row pagination, strict query validation, active administrator/password guards, no-store and typed Swagger. Derives effective lifecycle states without booking writes. Flight/combined requests return explicit 503 rather than silently omitting missing flight records. Added contract/demo, coverage and current status docs.
-Verification: Typecheck/build/lint and 185 unit tests passed. Eight new actual-module HTTP/database cases cover access, positive projection, stable paging/counts, dates/status, read-only states, missing integration, invalid input and Swagger. A full run encountered the existing admin replica-set 10-second startup timeout; its bounded allowance is now 30 seconds. A subsequent long timing stall interrupted a reference CLI case; child executions now have 30-second timeouts. No assertion or runtime reference behavior was relaxed. The clean final full run passed all 17 HTTP/database suites / 472 tests. No private environment file, shared Atlas or external service used.
-Integration limits: Remote develop remained 6a50740. Newly pushed origin/feature/adham-flight-domain b269bd1 was inspected read-only: creation/holds are present but no search/settlement/provider adapter, and its older reference service would replace the verified official reference APIs. It was not merged or modified. Combined ACC-17, flight integration and Omar delivery remain pending compatible team code. The user continues to authorize verified commits/merges.
-================================================
-================================================
-Date: 2026-11-18
-Student: Hassib
-Tool: Codex
-Related requirements: ACC-12 hotel guard/session revocation; PAY-01/03 race recovery; ACC-16
-Prompt / request (summary): Finish the remaining work supported by supplied modules, including the hotel portion of account-deactivation protection.
-How the output was used: Started from develop f94142e after #32. Added AccountLifecycleService so status/version change, real upcoming Confirmed hotel check and current owner-session deletion share one transaction. Kept the DELETE /users/me 204/cookie contract and added no-store/Swagger conflict documentation. Moved deactivation out of the old unguarded UsersService method. Added a private nonselected User.bookingFence used by owned payment preparation/settlement, serializing confirmation against account closure without changing session versions, booking quotes, hold durations or teammate adapter signatures. Closed-account success remains verified/durable until normal expiry, then existing recovery reserves a full refund. Existing suspended-owner fulfillment is preserved. Updated the isolated auth controller fixture for its new lifecycle dependency and added route/transaction/demo docs.
-Verification: Typecheck/build/lint and 185 unit tests passed. Nine new actual hotel/payment/account cases cover upcoming/past/cancelled stays, all-session revocation/login denial, closed-owner verified success and normal-expiry refund recovery, stale internal initiation, concurrent closure/confirmation, rollback, permission and suspended-owner fulfillment. The combined run had two existing fixture/monitor timeouts while all nine new cases passed. Fresh sequential processes passed all 19 payment integration tests and all 462 remaining HTTP/database tests, 481 total; assertions were unchanged. No private environment file, shared Atlas, external API or live Stripe resource used.
-Limits: The guard reads only the actual integrated hotel schema; compatible flight checks remain pending. Adham's initial PR #31 is open with no search/settlement/provider adapters and conflicting older reference code; it is not merged or modified. Other current APIs remain working. The retained committed administrative events can support the next audit-read slice without implementing Omar's delivery consumer.
-================================================
-================================================
-Date: 2026-11-18
-Student: Hassib
-Tool: Codex
-Related requirements: GEN-07 administrative history read API; GEN-05/13
-Prompt / request (summary): Finish all remaining assigned work that can use the supplied code without waiting for other developers.
-How the output was used: From develop e155b3d after #33, inspected the actual retained admin/domain envelopes and found the existing committed records sufficient for the owned history read API. Added GET /api/admin/audit-logs with active administrator/password guards, validated actor/action/UTC date/page filters, combined ten-row aggregation pagination and a positive safe projection. Uses supplied model collection names and all nine current account/hotel-status/moderation action types; system booking events are excluded. Action outcome and consumer delivery acknowledgment remain separate. Added typed Swagger schemas and retention/producer/consumer handoff documentation. No new shared schema, event type, queue, Omar implementation or teammate service was changed.
-Verification: Typecheck/build/lint and 185 unit tests passed. Fresh sequential HTTP/database processes passed all 19 payment integration cases and all 470 remaining cases, 489 total. Eight new cases exercise real committed actions, every known mapping, system-event exclusion, acknowledgment retention, combined paging/filtering, safe projection/read-only sources, rollback, guards, input rejection and Swagger. Removed an unused test import before the passing lint run. No private environment file/shared Atlas/external API/live Stripe used.
-Limits: Retained records are a real committed-action source, not proof of Omar notification/downstream audit delivery. Before future queue purging, retain history or integrate a durable archive/read adapter preserving event identities and fields. Other owners' provider creation/edit producers and future airline actions require coordination; existing supported producers are documented without claiming complete cross-team GEN-07 acceptance. Full application/configuration/Swagger smoke verification follows separately.
-================================================
-================================================
-Date: 2026-11-18
-Student: Hassib
-Tool: Codex
-Related requirements: Available M1 backend integration, Swagger/auth/admin/itinerary verification and handoff
-Prompt / request (summary): Finish everything currently supported without waiting for missing team implementations, with commits, tests and verified merges.
-How the output was used: From develop ad1472a after #34, added four complete-AppModule HTTP smoke cases with real modules/guards/body parsers/Swagger and explicitly validated disposable configuration. Stubbed only ConfigModule.forRoot before AppModule import and overrode configuration injection so dotenv/private environment files and process-environment mutation are avoided. Exercised readiness, Swagger UI/JSON/cookie schemes, real registration/refresh/itinerary hotel search, real admin action/history, and safe unconfigured Stripe rejection with no persisted event. Updated the Swagger description, current READMEs/checklists/status/coverage and a consolidated handoff listing merged slices and exact blockers. Marked the older guide audit snapshot historical without changing its requirement statements. Main and teammate implementations remain unchanged.
-Verification: Final typecheck/build/lint and all 185 unit tests passed. Fresh sequential HTTP/database processes passed 19 payment integration plus 474 other cases: 493 total in 19 suites. Includes all four full-module cases and 59 additional HTTP/database cases since #27. Corrected smoke fixture assumptions to the existing /api/countries route and production's named cookie schemes; no public API behavior was changed to satisfy the test. Confirmed private .env is ignored and absent from tracked files without reading its content. No private environment file/shared Atlas payment mutation/live Stripe/external service used.
-Remaining dependencies and limits: Compatible Adham flight provider/search/settlement/read ports and reference reconciliation (initial #31/b269bd1 unmerged); Omar/owner event producer/archive/delivery coordination; privately configured real Stripe test verification; live HTTPS/browser/shared Atlas payment demonstration. History retention and best-effort/inaccessible image-orphan limits are explicitly documented. No optional/frontend/deployment work or new completion percentage was added. Available verified features are merged under the user's standing authorization; full M1 acceptance is not claimed complete.
-================================================
-================================================
-Date: 2026-11-17
+Date: 2026-11-17 to 2026-11-18
 Student: Omar
 Tool: Codex
-Related requirements: GEN-01, GEN-07, ACC-07a; notification triggers in ACC-15, FLT-05, FLT-06, FLT-23, HTL-17 and PAY-03
-Prompt / request (summary): Work step by step on Omar's notification and audit logging assignment using the official project description, mandatory requirements CSV, and GIU Travel backend. Test changes incrementally; the user will create the pull request after the assignment is finished.
-How the output was used: Created a feature branch from develop. Implemented the GEN-01 notification list, unread count and mark-as-read API with recipient ownership and duplicate-event protection; added the GEN-07 administrator-only audit listing API, filters, pagination and append-only event-ID persistence; consumed the existing account.password_reset outbox event into an audit record and marked delivery atomically. Added the typed domain-event publisher and durable MongoDB outbox consumer for transactional notification/audit effects, plus API documentation and feature tests. The user treats the three notification route names and response shapes as agreed for this branch and will create the pull request.
-Reported verification: Build, typecheck, lint and all 147 unit tests passed. The full end-to-end suite passed all 243 tests across ten suites, including HTTP/MongoDB checks for user ownership, admin/moderator denial, pagination, filters, Swagger, duplicate delivery and atomic rollback/retry of notification and audit effects.
-Outstanding work: Connect account/provider suspension, flight schedule and booking, hotel reservation, refund and moderation producers with Hassib, Adham and MK. Their modules are not implemented on this branch, so those integrations and the full milestone assignment are not yet complete. No commit or pull request has been created.
+Related requirements / scope: GEN-01/07; relevant ACC/FLT/HTL/PAY event consumers
+Prompt / request (chronological paraphrase): Implement the notification and audit logging assignment using the official project requirements and existing backend.
+How AI output was used: Assisted with committed notification/audit events, user reads, consumer handling, aggregation and related tests. Omar's code arrived through PR #36.
+Verification and limits: This entry reflects the material AI assistance recorded for Omar's contribution; other team members must independently confirm and disclose any additional material AI usage.
 ================================================
 
 ================================================
 Date: 2026-11-18
-Student: Hassib
+Student: Hassib (integration of Omar's submitted code)
 Tool: Codex
-Related requirements: GEN-01/07, ACC-15/16, HTL-17/18, PAY-03; integration of Omar PR #36
-Prompt / request (summary): Inspect Adham and Omar submissions and, when both are available, continue Hassib and mandatory Milestone 1 backend integration under the standing Git/merge authorization.
-How the output was used: Started an integration branch from develop aab914e and merged Omar 7f359e7 preserving his authorship and assistance entry. Retained current documentation where his older base conflicted. Reconciled the duplicate audit route by keeping the existing guarded ten-row/date-filtered response and unioning Omar's durable audit archive, deduplicating by event ID. Added an adapter consumer for actual retained MK hotel booking/provider/moderation and Hassib refund envelopes; extended Omar's account consumer to all four existing account actions, with suspension notifications. Every delivery transaction saves effects and acknowledges together; failures roll back, retries and concurrent consumers deduplicate. Added real producer/HTTP tests and retained Omar's ownership/validation/persistence/retry tests with audit API expectations adapted to the already merged contract. No private environment, shared database, live Stripe or teammate branch was modified.
-Verification: Typecheck, build, lint and all 185 unit tests passed. The six targeted suites passed 59 HTTP/database cases; the fresh remaining-suite run passed 499 cases. Together with the 22-case hotel/payment/delivery suite, all 521 HTTP/database tests in 22 suites passed. No private configuration, shared database or live Stripe resource was used. Hassib explicitly approved FLIGHT_INTEGRATION_PLAN.md in-session before flight model changes; that sequential work follows this verified notification integration.
+Related requirements / scope: GEN-01/07, ACC-15/16, PAY-03, HTL-17
+Prompt / request (chronological paraphrase): Integrate Omar's notification/audit modules with existing authentication, hotel, refund and administrative events.
+How AI output was used: Reconciled event and audit contracts, actual committed producers/consumers, deduplication and retention with existing schemas. See PR #37.
+Verification and limits: Tests covered real module/transaction behavior on disposable databases; no shared Atlas fixture or external payment was needed.
 ================================================
 
 ================================================
 Date: 2026-11-18
-Student: Hassib (integration of Adham submission)
+Student: Hassib (integration of Adham's submitted code)
 Tool: Codex
-Related requirements: FLT-01/02/03/04/08/09/12/19/21/22/23/25/26, ACC-11/12/13/15/17, PAY-01/02/03/04, GEN-01/07
-Prompt / request (summary): With both Adham and Omar submissions available, finish Hassib and continue mandatory Milestone 1 backend work. Hassib explicitly approved FLIGHT_INTEGRATION_PLAN.md before shared-model changes.
-How the output is being used: Started integration/adham-flight-foundation from verified develop b8747d4 after Omar #37, merging Adham b269bd1 without discarding author history. Preserved official reference service/seed instead of the conflicting ObjectId airport replacement and alternative seed. Adapting airline provisioning to existing moderator_assignments and provider-first flow, with provider fences/audit events. Preserving Adham timezone/passenger validation utilities and replacing obsolete airline/flight mocks tied to conflicting assignment/reference models with actual HTTP/replica-set coverage. Implementing typed one/two-segment server-priced summaries, atomic ten-minute holds and expiry, immutable policy snapshots, the already approved flight settlement adapter, saved-policy cancellation/refunds, ownership reads and account deactivation guard. External payment responses are controlled while SDK signatures and database transactions are real.
-Verification: Typecheck, build, lint and all 209 unit tests passed. Fresh sequential HTTP/database runs passed 32 flight integration plus 22 hotel/payment integration cases and 500 remaining cases: 554 total across 23 suites. Includes actual provider/assignment/reference integration, concurrent holds/expiry, SDK-signed settlement, round-trip cancellation/refunds, account/payment races, affected-party delivery, immediate/durable audit history and 101-recipient delivery. Only external Stripe responses are controlled; no private environment or shared/live payment resource was used. Preserved the submitted booking-reference unique index using a private, API-hidden HOLD marker until verified FLT reference generation; no shared index migration. Corrected expiry fixtures to re-authenticate after the valid five-minute session deadline, removed a duplicate schema index and used direct Jest invocation for Windows pipe-pattern quoting. No security or business assertion was weakened. Existing official reference runtime files compare unchanged to develop. Legacy reference/assignment-dependent mocks were replaced by real HTTP scenarios; timezone/pricing/schema unit cases are preserved and adapted. Search/combined admin/operations/export integration follows in separate slices.
-================================================
-
-================================================
-Date: 2026-11-19
-Student: Hassib (team integration)
-Tool: Codex
-Related requirements: FLT-11/12/15/17/30 and ITN-26
-Prompt / request (summary): Continue the approved mandatory backend integration after both teammate submissions, preserving working code and the official reference data.
-How the output was used: Started feature/flight-search-itinerary from verified develop 835ab25 after #38. Added anonymous flight search/details with official local departure dates, active/Scheduled/future/available-seat filtering, grouped eligible cabins, whole-party price/cabin filters, stable ten-flight pages and independent return options. Infant fare rounding matches the held quote. Added owned itinerary flight reuse deriving all destination airports from the current first city and default start/last-day dates, with validated overrides and existing filters. Moved flight creation guards to its method so public search/details do not weaken creation authorization. Added 26 actual HTTP/database checks to the preserved 32 flight integration cases, including public/private Swagger semantics and numeric defaults.
-Verification: Typecheck, build, lint and 209 unit tests passed. The flight HTTP/database suite passed all 58 cases (26 new search/itinerary cases), and the fresh remaining regression run passed all 522 cases: 580 total across 23 suites. Databases/configuration are disposable; no private .env, shared data or live Stripe action was used. Combined admin booking lists, flight operations and exports remain subsequent slices.
+Related requirements / scope: FLT-01/02/03/08/09/19/21/22/23/26, PAY-01/02/03, ACC-11/12
+Prompt / request (chronological paraphrase): Reconcile the approved flight integration plan with airline assignments, references, hotel payments and refund infrastructure.
+How AI output was used: Assisted with flight inventory/holds, official airport references, moderator roles, settlement/refunds, flight booking and notifications. See PRs #31 and #38.
+Verification and limits: Validated with real module/database/transaction tests and controlled external gateway responses; further flight management/export features were separate.
 ================================================
 
 ================================================
 Date: 2026-11-19
 Student: Hassib
 Tool: Codex
-Related requirements: ACC-17 and ACC-11
-Prompt / request (summary): Continue the approved mandatory backend integration and finish remaining administration without disrupting verified hotel or flight functionality.
-How the output was used: Started feature/admin-combined-bookings from develop 4d57193 after #39. Replaced the hotel-only read adapter with positive projections of the actual hotel/flight schemas and an administrator-only union aggregation, with one global stable order/page/count. Type omission now includes both domains; explicit flight reads are available. Dates/statuses are derived read-only, private hold markers and passenger/payment/policy data are excluded, and only the flight owner display name is looked up from the actual user schema. Preserved hotel snapshots and existing filters. Added seven real HTTP/database checks for mixed-domain boundaries, shared-ID ties, privacy, inclusive dates, round-trip completion, no booking writes, empty domains and non-admin denial; updated full-AppModule smoke expectations for the supplied flight integration.
-Verification: Typecheck, build, lint and 209 unit tests passed. Four targeted suites passed all 99 HTTP/database cases; the fresh remaining run passed 488 cases: 587 total across 23 suites. Uses actual schemas/guards, full-AppModule smoke and disposable databases/configuration, with no private .env, shared database or live payment resource. Corrected the legacy Swagger assertion that expected an unavailable-integration 503 to check the now-supported success/type contract. Read pipelines are narrowly typed to aggregation projection/lookup stages, with no booking writes. Flight operations, assigned-moderator reads and exports remain subsequent slices.
+Related requirements / scope: FLT-04/05/06/11/12/15/17/30, ITN-26, ACC-17
+Prompt / request (chronological paraphrase): Implement flight search and itinerary reuse, combined administrator booking pages and safe flight/provider management.
+How AI output was used: Assisted with search/pricing/time-zone filters, actual provider authorization, schedule/cabin updates and provider full cancellation/refunds. See PRs #39–41.
+Verification and limits: Tested with disposable database and concurrency/validation cases, without real Stripe network calls in the feature suites.
 ================================================
 
 ================================================
 Date: 2026-11-19
-Student: Hassib (approved team integration)
+Student: Hassib
 Tool: Codex
-Related requirements: FLT-04/05/06/30, PAY-03, GEN-01/07
-Prompt / request (summary): Continue the approved mandatory team backend integration after the verified administration and search slices.
-How the output is being used: Started feature/flight-management-cancellation from develop 3a36031 after #40. Implementing assigned-airline Scheduled flight time/airport edits, fixed cabin add/price/capacity management, active booking schedule propagation and confirmed-owner notifications, preserving immutable prices/policies and historical dates. Airports remain fixed after any booking; seat reductions cannot undercut held plus booked seats; active round-trip ordering remains valid. Adding explicit whole-flight cancellation confirmation with atomic pending-hold expiry, whole-booking full refund reservations, multi-leg inventory release, and actual Omar notifications/audit. The approved existing payment/transaction/reference/assignment interfaces are reused; no live gateway call is performed by the cancellation transaction.
-Verification: Typecheck/build/lint and all 209 unit tests passed. The real flight HTTP/database suite passed all 80 cases (22 new management cases); fresh remaining regressions passed 529 cases: 609 total across 23 suites. Provider refund gateways are controlled, while signatures, ownership, references, inventory and MongoDB transactions are actual. No private .env/shared data/live Stripe resource was used. Covers fixed/validated cabins, immutable fares, expired airport-history locks, active schedule propagation/notifications, cross-provider whole-booking cancellation/refunds, rollback and payment/capacity races. Moderator roster/exports and logo uploads remain separate mandatory slices.
+Related requirements / scope: FLT-01/23/29, GEN-06/08, ACC-11
+Prompt / request (chronological paraphrase): Finish required passenger rosters/CSV, private flight PDF tickets and airline logo uploads.
+How AI output was used: Assisted with restricted booking roster reads, injection-safe CSV, server-generated PDF with Arabic names and long/multipage layout, guarded logo upload/replacement and cleanup. See PRs #42–44.
+Verification and limits: Actual HTTP/database/filesystem tests and PDF render/Unicode privacy checks passed. Media cleanup remains best effort across process crashes.
 ================================================
 
 ================================================
 Date: 2026-11-19
-Student: Hassib (approved team integration)
+Student: Hassib
 Tool: Codex
-Related requirements: FLT-29 and ACC-11
-Prompt / request (summary): Continue the approved mandatory backend integration and report actual merged progress without treating unfinished exports or missing live verification as complete.
-How the output was used: Started feature/flight-moderator-roster from develop a47d64b after #41. Added assigned-airline flight booking reads with a sanitized matching-segment projection, ten-row pagination and per-category remaining seats. Added a private all-pages UTF-8 CSV attachment with quoting/formula protection. Preserved paid history for inactive/departed providers, required actual moderator assignment before expiry reconciliation, and excluded pending/expired passengers and private identity/contact/payment/policy fields. Added typed Swagger DTOs and eight actual-module HTTP/database cases covering permissions, round trips, pagination/export, Unicode, privacy, expiry and Swagger. Updated the feature documentation and current coverage.
-Verification: Typecheck/build/lint and all 209 unit tests passed. All eight new roster HTTP/database cases and a fresh run of all 609 existing cases passed: 617 total across 24 suites. Uses disposable databases and actual modules/guards; only external payment gateway responses in payment cases are controlled. No private .env/shared database/live Stripe resource was used. Read-projection fixtures are not claimed as live payment verification. E-ticket PDF, airline logo uploads, further provider-profile audit producers and private Stripe test acceptance remain.
+Related requirements / scope: HTL-01/09/10, GEN-07/08; full M1 requirements
+Prompt / request (chronological paraphrase): Complete atomic hotel profile/policy/photo audit events and verify the required backend scope.
+How AI output was used: Assisted with event producers tied to hotel metadata transactions, rollback/file cleanup, actual permissions and history reads, plus mandatory API/workbook reconciliation. See PR #45.
+Verification and limits: Typecheck/build/lint, 209 unit tests and the then-current 647 HTTP/database cases passed. All 110 mandatory PDF API operations and 104 mandatory workbook statements were accounted for.
 ================================================
 
 ================================================
 Date: 2026-11-19
-Student: Hassib (approved team integration)
+Student: Hassib
 Tool: Codex
-Related requirements: FLT-23, GEN-06 and ACC-11
-Prompt / request (summary): Finish the remaining mandatory backend work; resume the saved private PDF e-ticket slice after the requested pause.
-How the output is being used: feature/flight-eticket-pdf starts at verified develop cc7aa9e after #42; latest remote remains at that commit. Added an owner-traveler-only Confirmed/Completed PDF route with a positive booking projection, official airport-local times, saved itinerary/passenger/baggage/pricing data and private attachment headers. PDFKit 0.20.2, pinned TypeScript definitions and unmodified OFL Noto Latin/Arabic fonts support native Node generation; Nest copies the font assets into dist. Mozilla PDF.js 4.10.38 is the development-only independent content/page parser, run in a bounded native-Node helper. Complete-line shaping and disabled canonical decomposition preserve Arabic word order and Unicode extraction. All seven representative PDF pages were rendered and visually inspected with Poppler. Added actual HTTP/database/content/privacy/state/Unicode/multipage tests and prepared portable checksum-verified Poppler visual QA. Work was saved locally before the pause and is being verified before commit/merge. No private environment or shared/live payment resource has been used.
-Verification: Typecheck/build/lint and all 209 unit tests passed. Eight new PDF HTTP/content cases plus all 92 affected flight/payment/roster/full-AppModule cases passed (100 targeted cases). All seven representative PDF pages were rendered and visually inspected with Poppler. A compiled-dist render verified the copied font assets. The latest prior complete regression checkpoint remains 617 cases; the complete regression will run again after the remaining slices. No private environment/shared database/live payment resource was used. Corrected unique fixture references and actual Arabic word order/Unicode-map issues; retained exact text assertions with a compatible independent parser. Live Stripe acceptance remains unverified.
+Related requirements / scope: PAY-01/02/03, FLT-23/26, HTL-17/21, GEN-01/11
+Prompt / request (chronological paraphrase): Prepare genuine isolated Stripe sandbox acceptance without exposing credentials or modifying shared Atlas data.
+How AI output was used: Assisted with opt-in disposable-database fixtures, separated Stripe CLI listener, signed-event replay/tamper checks, refund and expiry cases. See draft then final PR #46.
+Verification and limits: Preparation and offline fixtures passed; external credential use was deferred until the user's explicit approval.
 ================================================
 
 ================================================
-Date: 2026-11-19
-Student: Hassib (approved team integration)
+Date: 2026-11-19 to 2026-11-20
+Student: Hassib
 Tool: Codex
-Related requirements: FLT-01, GEN-08, ACC-11 and GEN-07
-Prompt / request (summary): Finish the remaining mandatory backend functionality, preserving existing integrations and managing tested feature branches/merges.
-How the output is being used: Started feature/airline-logo-uploads from verified develop a20a178 after #43. Reused MK MediaService, image limits and public serving for multipart airline creation and guarded logo replacement. Kept legacy JSON URLs compatible. One optional internal owned-image snapshot commits with the profile/audit event; failed transactions clean new files and committed replacements remove only obsolete owned files. Current stored URLs can be echoed in profile edits; borrowing another stored file and null/forged fields are rejected. Added actual HTTP/assignment/database/file tests for PNG and synthetic real JPEG content, authorization, validation, upload limits, rollback, concurrency, cleanup and Swagger. No shared migration or changes to MK media/room implementations.
-Verification: Typecheck/build/lint and 209 unit tests passed. All eleven real logo HTTP/database/filesystem cases plus eighty flight/payment and four complete-AppModule regressions passed (95 targeted cases). No private configuration, shared data or live payment resource was used. The complete regression will run again after the audit slice. Corrected the inherited Swagger required-field metadata without weakening the response contract.
-================================================
-
-================================================
-Date: 2026-11-19
-Student: Hassib (approved team integration)
-Tool: Codex
-Related requirements: GEN-07, HTL-01/09/10 and GEN-08
-Prompt / request (summary): Finish remaining mandatory backend integration, then verify the complete application and authoritative requirements before handoff.
-How the output is being used: Started feature/hotel-profile-audit from verified develop b0a454c after #44. Hotel create/profile/policy/image changes now persist the approved generic audit effect in the same transaction as metadata. Actual actor IDs and public image IDs are recorded without profile bodies or credentials. Upload failure cleans only the new file; failed removal preserves the original and committed removal cleans afterward. Reuses Omar delivery/archive and canonical admin-history filtering with five additive hotel action names; no new state migration, room/inventory rewrite, optional feature or external resource operation. Added ten real producer/consumer/HTTP/database/filesystem cases for visibility, retention, permissions, rollback, concurrency, cap, filtering and Swagger.
-Verification: Typecheck/build/lint and all 209 unit tests passed. Ten new real hotel audit cases, updated legacy-history assertions and the full-AppModule check passed; the complete fresh run passed all 647 HTTP/database cases across 27 suites. All 110 mandatory PDF method/path pairs are present. Read-only workbook reconciliation found 104 matching mandatory statements and eleven excluded optional requirements. Corrected the e-ticket local-time documentation reference from nonexistent FLT-24 to GEN-06, including PR #43 metadata. Public FX succeeded with its optional key explicitly disabled (seven currencies, rate date November 18). No private configuration/shared database/live Stripe payment resource used. Final handoff, requirement map and demo/acceptance limits are documented.
-================================================
-
-================================================
-Date: 2026-11-19
-Student: Hassib (approved team integration)
-Tool: Codex
-Related requirements: PAY-01/02/03, FLT-23/26, HTL-17/21 and GEN-01/11
-Prompt / request (summary): The user reports that the database/server and private Stripe configuration are ready; test Stripe and finish the backend acceptance work while preserving credentials and shared data.
-How the output is being used: Started test/stripe-sandbox-acceptance from latest develop 29d1fe2. Prepared an opt-in acceptance harness using an owned disposable loopback replica set, actual backend modules/API fixtures and a separate bounded Stripe CLI listener. The planned external run is limited to three test-mode PaymentIntents, two successes/full refunds, a real decline/retry, signed webhook replay/tamper rejection, ticket generation and forced fixture expiry/inventory release. Raw webhook captures remain in memory; output omits credential values/client secrets/raw events/provider error messages. Cleanup verifies ownership/test mode before refunding or cancelling only this run's Stripe objects. No production code, shared migration or Atlas fixture is changed. The user confirmed stopping the normal local listener. Automatic approval review rejected an initial runtime credential-loading preflight under the earlier no-secret-reading instruction, before execution; runtime use still requires explicit permission and was not attempted indirectly.
-Verification: Typecheck/build/lint and all 209 unit tests passed. Plan-only execution passed without credential access or Stripe networking. The separate actual-module offline fixture mode passed authentication, moderator assignment, flight/hotel inventory and booking holds, policy review/acceptance and owned-resource cleanup. Localhost port 3000 health/Swagger checks were unreachable from the tool environment. No private configuration was loaded or displayed; no Stripe API operation or real external acceptance success is claimed. The latest earlier full backend regression remains 647 HTTP/database tests. External acceptance remains draft until genuine Stripe execution and report review.
-================================================
-
-================================================
-Date: 2026-11-19
-Student: Hassib (approved team integration)
-Tool: Codex
-Related requirements: PAY-01/02/03, FLT-23/26, HTL-17/21 and GEN-01/11
-Prompt / request (summary): Explicitly approved private runtime use of backend/.env for three isolated Stripe test intents, then approved one additional unpaid intent to complete corrected expiry verification. Finish the backend and maintain version control.
-How the output is being used: Genuine Stripe success/failure/refund webhooks verified actual flight confirmation/PDF, signed replay/tamper rejection, provider full refund, hotel decline/retry/confirmation and user full refund. The first run correctly rejected an inconsistent forced-deadline fixture because the deadline belongs to the immutable quote. Corrected only test setup to prepare a consistent expired quote and added a one-intent expiry-only mode; production guards, modules, dependencies and schemas remain unchanged. A separately approved unpaid run then verified real service-driven cancellation, signed cancellation webhook processing, Expired state, released seats and actual provider audit delivery. Updated current READMEs, handoff, coverage, requirement map, execution record and status to replace stale pending-Stripe statements with precise evidence. The original combined report remains recorded as false; individual successful scenarios and the passing targeted follow-up are distinguished accurately.
-Verification: Typecheck/build/lint and 209 unit tests passed. Offline actual-module fixture checks, deadline/quote-binding verification and cleanup passed. Across the two external runs: four test intents total, two successes fully refunded, two unpaid intents cancelled, both cleanups complete. Runtime-only credentials were never displayed or committed; no raw events/client secrets entered output or artifacts, and no shared Atlas booking fixture was written. The user's running readiness and Swagger returned 200 and all 110 mandatory PDF operations matched. The final complete HTTP/database regression is being run before ready/merge; the previous complete checkpoint remains 647 cases. No further Stripe objects are authorized or needed for this checkpoint.
-================================================
-
-================================================
-Date: 2026-11-20
-Student: Hassib (approved team integration)
-Tool: Codex
-Related requirements: Mandatory M1 backend verification and PAY-01/02/03, FLT-23/26, HTL-17/21, GEN-01/11
-Prompt / request (summary): Resume the authorized final verification and GitHub merge after an interrupted session, preserving the completed Stripe checks and credential restrictions.
-How the output is being used: Confirmed develop remains 29d1fe2 and the saved acceptance branch is intact. Committed/pushed the verified Stripe/fixture checkpoint a07e741. The previous full-regression process result was unavailable after interruption, so reran the complete HTTP/database suite with a saved JSON report. Updated handoff/coverage dates and documented that November 19 runtime endpoints returned 200 while port 3000 is unreachable in the resumed session; backend/listener restart is needed for a new demo. Prepared PR #46 for reviewed merge after actual checks. No production source/dependency/schema change, secret inspection, new shared booking fixture or additional Stripe operation.
-Verification: Fresh complete HTTP/database regression passed all 647 cases across 27 suites, zero failed/pending cases and exit code 0; independently checked the saved Jest JSON totals. Typecheck/build/lint and 209 unit tests passed at the unchanged code checkpoint. Separately approved November 19 genuine Stripe evidence remains four test intents, both successes fully refunded, both unpaid intents cancelled and cleanup complete. The original combined external report remains recorded as false, with its successful cases and corrected passing unpaid follow-up distinguished. No further testing or payment mutation is needed before the scoped merge.
+Related requirements / scope: PAY-01/02/03, FLT-23/26, HTL-17/21, GEN-01/11
+Prompt / request (chronological paraphrase): After explicit approval, execute limited genuine Stripe test-mode flows and finish the interrupted acceptance/regression review.
+How AI output was used: Assisted with two explicitly approved isolated external runs and final recording: flight success/PDF/provider refund, hotel failure/retry/success/user refund, signed webhook replay/tamper, and a corrected independent unpaid-expiry run. See PR #46 and the Stripe acceptance report.
+Verification and limits: Four test-mode intents total: two paid/refunded, two unpaid/cancelled, cleanup completed. The original combined run failed at an inconsistent test fixture and was not claimed as fully passing. Final mandatory regression passed 647 HTTP/database cases; runtime readiness/Swagger returned 200. No secrets or shared booking fixtures were committed.
 ================================================
 
 ================================================
 Date: 2026-11-20
 Student: Hassib (approved bonus integration)
 Tool: Codex
-Related requirements: HTL-26 (optional), preserving HTL-23/24, ACC-11 and GEN-05/10
-Prompt / request (summary): Review the official bonus requirements for manageable additions, then implement one bonus now after the verified mandatory backend release.
-How the output is being used: Read the authoritative workbook's eleven optional rows and official PDF bonus/API sections without modification. Recommended review replies, blog attachments, favourites and PDF export, with implementation estimates and dependencies; the user then explicitly requested one bonus. Selected HTL-26 and started feature/hotel-review-replies from latest develop a14c608. Extend MK's existing review with an optional embedded reply; reuse the current moderator assignment service and preserve existing rating/booking/payment/moderation behavior. Add one guarded POST reply route, DTO validation, typed Swagger replies/public review responses and atomic duplicate/concurrency protection. The single reply and 1000-character limit are documented implementation choices, with matching DTO/database Unicode semantics. Public output excludes internal moderator identity; guest edits preserve replies and review hiding/deletion controls their visibility/lifetime. No SMTP, payment mutation, new dependency, migration, shared seed or other bonus is included.
-Verification: Typecheck/build/lint and all 209 unit tests passed. All 13 new actual-module reply HTTP/database cases and the existing Swagger check passed (14 focused checks). They cover assignment/role/account/password guards, privacy, input/Unicode boundaries, duplicates/concurrency, inactive/hidden/deleted review behavior, preserved ratings/guest edits/anonymization and Swagger. The fresh complete regression passed all 660 cases across 27 suites with zero failed/pending cases and exit code 0; independently confirmed the saved Jest JSON totals. Full-AppModule startup publishes all 110 mandatory operations and the optional reply route/schemas. The tested source checkpoint is 0ac6905; only final evidence/documentation changes follow it before the scoped PR/merge. All data is disposable; no private .env or shared Atlas fixture is read or written and no new Stripe call is performed. The earlier mandatory baseline remains 209 unit and 647 HTTP/database tests, plus the separately completed Stripe acceptance record. Other optional requirements remain excluded.
+Related requirements / scope: HTL-26 (optional), HTL-23/24, ACC-11
+Prompt / request (chronological paraphrase): After completing mandatory scope, add the selected hotel moderator review-reply bonus.
+How AI output was used: Assisted with a role/assignment-guarded reply endpoint, validation, duplicate and concurrency protections, public projections and Swagger additions. See PR #48.
+Verification and limits: 13 new real-module HTTP/database tests and the complete 660-case regression passed; 209 unit tests and typecheck/build/lint also passed. The remaining ten optional workbook items were not implemented.
 ================================================
 
 ================================================
 Date: 2026-11-20
-Student: Hassib (team review required)
+Student: Hassib
 Tool: ChatGPT
-Related requirements: Milestone 1 validation, repository workflow, submission/readiness documentation, AI-assistance disclosure
-Prompt / request (summary): After reviewing the backend's remaining work, asked whether ChatGPT could finish any of the remaining features now.
-How the output was used: Created a new CI/documentation feature branch based on the current develop commit. Added a GitHub Actions workflow for Node 20 that runs npm ci, typecheck, lint, build, unit tests, offline official reference-data validation and disposable MongoDB replica-set HTTP/e2e tests; no private Atlas or Stripe configuration is needed. Added a submission checklist with established historical test and requirement evidence, explicit external Stripe/runtime acceptance gaps, a safe offline verification command sequence, mandatory security/submission hygiene and Milestone 2 scope boundary. Linked the checklist and CI workflow in the root README.
-Verification and limits: Changes were committed for GitHub review; no CI job or live backend/Stripe run is claimed successful in this ChatGPT session. The GitHub runner must execute the workflow before CI can be marked passed. The existing 209 unit and 647 HTTP/database tests were reported by the prior local verification, not rerun here. No private values were read, no external Stripe requests, shared database writes or frontend implementation occurred. Submit any code/documentation only after review and actual checks.
+Related requirements / scope: M1 CI, validation, documentation and disclosure
+Prompt / request (chronological paraphrase): Finish any safe outstanding backend validation/submission items without private credentials.
+How AI output was used: Added isolated GitHub Actions checks, a Milestone 1 submission checklist, README pointers and an AI-disclosure update in PR #47.
+Verification and limits: The initial Node 20 workflow ran successfully in GitHub Actions; it did not constitute a new genuine Stripe run or frontend delivery.
 ================================================
 
 ================================================
 Date: 2026-11-20
-Student: Hassib (submission finalization)
+Student: Hassib
 Tool: Codex
-Related requirements: M1 deliverables, verification, setup/handoff, AI disclosure; approved HTL-26 bonus preserved
-Prompt / request (summary): Finalize the completed backend and make it ready for submission, including version control and a concrete source handoff.
-How the output is being used: Reviewed the existing CI/submission PR #47 and independently observed its original Node 20 GitHub Actions run 44659559485 passing every job step. Reconciled that branch with verified develop 8ff44a4, preserving both Git histories and all AI-log entries while resolving README/log-only conflicts. Application source, tests and dependency manifests remain identical to the 209-unit/660-HTTP verified release. Updated the workflow and .nvmrc to Node 24, matching the installed 24.21.0 runtime and supported LTS line, and retained disposable MongoDB 8.2.7 with read-only repository permissions. Rewrote stale setup/submission instructions, clarified historical feature banners and the completed Stripe/bonus evidence, corrected the environment-template comment, and ignored local archive/cache outputs. Prepared a source ZIP/tag/checksum/manifest handoff from the final committed release; portal upload is an instructor-directed operator action.
-Verification and limits: Parsed the updated workflow YAML and checked its triggers, Node selection and credential-free test settings. Offline reference validation passed with the reviewed dataset checksum and eight records per official collection, plus seven currencies; no --apply was used. Existing local typecheck/build/lint, 209 unit and 660 HTTP/database results remain valid for the unchanged application source. The original CI success is historical; the final Node 24 result must be read from PR #47/Actions and captured in the release manifest before merge/package. No new passing CI result, tag or archive is claimed merely by this log entry. No private .env value, shared database seed, new Stripe payment or new application feature is used in finalization.
+Related requirements / scope: M1 release handoff, Node 24 CI and documentation
+Prompt / request (chronological paraphrase): Finalize the backend readiness branch and reconcile it with the approved bonus and verified Stripe work.
+How AI output was used: Updated Node 24 CI, setup/handoff documentation and checked the final source/content path against develop without changing application logic. PR #47 was merged after a passing Node 24 Actions run.
+Verification and limits: The final merged develop commit also passed GitHub Actions. Runtime/HTTP demonstration must still be started for any subsequent live evaluation.
+================================================
+
+================================================
+Date: 2026-11-20
+Student: Hassib (AI disclosure and release preparation)
+Tool: ChatGPT
+Related requirements / scope: M1 release, AI transparency, source packaging and submission
+Prompt / request (chronological paraphrase): Get every Milestone 1 submission deliverable ready, and adjust the ChatGPT history disclosure into the concise format allowed by the official PDF.
+How AI output was used: Curated this chronological AI contribution record from the original detailed entries; prepared source-package/checksum and release instructions, preserving the original detail in prior Git commits. Reviewed the final submission checklist and stable branch strategy.
+Verification and limits: This release-preparation entry records work performed in the repository; GitHub checks, merged release state and packaged artifact must be verified separately before declaring them complete. No portal upload, private credential handling or new backend feature is claimed.
 ================================================
