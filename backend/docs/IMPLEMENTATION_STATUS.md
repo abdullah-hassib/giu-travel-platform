@@ -1,3 +1,9 @@
+# November 20 final release verification
+
+- The fresh complete HTTP/database rerun passed all 647 tests across 27 suites, with zero failures or pending cases. Its saved Jest JSON report and process exit code both confirm success. This supersedes the unavailable final result of the interrupted November 19 rerun.
+- The unchanged code checkpoint also passed typecheck/build/lint and 209 unit tests. Real Stripe test-mode success/decline/retry/refunds/expiry were verified in the separately approved November 19 runs below. No additional Stripe objects were created on November 20.
+- Mandatory backend features in the reviewed scope are implemented. PR #46 packages the isolated acceptance harness, corrected test fixture and current handoff/coverage evidence; production modules, dependencies and schemas are unchanged. Restart the backend and normal Stripe CLI forwarder for a new local demo.
+
 # November 19 genuine Stripe test-mode acceptance
 
 - Actual flight payment/confirmation/PDF, signed replay/tamper rejection, full provider refund, hotel decline/retry/confirmation/full user refund, and genuine success/failure/refund webhooks passed against Stripe test mode in an isolated disposable database.
