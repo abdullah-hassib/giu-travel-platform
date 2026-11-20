@@ -1,3 +1,9 @@
+# November 20 approved HTL-26 hotel review replies
+
+- Implemented one user-approved optional bonus after the mandatory release: POST /api/reviews/:id/reply for the moderator currently assigned to the review's active hotel. An optional embedded response is exposed only as comment/date in existing public/guest review views. Ratings, guest edits, anonymization, hiding and deletion are preserved; one conditional write prevents duplicate/concurrent overwrite. Single-reply and 1000-character rules are documented implementation choices.
+- Reuses the current assignment registry and role/session/password guards. Added validated input, typed Swagger request/response/public-review schemas and 13 actual HTTP/database cases. DTO/database Unicode limits match, including supplementary characters. No new dependency, migration, shared fixture, secret read, payment operation or other bonus.
+- Typecheck/build/lint and all 209 unit tests passed. The 13 new cases plus the existing Swagger check passed; the fresh complete regression passed all 660 tests in 27 suites, zero failed/pending cases and exit 0, confirmed from the saved JSON report. Full-AppModule checks preserve all 110 mandatory operations and publish the bonus route/schemas. See HOTEL_REVIEW_REPLIES.md.
+
 # November 20 final release verification
 
 - The fresh complete HTTP/database rerun passed all 647 tests across 27 suites, with zero failures or pending cases. Its saved Jest JSON report and process exit code both confirm success. This supersedes the unavailable final result of the interrupted November 19 rerun.

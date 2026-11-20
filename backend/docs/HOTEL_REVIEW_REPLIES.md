@@ -22,7 +22,7 @@ The new request, response and nullable public-review field are documented in Swa
 
 ## Verification
 
-All 13 new actual-module reply HTTP/database cases and the existing Swagger check passed (14 focused checks). They cover permission boundaries, current assignment, account state/password restrictions, malformed/forged input, exact ASCII/Unicode length boundaries, privacy, rating preservation, duplicate/concurrent requests, hidden/inactive/deleted content, and guest edits/anonymization. All 209 unit tests and build passed. Fixtures use completed disposable reservations and the existing controlled settlement adapter; no real payment or shared Atlas fixture is performed. The full regression is running before PR/merge; final totals will be recorded after execution.
+All 13 new actual-module reply HTTP/database cases and the existing Swagger check passed (14 focused checks). They cover permission boundaries, current assignment, account state/password restrictions, malformed/forged input, exact ASCII/Unicode length boundaries, privacy, rating preservation, duplicate/concurrent requests, hidden/inactive/deleted content, and guest edits/anonymization. Typecheck/build/lint and all 209 unit tests passed. The fresh complete HTTP/database run passed all 660 cases across 27 suites, with zero failed/pending cases and exit code 0; its saved Jest JSON report independently confirms the totals. The full AppModule publishes all 110 mandatory operations and the optional reply route/schemas. Fixtures use completed disposable reservations and the existing controlled settlement adapter; no real payment, private environment or shared Atlas fixture is performed. No functional code changed after this verification.
 
 ## Swagger demo
 
