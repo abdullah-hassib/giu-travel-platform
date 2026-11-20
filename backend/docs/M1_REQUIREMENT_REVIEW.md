@@ -1,6 +1,6 @@
 # Mandatory requirement review - November 19, 2026
 
-Sources: the [official Excel workbook](https://docs.google.com/spreadsheets/d/17WYE0p9EHUn-GUDrtqtCAekhqecOX8H1/edit?gid=874030513), the versioned official GIU project PDF, and Hassib's personal allocation plus explicitly approved team integration. The workbook is an Excel file served through Drive; it was read without modification. All 104 mandatory statements match docs/GIU_Travel_Implementation_Checklist.md after whitespace and typographic normalization. The source has eleven optional requirements, which remain excluded. Its observed modified timestamp is 2026-10-31T11:58:07.639Z.
+Sources: the [official Excel workbook](https://docs.google.com/spreadsheets/d/17WYE0p9EHUn-GUDrtqtCAekhqecOX8H1/edit?gid=874030513), the versioned official GIU project PDF, and Hassib's personal allocation plus explicitly approved team integration. The workbook is an Excel file served through Drive; it was read without modification. All 104 mandatory statements match docs/GIU_Travel_Implementation_Checklist.md after whitespace and typographic normalization. The source has eleven optional requirements. After the mandatory release, the user approved HTL-26 hotel review replies as a separate bonus; the remaining ten stay excluded. Its observed modified timestamp is 2026-10-31T11:58:07.639Z.
 
 The table maps the reviewed scope to real modules/tests. Backend verification includes the separately authorized genuine Stripe test-mode scenarios documented in STRIPE_SANDBOX_ACCEPTANCE.md. Some workbook statements include UI behavior that belongs to Milestone 2.
 
@@ -20,6 +20,8 @@ The table maps the reviewed scope to real modules/tests. Backend verification in
 | Navigation, responsive UI and visual consistency | GEN-14/15/16/17 | M2 UI acceptance. No frontend was implemented in this backend assignment. |
 
 All mandatory IDs occur once in the table. This is requirement traceability, not an invented weighted completion percentage.
+
+Approved optional addition: HTL-26, hotel moderator replies to reviews. The workbook specifies that a hotel moderator may reply to a review. The new optional POST route reuses actual current hotel assignments; its single-reply and 1,000-character rules are documented implementation choices. All 13 new cases passed; the fresh complete regression after this addition passed all 660 HTTP/database tests in 27 suites, with zero failed/pending cases and exit code 0. Typecheck/build/lint and all 209 unit tests passed. See HOTEL_REVIEW_REPLIES.md for the API, compatibility and separate verification. This bonus does not change the 104 mandatory statement or 110 mandatory operation totals; the 647-case mandatory-release checkpoint below remains historical evidence.
 
 The official PDF section 8 has 110 mandatory method/path pairs and nine explicitly Optional entries. test/fixtures/mandatory-routes.json preserves the required pairs and source checksum be97dd0731e67f1eebecce20e0b7bbf5f480f4e36592ff123decfda0585fb869. The complete-AppModule test verifies that every required operation is published by the actual running module graph, normalizing parameter names without changing path shapes or HTTP methods.
 

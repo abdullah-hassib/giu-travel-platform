@@ -1,6 +1,6 @@
 # Milestone 1 backend handoff - November 20, 2026
 
-Mandatory backend features in the reviewed scope are implemented and verified. Genuine Stripe test-mode payment/refund/webhook/expiry scenarios and the user's running HTTP readiness/Swagger endpoints were verified on November 19. The deadline is November 20. Frontend Milestone 2 and optional bonuses remain outside this work.
+Mandatory backend features in the reviewed scope are implemented and verified. Genuine Stripe test-mode payment/refund/webhook/expiry scenarios and the user's running HTTP readiness/Swagger endpoints were verified on November 19. The deadline is November 20. The user subsequently approved one optional bonus, hotel moderator review replies (HTL-26), after the mandatory release. Frontend Milestone 2 and the remaining bonuses stay outside this work.
 
 ## Completed integration
 
@@ -14,9 +14,9 @@ Recent verified slices: [roster/CSV PR #42](https://github.com/abdullah-hassib/g
 
 ## Verification
 
-Typecheck, build and lint passed. All 209 unit tests in 18 suites and all 647 HTTP/database tests in 27 suites passed in fresh processes. Actual Nest modules, guards, official references, MongoDB replica-set transactions, concurrency/expiry/refund races, signed settlement and full-AppModule startup/Swagger participate. External Stripe responses in payment tests are controlled; those tests do not prove live gateway acceptance.
+Typecheck, build and lint passed. All 209 unit tests in 18 suites and all 660 HTTP/database tests in 27 suites passed in fresh processes, including 13 new optional HTL-26 cases. Actual Nest modules, guards, official references, MongoDB replica-set transactions, concurrency/expiry/refund races, signed settlement and full-AppModule startup/Swagger participate. External Stripe responses in payment tests are controlled; those tests do not prove live gateway acceptance.
 
-The final complete HTTP/database rerun finished successfully on November 20: 647 passed, 27 suites passed, zero failed/pending cases, exit code 0 and a matching saved Jest JSON report. No production code changed after verification. The interrupted November 19 rerun's missing final result was not treated as a pass.
+The mandatory-release regression passed 647 cases on November 20. After the approved HTL-26 addition, a fresh complete rerun passed 660 cases in 27 suites, zero failed/pending cases, exit code 0 and a matching saved Jest JSON report. No functional code changed after the bonus verification. The interrupted November 19 rerun's missing final result was not treated as a pass.
 
 The separate [Stripe acceptance record](STRIPE_SANDBOX_ACCEPTANCE.md) now verifies genuine flight payment/confirmation/PDF, signed replay and tamper rejection, full provider refund, hotel decline/retry/confirmation/full user refund, unpaid expiry/inventory release and genuine success/failure/refund/cancellation webhook processing. Two explicitly approved runs created four total test PaymentIntents: both paid attempts were fully refunded and both unpaid attempts were cancelled. Both runs completed cleanup. An initial forced-deadline fixture changed an immutable quote and was correctly rejected; the corrected fixture preserves the production integrity guard. No production change or shared Atlas booking fixture was needed. The original combined run is not reported as passing end-to-end.
 
@@ -25,6 +25,8 @@ All seven representative synthetic PDF pages were rendered with Poppler and visu
 The existing FX client also succeeded against its public endpoint with the optional key explicitly disabled. It returned valid rates for all seven supported currencies, dated November 18. This read used no private configuration or database writes.
 
 ## Authoritative requirement review
+
+The approved HTL-26 bonus adds `POST /api/reviews/:id/reply` and an additive nullable response in existing review views. It reuses the current hotel assignment registry, restricts creation to the assigned active hotel moderator, preserves ratings and guest edits, and follows review moderation/deletion. See [hotel review replies](HOTEL_REVIEW_REPLIES.md) for the contract, implementation choices, tests and demo. Its verification is tracked separately from the mandatory 104 statements and 110 API operations.
 
 The official Excel workbook was fetched read-only on November 19. Its 104 mandatory statements match the supplied checklist after whitespace/typographic normalization, with no missing, additional or substantively changed statements. Its eleven optional requirements remain excluded. Workbook metadata reports modification on October 31, 2026. See M1_REQUIREMENT_REVIEW.md for scope and evidence.
 
