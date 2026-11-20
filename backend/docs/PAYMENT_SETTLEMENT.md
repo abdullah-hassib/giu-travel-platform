@@ -1,4 +1,4 @@
-> Current November 19 handoff: [M1_BACKEND_HANDOFF.md](M1_BACKEND_HANDOFF.md). The integrated backend now includes actual hotel/flight/provider/payment/refund/delivery paths, all mandatory exports/media and hotel profile audit producers. Older remaining-integration statements below describe their dated checkpoints. Private Stripe and intended runtime acceptance remain unverified.
+> Current November 20 submission: [checklist](M1_SUBMISSION_CHECKLIST.md), [verified handoff](M1_BACKEND_HANDOFF.md) and [genuine Stripe execution record](STRIPE_SANDBOX_ACCEPTANCE.md). The mandatory backend and HTL-26 bonus passed 209 unit and 660 HTTP/database tests. Older remaining-integration statements below are historical checkpoints; the current handoff records completed payment/refund/webhook/expiry verification and runtime demonstration instructions.
 
 # Payment settlement and refunds
 

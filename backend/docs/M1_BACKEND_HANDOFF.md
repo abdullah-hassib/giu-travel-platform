@@ -28,9 +28,9 @@ The existing FX client also succeeded against its public endpoint with the optio
 
 The approved HTL-26 bonus adds `POST /api/reviews/:id/reply` and an additive nullable response in existing review views. It reuses the current hotel assignment registry, restricts creation to the assigned active hotel moderator, preserves ratings and guest edits, and follows review moderation/deletion. See [hotel review replies](HOTEL_REVIEW_REPLIES.md) for the contract, implementation choices, tests and demo. Its verification is tracked separately from the mandatory 104 statements and 110 API operations.
 
-The official Excel workbook was fetched read-only on November 19. Its 104 mandatory statements match the supplied checklist after whitespace/typographic normalization, with no missing, additional or substantively changed statements. Its eleven optional requirements remain excluded. Workbook metadata reports modification on October 31, 2026. See M1_REQUIREMENT_REVIEW.md for scope and evidence.
+The official Excel workbook was fetched read-only on November 19 and its optional rows rechecked on November 20. Its 104 mandatory statements match the supplied checklist after whitespace/typographic normalization, with no missing, additional or substantively changed statements. Of its eleven optional requirements, HTL-26 is now implemented with explicit approval; the remaining ten are excluded. Workbook metadata reports modification on October 31, 2026. See M1_REQUIREMENT_REVIEW.md for scope and evidence.
 
-The complete application exposes all 110 mandatory method/path pairs listed in official PDF section 8. The committed test fixture includes the PDF SHA-256 so a later source revision requires review. The nine explicitly optional API rows are excluded. Route presence complements the behavioral tests; it is not a claim that private external acceptance or Milestone 2 UI has been completed.
+The complete application exposes all 110 mandatory method/path pairs listed in official PDF section 8, plus the approved HTL-26 optional reply route. The committed mandatory-route fixture includes the PDF SHA-256 so a later source revision requires review. Route presence is verified alongside behavioral tests; genuine external Stripe evidence is recorded separately. Milestone 2 UI remains outside the backend submission.
 
 ## Run and demonstrate
 

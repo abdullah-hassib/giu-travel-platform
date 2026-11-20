@@ -1,83 +1,106 @@
 # GIU Travel Backend - Milestone 1
 
-See [root README](../README.md), [implementation status](docs/IMPLEMENTATION_STATUS.md), and [contracts requiring approval](docs/CONTRACTS_PROPOSED.md).
+Backend deadline: November 20, 2026. The mandatory backend and the approved HTL-26 review-reply bonus are implemented. The Next.js frontend belongs to Milestone 2, due December 11, 2026.
 
-Current Hassib-owned mandatory coverage and remaining work are tracked in [Milestone 1 backend coverage](docs/M1_BACKEND_COVERAGE.md).
+Start with the [submission checklist](docs/M1_SUBMISSION_CHECKLIST.md), [verified handoff](docs/M1_BACKEND_HANDOFF.md), [requirement review](docs/M1_REQUIREMENT_REVIEW.md) and [AI assistance log](../AI_PROMPTS.txt). The official PDF and Excel workbook define requirements. Earlier dated feature checkpoints remain historical.
 
-The user approved one optional bonus after the mandatory release: [hotel moderator review replies (HTL-26)](docs/HOTEL_REVIEW_REPLIES.md), through `POST /api/reviews/:id/reply`. Current hotel assignment and active-account guards apply. Replies are included in existing public review views, preserve ratings and guest edits, and follow review hiding/deletion. Typecheck/build/lint, all 209 unit tests and the fresh complete 660-case HTTP/database regression passed after this addition; all 110 mandatory operations remain published.
+## Runtime prerequisites
 
-The [current backend handoff](docs/M1_BACKEND_HANDOFF.md) lists integrated modules, checks and demo order. Genuine Stripe test-mode payments/refunds/webhooks/expiry and running HTTP readiness/Swagger were verified on November 19; see the [precise execution record](docs/STRIPE_SANDBOX_ACCEPTANCE.md). See the [authoritative requirement review](docs/M1_REQUIREMENT_REVIEW.md); earlier dated checkpoints remain historical.
+- Node.js 24 LTS, matching the root `.nvmrc` and GitHub CI. Local verification used Node 24.21.0.
+- MongoDB Atlas or another transaction-capable replica set for the application.
+- Stripe test credentials and Stripe CLI for payment demonstrations.
+- A compatible local `mongod` executable for offline HTTP/database tests, or permission for mongodb-memory-server to download its test binary. Local tests used MongoDB 8.2.7.
 
-## Quick start
+## Install and configure
 
-```bash
-npm install
-# For a fresh clone only: create .env from .env.example if no private .env exists.
-# Set MONGODB_URI in the new local .env (never commit this file).
-npm run typecheck
-npm run build
-npm run lint
-npm test
-npm run test:e2e
-npm run start:dev
+From the repository root:
+
+```powershell
+cd backend
+npm.cmd ci
 ```
 
-Swagger: `http://localhost:3000/api/docs`
-Liveness: `http://localhost:3000/api/health/live`
-Atlas readiness: `http://localhost:3000/api/health/ready`
+For a fresh clone only, create `.env` if it does not already exist:
 
-Routes implemented in source: `/api/auth/register`, `/api/auth/login`, `/api/auth/logout`, `/api/auth/me`, `/api/auth/change-password`, `/api/users/me` (GET, PATCH, DELETE), plus health and Swagger.
-
-The current feature branch adds GEN-01 notification routes (`GET /api/notifications`, `GET /api/notifications/unread-count`, `PATCH /api/notifications/:id/read`) and `GET /api/admin/audit-logs` (GEN-07). The notification route names and response shapes are treated as agreed for this branch. Access rules, filters, and event-delivery behavior are documented in [notifications and audit logging](docs/NOTIFICATIONS_AND_AUDIT.md).
-
-`POST /api/auth/refresh` rotates the access and refresh cookies and returns `{ user }`. Login also returns `{ user }` and sets both cookies. Access credentials expire after five minutes. Refresh preserves the existing absolute deadline and thirty-minute idle limit. Clients must serialize refresh requests across tabs; reuse of a consumed refresh credential revokes the family. Logout clears both cookies and revokes the family even when only the refresh cookie remains. Existing single-cookie sessions can continue within their original limits; log in again to acquire refresh capability. See [authentication contract](docs/API_CONVENTIONS.md#approved-authentication-contract-acc-06-acc-19).
-
-Administrators can use `GET /api/admin/accounts?page=1&search=example&role=traveler&status=active` to inspect accounts (ACC-14), ten per page (GEN-05). Log in with a privately seeded administrator first; Swagger uses the access cookie. All query fields are optional, and the response contains registration dates and sanitized profile fields. Travelers and moderators receive 403; guests receive 401. Account status changes remain in deferred draft PR #9; password reset is described below.
-Administrators can use `GET /api/admin/accounts?page=1&search=example&role=traveler&status=active` to inspect accounts (ACC-14), ten per page (GEN-05). Log in with a privately seeded administrator first; Swagger uses the access cookie. All query fields are optional, and the response contains registration dates and sanitized profile fields. Travelers and moderators receive 403; guests receive 401. Password reset and this candidate's status commands are separate operations described below.
-
-For ACC-07a, administrators can call `POST /api/admin/users/:id/reset-password` with `{ password }` for a traveler/moderator. The route requires a transaction-capable replica set. Reset revokes all target sessions and returns 204. Logging in with the temporary password returns `user.mustChangePassword=true`; profile and other protected actions remain blocked. Use PATCH /api/auth/change-password with the temporary current password and a different compliant replacement, then log in again. The administrative event commits atomically with the reset and is delivered to durable audit history. Account, payment/refund, booking and provider events are integrated with the actual team consumers; see the current handoff. The admin e2e suite uses a disposable replica set to verify this flow and rollback.
-
-Registration now requires `termsAccepted: true`. Registration and password changes require at least eight characters with a letter and a digit. Login continues to accept existing credentials. Lockout configuration must use `AUTH_MAX_FAILED_ATTEMPTS=5` and `AUTH_LOCKOUT_MINUTES=15` to match ACC-05.
-
-ACC-06 idle expiry is thirty minutes. Each successfully authenticated request updates server-side activity. Expired, revoked, suspended-account and stale-version sessions cannot renew activity. The existing configured absolute session lifetime still applies. Legacy sessions use their persisted update/creation timestamps until the first successful authenticated request records `lastAuthenticatedAt`.
-
-The persistence e2e suite uses `mongodb-memory-server-core` to create and stop its own disposable local MongoDB. It never loads `.env` or connects to Atlas. Its default setup downloads a test binary when needed. To use an existing local `mongod` instead, set `MONGOMS_SYSTEM_BINARY` to that executable and `MONGOMS_VERSION` to its version before running `npm run test:e2e`. Setting `MONGOMS_RUNTIME_DOWNLOAD=false` prevents downloads. These are test-process settings, independent of application credentials.
-
-In Swagger, register using `fullName`, `email`, a compliant `password` and `termsAccepted: true`. Omitting consent or using a password without a letter/digit returns 400. On a disposable test account, the fifth incorrect login returns 429, and login remains blocked for fifteen minutes. Account lockout uses an atomic MongoDB update pipeline, so MongoDB 4.2 or newer is required. Use isolated service/HTTP tests before human-authorized live database checks.
-
-`npm run seed:admin` bootstraps an administrator from one-time environment variables. Example on a developer machine (replace the email; enter a strong private password at the prompt):
-
-```bash
-export ADMIN_BOOTSTRAP_EMAIL='admin@example.com'
-read -rsp 'One-time admin password: ' ADMIN_BOOTSTRAP_PASSWORD; echo
-export ADMIN_BOOTSTRAP_PASSWORD
-npm run seed:admin
-unset ADMIN_BOOTSTRAP_EMAIL ADMIN_BOOTSTRAP_PASSWORD
+```powershell
+if (-not (Test-Path -LiteralPath '.env')) {
+  Copy-Item -LiteralPath '.env.example' -Destination '.env'
+}
 ```
 
-Never put credentials into Git, AI chats, or the project ZIP. Run only once after MongoDB credentials are configured. The admin identity and exact password policy still require review against the workbook.
+Configure `MONGODB_URI` privately. Keep Atlas active and permit the development machine's current IP in Atlas Network Access. Preserve existing private configuration. The source archive contains the placeholder `.env.example`; it excludes `.env` and credentials.
 
-## Official reference data
+Set `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` privately for test-mode payments. The webhook secret must match the CLI listener and sandbox. Missing Stripe configuration returns a safe service-unavailable error when a payment operation is attempted. USD is the fixed flight/hotel/payment/refund currency. Budget display supports the official preferred currencies independently.
 
-Kuwaity's reference-data slice provides public countries, cities, airports, attractions and currency lookup/search APIs, a reusable ReferenceDataService and the four official CSV exports. Run `npm run seed:reference` for offline integrity validation. Database writes require `--apply` and private process configuration; use the shared database only after the required team approval. See [reference API, seed commands and team handoff](docs/REFERENCE_DATA.md). Until this edition is seeded, reference lookups return 503. Existing user/itinerary/FX validation retains the same source identifiers through the shared snapshot.
-## Administration services
+`SESSION_TTL_HOURS` defaults to 24 hours. Authentication uses opaque HttpOnly access/refresh cookies, a five-minute access lifetime and thirty-minute inactivity expiry. ACC-05 requires `AUTH_MAX_FAILED_ATTEMPTS=5` and `AUTH_LOCKOUT_MINUTES=15`.
 
-Merged administration includes account listing/reset/status, real hotel/airline moderator assignment and password enforcement, required provider commands, combined flight/hotel booking lists and retained committed action history. Account status/session/event mutations are transactional. Both provider adapters and Omar delivery are connected. See [administration routes and handoff](docs/ADMINISTRATION.md), [hotel booking reads](docs/ADMIN_BOOKINGS.md) and [action history](docs/ADMIN_AUDIT_HISTORY.md).
+## Start the application
 
-## Hotels, bookings, reviews, blog and moderation
+From `backend/`:
 
-Hotel inventory, search, concurrency-safe bookings, reviews, the blog, content reports and admin moderation are described in [docs/HOTELS_AND_COMMUNITY.md](docs/HOTELS_AND_COMMUNITY.md), with a Swagger demo order and the integration handoffs for payments, administration and notifications. Uploaded JPG/PNG images are stored in `MEDIA_UPLOAD_DIR` (default `./uploads`, ignored by Git) and served from `/api/media/:imageId`.
+```powershell
+npm.cmd run start:dev
+```
 
-## Important
+For a built application, run `npm.cmd run build` followed by `npm.cmd run start:prod`.
 
-Policy review/acceptance and payment/refund services are connected to MK's real hotel booking adapter. Both concrete hotel and flight settlement adapters are connected; see [flight integration](docs/FLIGHT_PAYMENT_INTEGRATION.md). See [policy contract](docs/PAYMENT_POLICIES.md) and [hotel integration](docs/HOTEL_PAYMENT_INTEGRATION.md).
+- Swagger: http://localhost:3000/api/docs
+- Liveness: http://localhost:3000/api/health/live
+- Database readiness: http://localhost:3000/api/health/ready
 
-USD is the platform currency. Payment create/retry/status, signed raw webhooks, durable event recovery, expiry and policy-derived cancellation/late refunds are implemented with actual hotel transactions. Genuine Stripe test-mode payment/refund/webhook/expiry scenarios passed in approved isolated runs. Flight holds, settlement and saved-policy refunds are connected; public flight search/details and itinerary reuse are connected; schedule/cabin edits and whole-flight cancellation/full refunds are connected; assigned-moderator flight rosters and private all-passenger CSV downloads are implemented; see [roster and CSV](docs/FLIGHT_ROSTER.md). Private [e-ticket PDF downloads](docs/FLIGHT_ETICKET.md) are implemented and tested. [Airline logo uploads](docs/AIRLINE_LOGOS.md) are implemented and tested. Hotel profile/policy/photo mutations now have atomic audit effects; see [hotel audit](docs/HOTEL_PROFILE_AUDIT.md). Account, hotel/provider/moderation and refund events feed Omar's notification/audit consumers; see [delivery integration](docs/NOTIFICATIONS_AND_AUDIT.md). See [settlement API and demo](docs/PAYMENT_SETTLEMENT.md), [private gateway setup](docs/STRIPE_GATEWAY.md) and the [actual Stripe execution record](docs/STRIPE_SANDBOX_ACCEPTANCE.md).
+For payment demonstrations, keep another terminal running:
 
-ACC-09 profile editing supports name, international phone and the official supported preferred currencies through `PATCH /api/users/me`. All fields validate before an atomic save. Existing accounts return null phone/currency until set. See [profile inputs and Swagger demo](docs/API_CONVENTIONS.md#own-profile-acc-09).
+```powershell
+stripe listen --all-snapshot --forward-to http://localhost:3000/api/payments/webhook
+```
 
-Budget and intercity transport CRUD include native day/category/group totals and preferred-currency summary conversion with daily database rates and fallback. Public daily FXRatesAPI access has been verified without a key. An optional private `FXRATES_API_KEY` can be configured for authenticated quota. See [budgeting API contract and demo](docs/BUDGETING.md).
+Keep any displayed signing secret private and ensure its value matches local configuration. Restart the backend after changing environment configuration. Genuine Stripe acceptance results are recorded in [STRIPE_SANDBOX_ACCEPTANCE.md](docs/STRIPE_SANDBOX_ACCEPTANCE.md).
 
-Itineraries support private CRUD, ordered days/activities, public discovery, budgets/FX, owned city-group hotel search and activity images with private/public access and independent clone files. Public flight search/details and owned first-city itinerary flight reuse are implemented; see [flight search](docs/FLIGHT_SEARCH.md). See [itinerary API/demo](docs/ITINERARIES.md), [hotel search](docs/ITINERARY_HOTEL_SEARCH.md) and [images](docs/ACTIVITY_IMAGES.md). [Self-deactivation](docs/ACCOUNT_DEACTIVATION.md) atomically revokes sessions, blocks upcoming Confirmed hotel stays and protects against payment races; current/upcoming flight segments are included in the same transactional guard.
+## Initial accounts and reference data
 
-The official workbook and reference CSVs have been inspected. The mandatory-release verification passed typecheck/build/lint, 209 unit and 647 HTTP/database tests. After the approved HTL-26 bonus, the fresh complete HTTP/database run passed 660 cases in 27 suites, including complete AppModule/Swagger/auth/admin smoke with validated disposable configuration and no .env loading. Separate approved processes verified genuine Stripe test-mode operations using disposable databases and runtime-only private keys. Both successful payments were fully refunded; unpaid intents were cancelled and cleanup completed. Running HTTP readiness/Swagger returned 200 on November 19 and all 110 mandatory API operations matched. Production cookie flags are tested; local HTTP uses non-Secure cookies. Shared Atlas payment fixtures and HTTPS/browser presentation were not part of the isolated test; shared reference seeding was separately verified. Restart the backend and normal local Stripe CLI listener for new demo payments. See the current handoff for documented cleanup/retention limits.
+Administrators are seeded; public registration cannot create an administrator. On a new, approved database, provide `ADMIN_BOOTSTRAP_EMAIL` and `ADMIN_BOOTSTRAP_PASSWORD` privately as one-time process environment variables and run `npm.cmd run seed:admin`. The bootstrap script requires at least 12 password characters; choose a password with a letter and digit as well. Clear the one-time variables afterward. Never include account credentials in Git, a submission archive or the prompt log.
+
+Official reference data and seed instructions are in [REFERENCE_DATA.md](docs/REFERENCE_DATA.md). `npm.cmd run seed:reference` validates the four committed official CSVs without connecting to a database. Applying a seed requires `--apply` and privately configured process environment; use the designated shared database only with team approval. The approved shared seed was already verified and is not repeated by tests or CI.
+
+Register travelers with `fullName`, `email`, a password of at least eight characters including a letter and digit, and `termsAccepted: true`. Administrators create providers and provision their moderators. A moderator manages exactly one assigned hotel or airline and must change the temporary password before protected management actions.
+
+## API and demonstration order
+
+Swagger covers all 110 mandatory PDF method/path operations, supporting routes and the optional HTL-26 reply operation. Protected routes use the login cookie and enforce account status, role, provider assignment and ownership on the server.
+
+1. Log in as an administrator; inspect accounts and provision a provider/moderator.
+2. Change the moderator's temporary password, log in again and manage inventory/policies.
+3. Register/log in as a traveler; search flights or hotels and create a booking hold.
+4. Review and accept the saved policies, create a Stripe test payment and complete it with Stripe's test facilities. Genuine signed settlement confirms the booking.
+5. Inspect the booking, flight PDF ticket, cancellation/refund, notifications and administration history.
+6. Demonstrate private/public itineraries, cloning, activities/images, budgets/FX and provider search reuse.
+7. Demonstrate blog/community content and moderation. For the approved bonus, an assigned hotel moderator can POST a comment to `/api/reviews/:id/reply`; public review listings include the response, and duplicate replies return 409.
+
+Private endpoints use sanitized projections. Flight PDFs, CSV exports and moderator access are covered by dedicated tests. Production cookies use Secure; local HTTP demonstrations use non-Secure cookies. Frontend/browser presentation is part of the later milestone.
+
+## Verification
+
+From `backend/`:
+
+```powershell
+npm.cmd run typecheck
+npm.cmd run lint
+npm.cmd run build
+npm.cmd test
+npm.cmd run seed:reference
+npm.cmd run test:e2e
+```
+
+To use this machine's installed test database binary, set these non-secret test-process options before the e2e command:
+
+```powershell
+$env:MONGOMS_SYSTEM_BINARY='C:\Program Files\MongoDB\Server\8.2\bin\mongod.exe'
+$env:MONGOMS_VERSION='8.2.7'
+$env:MONGOMS_RUNTIME_DOWNLOAD='false'
+```
+
+The latest completed local run passed typecheck/build/lint, 209 unit tests in 18 suites and 660 HTTP/database cases in 27 suites. This includes 13 new hotel-reply cases and actual full-AppModule Swagger/health/auth checks. Standard tests use disposable databases and controlled external gateway responses; they load no private `.env` and write no shared Atlas fixtures. Separately approved genuine Stripe tests verified payments, signed webhooks, decline/retry, full refunds and unpaid expiry; both successful payments were fully refunded and both unpaid intents cancelled.
+
+[Backend CI](../.github/workflows/backend-ci.yml) repeats locked installation, source checks, unit tests, offline reference validation and the complete HTTP/database suite on Node 24/Ubuntu 22.04. Check the [actual Actions result](https://github.com/abdullah-hassib/giu-travel-platform/actions/workflows/backend-ci.yml) and final submission manifest for the tested commit/run. It uses no private credentials or shared database.
+
+Feature contracts and known limits are linked from the current handoff. No new runtime credentials, reference seed, payment or optional feature is needed to prepare the source submission.
